@@ -9,12 +9,17 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BrainCircuit, Send, Sparkles, RefreshCw } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
-import { doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { 
+  useFirestore, 
+  useDoc, 
+  useMemoFirebase, 
+  setDocumentNonBlocking, 
+  updateDocumentNonBlocking, 
+  deleteDocumentNonBlocking 
+} from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function AIProfileBot() {
   const { user } = useAuth();
@@ -35,7 +40,10 @@ export default function AIProfileBot() {
   // Derived messages from Firestore state
   const messages = useMemo(() => {
     if (!personalityData?.chatHistory || personalityData.chatHistory.length === 0) {
-      return [{ role: 'model' as const, message: "Hi! I'm HarmonyAI. I'll help you discover your dating personality. Ready to start?" }];
+      return [{ 
+        role: 'model' as const, 
+        message: "Hi! I'm HarmonyAI. I'll help you discover your dating personality. Ready to start?" 
+      }];
     }
     return personalityData.chatHistory;
   }, [personalityData]);
@@ -67,19 +75,12 @@ export default function AIProfileBot() {
     }];
 
     // Update Firestore immediately (Optimistic UI) - Non-blocking
-    setDoc(personalityRef, {
+    setDocumentNonBlocking(personalityRef, {
       id: 'personality_data',
       userId: user.uid,
       chatHistory: updatedHistory,
       lastAnalysisDate: new Date().toISOString()
-    }, { merge: true }).catch((error) => {
-      const permissionError = new FirestorePermissionError({
-        path: personalityRef.path,
-        operation: 'write',
-        requestResourceData: { chatHistory: updatedHistory }
-      });
-      errorEmitter.emit('permission-error', permissionError);
-    });
+    }, { merge: true });
 
     try {
       // 3. Get AI response
@@ -105,20 +106,13 @@ export default function AIProfileBot() {
         
         // Also update the main profile status
         const userRef = doc(db, 'user_profiles', user.uid);
-        updateDoc(userRef, {
+        updateDocumentNonBlocking(userRef, {
           personalityProfile: response.personalityProfile,
           updatedAt: new Date().toISOString()
-        }).catch(err => console.error("Profile update error", err));
+        });
       }
 
-      updateDoc(personalityRef, updatePayload).catch((error) => {
-        const permissionError = new FirestorePermissionError({
-          path: personalityRef.path,
-          operation: 'update',
-          requestResourceData: updatePayload
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
+      updateDocumentNonBlocking(personalityRef, updatePayload);
 
       if (response.interviewComplete) {
         setTimeout(() => {
@@ -135,28 +129,17 @@ export default function AIProfileBot() {
   const handleReset = () => {
     if (!user || !personalityRef) return;
     
-    const confirmed = window.confirm("Are you sure you want to restart your personality interview? This will clear your current progress.");
-    if (!confirmed) return;
+    // Clear the personality document
+    deleteDocumentNonBlocking(personalityRef);
 
-    // 1. Delete the personality document - Non-blocking
-    deleteDoc(personalityRef).catch((error) => {
-      const permissionError = new FirestorePermissionError({
-        path: personalityRef.path,
-        operation: 'delete'
-      });
-      errorEmitter.emit('permission-error', permissionError);
-    });
-
-    // 2. Clear personality status from main profile - Non-blocking
+    // Clear personality status from main profile
     const userRef = doc(db, 'user_profiles', user.uid);
-    updateDoc(userRef, {
+    updateDocumentNonBlocking(userRef, {
       personalityProfile: null,
       updatedAt: new Date().toISOString()
-    }).catch(err => {
-      console.error("Profile reset error", err);
     });
 
-    // Reset local state
+    // Reset local state for immediate feedback
     setIsAiThinking(false);
     setInput('');
   };
