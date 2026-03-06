@@ -64,17 +64,14 @@ export default function AIProfileBot() {
     setInput('');
     setIsAiThinking(true);
 
-    // 1. Prepare history for AI
     const chatHistoryForAI = messages.map(m => ({ role: m.role, message: m.message }));
     
-    // 2. Optimistically update Firestore with user message
     const updatedHistory = [...messages, { 
       role: 'user' as const, 
       message: currentMsg, 
       timestamp: new Date().toISOString() 
     }];
 
-    // Update Firestore immediately (Optimistic UI) - Non-blocking
     setDocumentNonBlocking(personalityRef, {
       id: 'personality_data',
       userId: user.uid,
@@ -83,13 +80,11 @@ export default function AIProfileBot() {
     }, { merge: true });
 
     try {
-      // 3. Get AI response
       const response = await aiPersonalityInterview({
         chatHistory: chatHistoryForAI,
         currentMessage: currentMsg
       });
 
-      // 4. Update Firestore with AI response - Non-blocking
       const finalHistory = [...updatedHistory, { 
         role: 'model' as const, 
         message: response.response, 
@@ -104,9 +99,9 @@ export default function AIProfileBot() {
       if (response.interviewComplete && response.personalityProfile) {
         Object.assign(updatePayload, response.personalityProfile);
         
-        // Also update the main profile status
         const userRef = doc(db, 'user_profiles', user.uid);
         updateDocumentNonBlocking(userRef, {
+          id: user.uid,
           personalityProfile: response.personalityProfile,
           updatedAt: new Date().toISOString()
         });
@@ -129,17 +124,18 @@ export default function AIProfileBot() {
   const handleReset = () => {
     if (!user || !personalityRef) return;
     
-    // Clear the personality document
+    // 1. Clear personality data doc
     deleteDocumentNonBlocking(personalityRef);
 
-    // Clear personality status from main profile
+    // 2. Clear status from main profile doc
     const userRef = doc(db, 'user_profiles', user.uid);
     updateDocumentNonBlocking(userRef, {
+      id: user.uid,
       personalityProfile: null,
       updatedAt: new Date().toISOString()
     });
 
-    // Reset local state for immediate feedback
+    // 3. Clear local states
     setIsAiThinking(false);
     setInput('');
   };
