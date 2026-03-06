@@ -7,7 +7,7 @@ import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BrainCircuit, Send, Sparkles, RefreshCw, Trash2 } from 'lucide-react';
+import { BrainCircuit, Send, Sparkles, RefreshCw } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
 import { doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
@@ -17,7 +17,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function AIProfileBot() {
-  const { profile, user } = useAuth();
+  const { user } = useAuth();
   const db = useFirestore();
   const router = useRouter();
   const [input, setInput] = useState('');
@@ -30,7 +30,7 @@ export default function AIProfileBot() {
     return doc(db, 'user_profiles', user.uid, 'personality', 'personality_data');
   }, [db, user]);
 
-  const { data: personalityData, isLoading: isDataLoading } = useDoc<any>(personalityRef);
+  const { data: personalityData } = useDoc<any>(personalityRef);
 
   // Derived messages from Firestore state
   const messages = useMemo(() => {
@@ -66,22 +66,29 @@ export default function AIProfileBot() {
       timestamp: new Date().toISOString() 
     }];
 
-    try {
-      // Update Firestore immediately (Optimistic UI)
-      await setDoc(personalityRef, {
-        id: 'personality_data',
-        userId: user.uid,
-        chatHistory: updatedHistory,
-        lastAnalysisDate: new Date().toISOString()
-      }, { merge: true });
+    // Update Firestore immediately (Optimistic UI) - Non-blocking
+    setDoc(personalityRef, {
+      id: 'personality_data',
+      userId: user.uid,
+      chatHistory: updatedHistory,
+      lastAnalysisDate: new Date().toISOString()
+    }, { merge: true }).catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: personalityRef.path,
+        operation: 'write',
+        requestResourceData: { chatHistory: updatedHistory }
+      });
+      errorEmitter.emit('permission-error', permissionError);
+    });
 
+    try {
       // 3. Get AI response
       const response = await aiPersonalityInterview({
         chatHistory: chatHistoryForAI,
         currentMessage: currentMsg
       });
 
-      // 4. Update Firestore with AI response
+      // 4. Update Firestore with AI response - Non-blocking
       const finalHistory = [...updatedHistory, { 
         role: 'model' as const, 
         message: response.response, 
@@ -101,10 +108,17 @@ export default function AIProfileBot() {
         updateDoc(userRef, {
           personalityProfile: response.personalityProfile,
           updatedAt: new Date().toISOString()
-        });
+        }).catch(err => console.error("Profile update error", err));
       }
 
-      await updateDoc(personalityRef, updatePayload);
+      updateDoc(personalityRef, updatePayload).catch((error) => {
+        const permissionError = new FirestorePermissionError({
+          path: personalityRef.path,
+          operation: 'update',
+          requestResourceData: updatePayload
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
 
       if (response.interviewComplete) {
         setTimeout(() => {
@@ -112,36 +126,40 @@ export default function AIProfileBot() {
         }, 3000);
       }
     } catch (error) {
-      const permissionError = new FirestorePermissionError({
-        path: personalityRef.path,
-        operation: 'write',
-        requestResourceData: { chatHistory: updatedHistory }
-      });
-      errorEmitter.emit('permission-error', permissionError);
+      console.error("AI Interview error", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReset = async () => {
+  const handleReset = () => {
     if (!user || !personalityRef) return;
-    if (!confirm("Are you sure you want to restart your personality interview? This will clear your current progress.")) return;
+    
+    const confirmed = window.confirm("Are you sure you want to restart your personality interview? This will clear your current progress.");
+    if (!confirmed) return;
 
-    try {
-      await deleteDoc(personalityRef);
-      // Main profile update to reflect reset
-      const userRef = doc(db, 'user_profiles', user.uid);
-      await updateDoc(userRef, {
-        personalityProfile: null,
-        updatedAt: new Date().toISOString()
+    setLoading(true);
+
+    // 1. Delete the sub-document
+    deleteDoc(personalityRef)
+      .then(() => {
+        // 2. Update the main user profile to clear personality reference
+        const userRef = doc(db, 'user_profiles', user.uid);
+        return updateDoc(userRef, {
+          personalityProfile: null,
+          updatedAt: new Date().toISOString()
+        });
+      })
+      .catch((error) => {
+         const permissionError = new FirestorePermissionError({
+          path: personalityRef.path,
+          operation: 'delete'
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => {
+        setLoading(false);
       });
-    } catch (error) {
-       const permissionError = new FirestorePermissionError({
-        path: personalityRef.path,
-        operation: 'delete'
-      });
-      errorEmitter.emit('permission-error', permissionError);
-    }
   };
 
   return (
@@ -163,8 +181,9 @@ export default function AIProfileBot() {
           size="sm" 
           className="rounded-xl text-muted-foreground hover:text-destructive gap-2"
           onClick={handleReset}
+          disabled={loading}
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
           <span className="hidden sm:inline">Reset Interview</span>
         </Button>
       </div>
@@ -189,7 +208,7 @@ export default function AIProfileBot() {
             ))}
             {loading && (
               <div className="flex items-center gap-2 text-primary text-xs animate-pulse font-medium ml-2">
-                <Sparkles className="w-3 h-3" /> Harmony is mirroring your style...
+                <Sparkles className="w-3 h-3" /> Harmony is thinking...
               </div>
             )}
           </div>
