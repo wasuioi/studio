@@ -1,10 +1,12 @@
+
 "use client";
 
 import { useAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Heart, MapPin, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Heart, MapPin, Sparkles, BrainCircuit, Check } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -65,7 +67,7 @@ export default function MatchesPage() {
       </header>
 
       {!profile?.personalityProfile ? (
-        <Card className="rounded-3xl border-dashed border-2 bg-muted/30 p-12 text-center">
+        <Card className="rounded-3xl border-dashed border-2 bg-muted/30 p-12 text-center flex flex-col items-center">
           <BrainCircuit className="w-12 h-12 text-primary/40 mx-auto mb-4" />
           <h2 className="text-xl font-bold mb-2">Complete your AI interview</h2>
           <p className="text-muted-foreground mb-6 max-w-xs mx-auto">To see matches tailored to your personality, you need to chat with HarmonyAI first.</p>
@@ -119,5 +121,3 @@ export default function MatchesPage() {
     </div>
   );
 }
-
-import { BrainCircuit, Check, Button } from 'lucide-react';

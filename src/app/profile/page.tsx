@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth as useProfileAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,12 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, AlertCircle, Edit3, ShieldAlert, ArrowRight, Heart, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { initiateAnonymousSignIn } from '@/firebase';
+import { initiateAnonymousSignIn, useAuth as useFirebaseAuth } from '@/firebase';
 import { cn } from '@/lib/utils';
 
 export default function ProfilePage() {
-  const { profile, user, loading } = useAuth();
-  const { auth } = (typeof window !== 'undefined') ? require('@/firebase') : { auth: null };
+  const { profile, user, loading } = useProfileAuth();
+  const auth = useFirebaseAuth();
 
   const handleSignIn = () => {
     if (auth) {
@@ -69,7 +69,7 @@ export default function ProfilePage() {
             className="object-cover"
             data-ai-hint="user portrait"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-t from-black/40 to-transparent" />
         </div>
         <CardContent className="pt-6 relative">
           <div className="flex justify-between items-start mb-4">
