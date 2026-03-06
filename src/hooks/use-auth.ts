@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { UserProfile } from '@/types';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export function useAuth() {
   const { user, isUserLoading: authLoading } = useUser();
@@ -26,23 +28,47 @@ export function useAuth() {
     const unsubscribe = onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
         setProfile(docSnap.data() as UserProfile);
+        setLoading(false);
       } else {
-        // Create default profile if it doesn't exist
+        const now = new Date().toISOString();
         const newProfile: UserProfile = {
+          id: user.uid, // CRITICAL: Security rules check request.resource.data.id
           uid: user.uid,
           displayName: user.displayName || 'Guest User',
+          name: user.displayName || 'Guest User',
           photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/400/400`,
+          profilePhotoUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/400/400`,
           bio: "Searching for connection...",
+          gender: "prefer not to say",
+          dateOfBirth: "1990-01-01",
+          location: "Unknown",
           isVerified: false,
-          verificationStatus: 'none',
+          verificationStatus: 'not_verified',
+          createdAt: now,
+          updatedAt: now,
         };
-        // Non-blocking set
-        setDoc(userRef, newProfile, { merge: true });
-        setProfile(newProfile);
+
+        setDoc(userRef, newProfile, { merge: true })
+          .then(() => {
+            setProfile(newProfile);
+            setLoading(false);
+          })
+          .catch((err) => {
+            const permissionError = new FirestorePermissionError({
+              path: userRef.path,
+              operation: 'create',
+              requestResourceData: newProfile,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            setLoading(false);
+          });
       }
-      setLoading(false);
     }, (error) => {
-      console.error("Profile sync error:", error);
+      const permissionError = new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'get',
+      });
+      errorEmitter.emit('permission-error', permissionError);
       setLoading(false);
     });
 

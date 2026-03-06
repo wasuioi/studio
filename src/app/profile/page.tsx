@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useAuth as useProfileAuth } from '@/hooks/use-auth';
@@ -69,12 +68,12 @@ export default function ProfilePage() {
             className="object-cover"
             data-ai-hint="user portrait"
           />
-          <div className="absolute inset-0 bg-gradient-t from-black/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         </div>
         <CardContent className="pt-6 relative">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2 mb-1">
+              <h1 className="text-3xl font-bold flex items-center gap-2 mb-1 text-card-foreground">
                 {profile.displayName}
                 {profile.isVerified ? (
                   <Badge className="bg-verified hover:bg-verified text-white gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider">
