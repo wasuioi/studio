@@ -21,7 +21,7 @@ export default function AIProfileBot() {
   const db = useFirestore();
   const router = useRouter();
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isAiThinking, setIsAiThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Memoize the personality data path
@@ -47,14 +47,14 @@ export default function AIProfileBot() {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
     }
-  }, [messages]);
+  }, [messages, isAiThinking]);
 
   const handleSend = async () => {
-    if (!input.trim() || loading || !user || !personalityRef) return;
+    if (!input.trim() || isAiThinking || !user || !personalityRef) return;
 
     const currentMsg = input;
     setInput('');
-    setLoading(true);
+    setIsAiThinking(true);
 
     // 1. Prepare history for AI
     const chatHistoryForAI = messages.map(m => ({ role: m.role, message: m.message }));
@@ -128,7 +128,7 @@ export default function AIProfileBot() {
     } catch (error) {
       console.error("AI Interview error", error);
     } finally {
-      setLoading(false);
+      setIsAiThinking(false);
     }
   };
 
@@ -138,28 +138,27 @@ export default function AIProfileBot() {
     const confirmed = window.confirm("Are you sure you want to restart your personality interview? This will clear your current progress.");
     if (!confirmed) return;
 
-    setLoading(true);
-
-    // 1. Delete the sub-document
-    deleteDoc(personalityRef)
-      .then(() => {
-        // 2. Update the main user profile to clear personality reference
-        const userRef = doc(db, 'user_profiles', user.uid);
-        return updateDoc(userRef, {
-          personalityProfile: null,
-          updatedAt: new Date().toISOString()
-        });
-      })
-      .catch((error) => {
-         const permissionError = new FirestorePermissionError({
-          path: personalityRef.path,
-          operation: 'delete'
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => {
-        setLoading(false);
+    // 1. Delete the personality document - Non-blocking
+    deleteDoc(personalityRef).catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: personalityRef.path,
+        operation: 'delete'
       });
+      errorEmitter.emit('permission-error', permissionError);
+    });
+
+    // 2. Clear personality status from main profile - Non-blocking
+    const userRef = doc(db, 'user_profiles', user.uid);
+    updateDoc(userRef, {
+      personalityProfile: null,
+      updatedAt: new Date().toISOString()
+    }).catch(err => {
+      console.error("Profile reset error", err);
+    });
+
+    // Reset local state
+    setIsAiThinking(false);
+    setInput('');
   };
 
   return (
@@ -172,19 +171,18 @@ export default function AIProfileBot() {
             <BrainCircuit className="text-primary w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">HarmonyAI Interview</h1>
+            <h1 className="text-xl font-bold text-foreground">HarmonyAI Interview</h1>
             <p className="text-xs text-muted-foreground">Discovering the real you</p>
           </div>
         </div>
         <Button 
           variant="ghost" 
           size="sm" 
-          className="rounded-xl text-muted-foreground hover:text-destructive gap-2"
+          className="rounded-xl text-muted-foreground hover:text-destructive gap-2 hover:bg-destructive/10 transition-colors"
           onClick={handleReset}
-          disabled={loading}
         >
-          <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-          <span className="hidden sm:inline">Reset Interview</span>
+          <RefreshCw className="w-4 h-4" />
+          <span className="hidden sm:inline font-medium">Reset Interview</span>
         </Button>
       </div>
 
@@ -193,7 +191,7 @@ export default function AIProfileBot() {
           <div className="space-y-4">
             {messages.map((m, i) => (
               <div key={i} className={cn(
-                "flex flex-col max-w-[85%]",
+                "flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300",
                 m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
               )}>
                 <div className={cn(
@@ -206,7 +204,7 @@ export default function AIProfileBot() {
                 </div>
               </div>
             ))}
-            {loading && (
+            {isAiThinking && (
               <div className="flex items-center gap-2 text-primary text-xs animate-pulse font-medium ml-2">
                 <Sparkles className="w-3 h-3" /> Harmony is thinking...
               </div>
@@ -221,14 +219,14 @@ export default function AIProfileBot() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              className="pr-12 rounded-2xl h-12 bg-white"
-              disabled={loading}
+              className="pr-12 rounded-2xl h-12 bg-white border-none shadow-inner"
+              disabled={isAiThinking}
             />
             <Button 
               size="icon" 
-              className="absolute right-1 rounded-xl bg-primary"
+              className="absolute right-1 rounded-xl bg-primary hover:bg-primary/90 transition-transform active:scale-95"
               onClick={handleSend}
-              disabled={loading || !input.trim()}
+              disabled={isAiThinking || !input.trim()}
             >
               <Send className="w-4 h-4" />
             </Button>
