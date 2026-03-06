@@ -1,24 +1,57 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { useAuth as useProfileAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, AlertCircle, Edit3, ShieldAlert, ArrowRight, Heart, Sparkles } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { CheckCircle2, AlertCircle, Edit3, ShieldAlert, ArrowRight, Heart, Sparkles, X, Save } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { initiateAnonymousSignIn, useAuth as useFirebaseAuth } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { initiateAnonymousSignIn, useAuth as useFirebaseAuth, useFirestore, updateDocumentNonBlocking } from '@/firebase';
 import { cn } from '@/lib/utils';
 
 export default function ProfilePage() {
   const { profile, user, loading } = useProfileAuth();
   const auth = useFirebaseAuth();
+  const db = useFirestore();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [editedBio, setEditedBio] = useState('');
+
+  // Initialize form when profile loads
+  useEffect(() => {
+    if (profile) {
+      setEditedName(profile.displayName || profile.name || '');
+      setEditedBio(profile.bio || '');
+    }
+  }, [profile]);
 
   const handleSignIn = () => {
     if (auth) {
       initiateAnonymousSignIn(auth);
     }
+  };
+
+  const handleSave = () => {
+    if (!user || !profile) return;
+
+    const userRef = doc(db, 'user_profiles', user.uid);
+    const updates = {
+      id: user.uid,
+      name: editedName,
+      displayName: editedName,
+      bio: editedBio,
+      updatedAt: new Date().toISOString(),
+    };
+
+    updateDocumentNonBlocking(userRef, updates);
+    setIsEditing(false);
   };
 
   if (loading) {
@@ -72,31 +105,89 @@ export default function ProfilePage() {
         </div>
         <CardContent className="pt-6 relative">
           <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2 mb-1 text-card-foreground">
-                {profile.displayName}
-                {profile.isVerified ? (
-                  <Badge className="bg-verified hover:bg-verified text-white gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Verified
-                  </Badge>
-                ) : (
-                  <Badge className="bg-unverified hover:bg-unverified text-white gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider">
-                    <AlertCircle className="w-3 h-3" />
-                    Unverified
-                  </Badge>
-                )}
-              </h1>
-              <p className="text-muted-foreground text-sm font-medium">{profile.bio}</p>
+            <div className="flex-1 mr-4">
+              {isEditing ? (
+                <div className="space-y-3">
+                  <Input 
+                    value={editedName} 
+                    onChange={(e) => setEditedName(e.target.value)}
+                    placeholder="Your Name"
+                    className="font-bold text-lg rounded-xl h-12"
+                  />
+                  <Textarea 
+                    value={editedBio} 
+                    onChange={(e) => setEditedBio(e.target.value)}
+                    placeholder="Tell us about yourself..."
+                    className="text-sm rounded-xl min-h-[100px]"
+                  />
+                </div>
+              ) : (
+                <>
+                  <h1 className="text-3xl font-bold flex items-center gap-2 mb-1 text-card-foreground">
+                    {profile.displayName}
+                    {profile.isVerified ? (
+                      <Badge className="bg-verified hover:bg-verified text-white gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Verified
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-unverified hover:bg-unverified text-white gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider">
+                        <AlertCircle className="w-3 h-3" />
+                        Unverified
+                      </Badge>
+                    )}
+                  </h1>
+                  <p className="text-muted-foreground text-sm font-medium">{profile.bio}</p>
+                </>
+              )}
             </div>
-            <Button size="icon" variant="secondary" className="rounded-2xl bg-muted h-12 w-12 hover:bg-primary/10 transition-colors">
-              <Edit3 className="w-5 h-5 text-primary" />
-            </Button>
+            {!isEditing && (
+              <Button 
+                size="icon" 
+                variant="secondary" 
+                className="rounded-2xl bg-muted h-12 w-12 hover:bg-primary/10 transition-colors"
+                onClick={() => setIsEditing(true)}
+              >
+                <Edit3 className="w-5 h-5 text-primary" />
+              </Button>
+            )}
           </div>
 
-          {!profile.isVerified && (
+          <div className="flex gap-2 mt-4">
+            {isEditing ? (
+              <>
+                <Button 
+                  className="flex-1 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold h-14 text-lg shadow-lg shadow-primary/10"
+                  onClick={handleSave}
+                >
+                  <Save className="w-5 h-5 mr-2" />
+                  Save Changes
+                </Button>
+                <Button 
+                  variant="outline"
+                  className="rounded-2xl h-14 w-14 border-2"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditedName(profile.displayName || profile.name || '');
+                    setEditedBio(profile.bio || '');
+                  }}
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </>
+            ) : (
+              <Button 
+                className="w-full rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold h-14 text-lg shadow-lg shadow-primary/10"
+                onClick={() => setIsEditing(true)}
+              >
+                Edit Profile
+              </Button>
+            )}
+          </div>
+
+          {!profile.isVerified && !isEditing && (
             <Link href="/verification">
-              <div className="mb-6 p-4 bg-primary/5 border border-primary/10 rounded-3xl flex items-center gap-4 group cursor-pointer hover:bg-primary/10 transition-colors">
+              <div className="mt-6 p-4 bg-primary/5 border border-primary/10 rounded-3xl flex items-center gap-4 group cursor-pointer hover:bg-primary/10 transition-colors">
                 <div className="bg-primary/10 p-2 rounded-2xl group-hover:scale-110 transition-transform">
                   <ShieldAlert className="w-6 h-6 text-primary" />
                 </div>
@@ -110,39 +201,37 @@ export default function ProfilePage() {
               </div>
             </Link>
           )}
-
-          <Button className="w-full rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold h-14 text-lg shadow-lg shadow-primary/10">
-            Edit Profile
-          </Button>
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
-        <FeatureLinkCard 
-          title="AI Personality Bot"
-          description="Analyze your communication style and values with our advanced AI."
-          href="/bot"
-          icon={<Sparkles className="w-5 h-5" />}
-          buttonText="Start Interview"
-        />
+      {!isEditing && (
+        <div className="space-y-4">
+          <FeatureLinkCard 
+            title="AI Personality Bot"
+            description="Analyze your communication style and values with our advanced AI."
+            href="/bot"
+            icon={<Sparkles className="w-5 h-5" />}
+            buttonText="Start Interview"
+          />
 
-        <FeatureLinkCard 
-          title="My Matches"
-          description="Explore curated profiles that resonate with your unique personality."
-          href="/matches"
-          icon={<Heart className="w-5 h-5" />}
-          buttonText="Explore"
-        />
+          <FeatureLinkCard 
+            title="My Matches"
+            description="Explore curated profiles that resonate with your unique personality."
+            href="/matches"
+            icon={<Heart className="w-5 h-5" />}
+            buttonText="Explore"
+          />
 
-        <FeatureLinkCard 
-          title="Messages"
-          description="Connect and chat with your matches in a secure environment."
-          href="/messages"
-          buttonText="Open Inbox"
-          disabled={!profile.isVerified}
-          disabledMessage="Verification required"
-        />
-      </div>
+          <FeatureLinkCard 
+            title="Messages"
+            description="Connect and chat with your matches in a secure environment."
+            href="/messages"
+            buttonText="Open Inbox"
+            disabled={!profile.isVerified}
+            disabledMessage="Verification required"
+          />
+        </div>
+      )}
     </div>
   );
 }
