@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -81,15 +82,15 @@
         },
         "userId": {
           "type": "string",
-          "description": "Reference to the UserProfile this personality analysis belongs to. (Relationship: UserProfile 1:1 UserPersonality)"
+          "description": "Reference to the UserProfile this personality analysis belongs to."
         },
         "personalityType": {
           "type": "string",
-          "description": "AI-derived primary personality type or category (e.g., 'Extrovert', 'Analyst')."
+          "description": "AI-derived primary personality type or category."
         },
         "communicationStyle": {
           "type": "string",
-          "description": "AI-derived description of the user's communication style (e.g., 'Direct', 'Empathetic')."
+          "description": "AI-derived description of the user's communication style."
         },
         "keyTraits": {
           "type": "array",
@@ -98,9 +99,27 @@
             "type": "string"
           }
         },
-        "analysisDetails": {
-          "type": "string",
-          "description": "A flexible field to store more detailed or raw JSON output from the AI personality analysis."
+        "datingPreferences": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "values": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "summary": {
+          "type": "string"
+        },
+        "chatHistory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string", "enum": ["user", "model"] },
+              "message": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
         },
         "lastAnalysisDate": {
           "type": "string",
@@ -111,9 +130,6 @@
       "required": [
         "id",
         "userId",
-        "personalityType",
-        "communicationStyle",
-        "keyTraits",
         "lastAnalysisDate"
       ]
     },
@@ -129,11 +145,11 @@
         },
         "user1Id": {
           "type": "string",
-          "description": "Reference to the UserProfile of the first participant in the match. (Relationship: UserProfile 1:N Match)"
+          "description": "Reference to the UserProfile of the first participant in the match."
         },
         "user2Id": {
           "type": "string",
-          "description": "Reference to the UserProfile of the second participant in the match. (Relationship: UserProfile 1:N Match)"
+          "description": "Reference to the UserProfile of the second participant in the match."
         },
         "matchScore": {
           "type": "number",
@@ -185,22 +201,22 @@
         },
         "participantIds": {
           "type": "array",
-          "description": "An array containing the IDs of the two UserProfiles participating in this conversation. (Relationship: UserProfile N:N Conversation)",
+          "description": "An array containing the IDs of the two UserProfiles participating in this conversation.",
           "items": {
             "type": "string"
           }
         },
         "lastMessageContent": {
           "type": "string",
-          "description": "The content of the most recent message in the conversation (denormalized for quick display in UI)."
+          "description": "The content of the most recent message in the conversation."
         },
         "lastMessageSenderId": {
           "type": "string",
-          "description": "Reference to the UserProfile who sent the last message (denormalized for quick display). (Relationship: UserProfile 1:N Conversation)"
+          "description": "Reference to the UserProfile who sent the last message."
         },
         "lastMessageSentAt": {
           "type": "string",
-          "description": "Timestamp when the last message in the conversation was sent (denormalized).",
+          "description": "Timestamp when the last message in the conversation was sent.",
           "format": "date-time"
         },
         "createdAt": {
@@ -210,7 +226,7 @@
         },
         "updatedAt": {
           "type": "string",
-          "description": "Timestamp when the conversation was last updated (e.g., a new message was sent).",
+          "description": "Timestamp when the conversation was last updated.",
           "format": "date-time"
         }
       },
@@ -233,11 +249,11 @@
         },
         "conversationId": {
           "type": "string",
-          "description": "Reference to the Conversation this message belongs to. (Relationship: Conversation 1:N Message)"
+          "description": "Reference to the Conversation this message belongs to."
         },
         "senderId": {
           "type": "string",
-          "description": "Reference to the UserProfile who sent this message. (Relationship: UserProfile 1:N Message)"
+          "description": "Reference to the UserProfile who sent this message."
         },
         "content": {
           "type": "string",
@@ -250,7 +266,7 @@
         },
         "readBy": {
           "type": "array",
-          "description": "An array of UserProfile IDs who have read this message. (Relationship: UserProfile N:N Message)",
+          "description": "An array of UserProfile IDs who have read this message.",
           "items": {
             "type": "string"
           }
@@ -276,21 +292,21 @@
         },
         "userId": {
           "type": "string",
-          "description": "Reference to the UserProfile for whom this verification request was submitted. (Relationship: UserProfile 1:N VerificationRequest)"
+          "description": "Reference to the UserProfile for whom this verification request was submitted."
         },
         "idCardFrontUrl": {
           "type": "string",
-          "description": "URL to the front side of the user's identification card, stored in Firebase Storage.",
+          "description": "URL to the front side of the user's identification card.",
           "format": "uri"
         },
         "idCardBackUrl": {
           "type": "string",
-          "description": "URL to the back side of the user's identification card, stored in Firebase Storage (optional, depending on ID type).",
+          "description": "URL to the back side of the user's identification card.",
           "format": "uri"
         },
         "selfieUrl": {
           "type": "string",
-          "description": "URL to the user's selfie photo, stored in Firebase Storage, for liveness/identity check.",
+          "description": "URL to the user's selfie photo.",
           "format": "uri"
         },
         "status": {
@@ -309,11 +325,11 @@
         },
         "reviewerId": {
           "type": "string",
-          "description": "Reference to the admin or moderator UserProfile who reviewed this request (if applicable). (Relationship: UserProfile 1:N VerificationRequest)"
+          "description": "Reference to the admin or moderator UserProfile who reviewed this request."
         },
         "rejectionReason": {
           "type": "string",
-          "description": "A textual explanation if the verification request was rejected (optional)."
+          "description": "A textual explanation if the verification request was rejected."
         }
       },
       "required": [
@@ -341,7 +357,7 @@
           "schema": {
             "$ref": "#/backend/entities/UserProfile"
           },
-          "description": "Stores core user profile data, including public information and private verification status. Document ID is the Firebase Auth UID. Authorization: Owner (request.auth.uid == userId) has R/W. Other authenticated users can read public fields for matching and display.",
+          "description": "Stores core user profile data.",
           "params": [
             {
               "name": "userId",
@@ -357,11 +373,11 @@
           "schema": {
             "$ref": "#/backend/entities/UserPersonality"
           },
-          "description": "Stores AI-derived personality and communication style analysis results for a specific user (1:1 relationship with UserProfile). The document ID 'personality_data' is a fixed string. Authorization: Only the owner (request.auth.uid == userId) has R/W access. Includes denormalized 'userId' for robust rules and queries.",
+          "description": "Stores AI-derived personality and communication style analysis results for a specific user.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique Firebase Authentication UID of the user whose personality data is stored."
+              "description": "The unique Firebase Authentication UID of the user."
             }
           ]
         }
@@ -373,11 +389,11 @@
           "schema": {
             "$ref": "#/backend/entities/VerificationRequest"
           },
-          "description": "Stores details about a user's identity verification submission. Authorization: Only the owner (request.auth.uid == userId) has R/W. Future admin roles may have read/update access. Includes denormalized 'userId' for robust rules and queries.",
+          "description": "Stores details about a user's identity verification submission.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique Firebase Authentication UID of the user submitting the verification request."
+              "description": "The unique Firebase Authentication UID of the user."
             },
             {
               "name": "requestId",
@@ -393,7 +409,7 @@
           "schema": {
             "$ref": "#/backend/entities/Match"
           },
-          "description": "Represents a potential or confirmed match between two users. Stored in a top-level collection for efficient querying by either participant. Authorization: Accessible if request.auth.uid matches either 'user1Id' or 'user2Id'. Includes denormalized 'user1Id' and 'user2Id' fields for authorization independence.",
+          "description": "Represents a potential or confirmed match between two users.",
           "params": [
             {
               "name": "matchId",
@@ -409,7 +425,7 @@
           "schema": {
             "$ref": "#/backend/entities/Conversation"
           },
-          "description": "Represents a one-on-one chat conversation between two matched users. Stored in a top-level collection for efficient querying of a user's conversations. Authorization: Accessible if request.auth.uid is present in the 'participantIds' array. Includes denormalized 'participantIds' for authorization independence.",
+          "description": "Represents a one-on-one chat conversation between two matched users.",
           "params": [
             {
               "name": "conversationId",
@@ -425,7 +441,7 @@
           "schema": {
             "$ref": "#/backend/entities/Message"
           },
-          "description": "Represents a single message sent within a conversation. Authorization: Accessible if request.auth.uid is present in the denormalized 'participantIds' array. The 'participantIds' are copied from the parent conversation to ensure authorization independence and prevent get() calls in rules.",
+          "description": "Represents a single message sent within a conversation.",
           "params": [
             {
               "name": "conversationId",
@@ -438,7 +454,6 @@
           ]
         }
       }
-    ],
-    "reasoning": "The Firestore data structure for HarmonyAI prioritizes security, scalability, and debuggability by adhering to the core design principles. \n\n**Authorization Independence (CRITICAL):**\nThis design ensures Authorization Independence primarily through denormalization. For documents in subcollections like `messages`, critical authorization data (e.g., `participantIds`) from the parent `conversation` document is copied directly into each `message` document. This eliminates the need for expensive and complex `get()` calls to parent documents within security rules, allowing atomic operations and simplifying rule evaluation. For top-level collaborative collections like `matches` and `conversations`, all necessary participant IDs (`user1Id`, `user2Id`, `participantIds`) are stored directly within each document, enabling rules to evaluate access based solely on the document's own data. User-specific private data (profiles, personality, verification requests) are structured hierarchically under `/user_profiles/{userId}/...`, making ownership explicit and rule evaluation straightforward based on the path wildcard `{userId}` matching `request.auth.uid`.\n\n**QAPs (Rules are not Filters):**\nThe structure supports Query-Able Paths (QAPs) by applying structural segregation and consistent access modeling:\n1.  **User Profiles:** `/user_profiles/{userId}` allows direct reads for the owner (`request.auth.uid == userId`) and authenticated reads for public profile information by others. `list` operations for general browsing can be performed on `/user_profiles`, with rules restricting fields or ensuring only public profiles are visible.\n2.  **User Personality:** Stored at `/user_profiles/{userId}/personality/personality_data`. Access is strictly limited to the owner, facilitating a direct `get` by authenticated users for their own personality data, and preventing unauthorized `list` access.\n3.  **User Verification Requests:** Stored at `/user_profiles/{userId}/verification_requests/{requestId}`. Access is restricted to the owner, allowing them to `list` and manage their own verification requests. Future admin roles could be granted `list` access to `/user_profiles/{userId}/verification_requests` to review requests, with rules ensuring they can only read and update specific status fields.\n4.  **Matches:** `/matches/{matchId}` is a top-level collection containing `user1Id` and `user2Id`. This enables QAPs for finding all matches for a user by querying `where('user1Id', '==', request.auth.uid)` or `where('user2Id', '==', request.auth.uid)`. Rules will then ensure that `request.auth.uid` is either `user1Id` or `user2Id` for any `get`, `update`, or `delete` operation on a specific `matchId`.\n5.  **Conversations:** `/conversations/{conversationId}` is a top-level collection with a `participantIds` array. This supports efficient QAPs using `where('participantIds', 'array-contains', request.auth.uid)` to retrieve all conversations for the authenticated user.\n6.  **Messages:** `/conversations/{conversationId}/messages/{messageId}`. Each `Message` document includes the denormalized `participantIds`. This allows users to `list` messages within a specific conversation (`/conversations/{conversationId}/messages`) while the security rules on the `message` document itself can verify `request.auth.uid in resource.data.participantIds` without needing to check the parent `conversation` document.\n\n**Structural Segregation:**\nEach collection or subcollection generally holds documents with a homogeneous security posture. For example, `user_profiles` holds publicly viewable (with some private fields) profiles, `matches` holds records accessible by two specific users, and `conversations` documents are accessible by their participants. This reduces rule complexity by making access patterns predictable per collection.\n\n**Access Modeling:**\n*   **Private User Data:** `UserProfile`, `UserPersonality`, and `VerificationRequest` are all structured using hierarchical, path-based ownership under `/user_profiles/{userId}/...`, ensuring that `request.auth.uid` must match the `{userId}` wildcard for primary access.\n*   **Collaborative Data:** `Match` and `Conversation` entities use explicit ID fields (`user1Id`, `user2Id`, `participantIds`) for membership-based authorization, enabling flexible querying and secure access for all involved parties.\n\nThis architecture provides a robust foundation for HarmonyAI's security rules, ensuring data integrity and efficient data access while minimizing complexity."
+    ]
   }
 }

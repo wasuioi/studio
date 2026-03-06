@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI agent that conducts a personality interview to build a user profile.
@@ -20,10 +21,12 @@ const AiPersonalityInterviewInputSchema = z.object({
 export type AiPersonalityInterviewInput = z.infer<typeof AiPersonalityInterviewInputSchema>;
 
 const AiPersonalityProfileSchema = z.object({
-  datingPreferences: z.array(z.string()).describe('A list of the user\'s dating preferences (e.g., "long-term relationship", "casual dating", "adventure seeker").'),
-  values: z.array(z.string()).describe('A list of the user\'s core values (e.g., "honesty", "family", "ambition", "creativity").'),
-  communicationStyle: z.string().describe('A description of the user\'s communication style (e.g., "direct", "empathetic", "playful", "reserved").'),
+  datingPreferences: z.array(z.string()).describe('A list of the user\'s dating preferences.'),
+  values: z.array(z.string()).describe('A list of the user\'s core values.'),
+  communicationStyle: z.string().describe('A description of the user\'s communication style.'),
   summary: z.string().describe('A comprehensive summary of the user\'s personality based on the interview.'),
+  personalityType: z.string().optional().describe('AI-derived primary personality type.'),
+  keyTraits: z.array(z.string()).optional().describe('Key personality traits identified.'),
 });
 
 const AiPersonalityInterviewOutputSchema = z.object({
@@ -41,13 +44,11 @@ const prompt = ai.definePrompt({
   name: 'aiPersonalityInterviewPrompt',
   input: { schema: AiPersonalityInterviewInputSchema },
   output: { schema: AiPersonalityInterviewOutputSchema },
-  prompt: `You are an AI personality bot named HarmonyAI. Your goal is to conduct an interview with the user to understand their dating preferences, values, and communication style. You need to gather enough information to create a comprehensive personality profile.
+  prompt: `You are an AI personality bot named HarmonyAI. Your goal is to conduct an interview with the user to understand their dating preferences, values, and communication style.
 
-Guide the conversation naturally, asking one question at a time. If the user's current message contains an answer to a previous question, acknowledge it and then ask a follow-up question to delve deeper or move on to a new area.
+IMPORTANT: Mirror the user's communication style, vocabulary, and emotional tone. If the user is brief and direct, you should be brief and direct. If the user is expressive and verbose, you should match that energy. Your primary objective is to make the user feel heard and understood through mirroring.
 
-Once you believe you have enough information to fill out the full personality profile (datingPreferences, values, communicationStyle, and a general summary), set 'interviewComplete' to true and provide the complete 'personalityProfile' object. Otherwise, set 'interviewComplete' to false and continue the conversation.
-
-Maintain a friendly, engaging, and empathetic tone throughout the interview.
+Guide the conversation naturally, asking one question at a time. Once you believe you have enough information to fill out the full personality profile (datingPreferences, values, communicationStyle, personalityType, keyTraits, and a summary), set 'interviewComplete' to true and provide the complete 'personalityProfile' object. Otherwise, set 'interviewComplete' to false and continue the conversation.
 
 Chat History:
 {{#each chatHistory}}
@@ -66,19 +67,6 @@ const aiPersonalityInterviewFlow = ai.defineFlow(
     outputSchema: AiPersonalityInterviewOutputSchema,
   },
   async (input) => {
-    const messages = input.chatHistory.map(m => ({ role: m.role, message: m.message }));
-    if (input.currentMessage) {
-        messages.push({ role: 'user', message: input.currentMessage });
-    }
-
-    // If it's the very first message and no chat history, provide an initial greeting
-    if (messages.length === 0 && input.currentMessage === null) {
-      return {
-        response: "Hello! I'm HarmonyAI, your personal guide to finding compatible connections. To help me understand you better, let's start with a few questions. What are you looking for in a dating partner or relationship?",
-        interviewComplete: false,
-      };
-    }
-
     const { output } = await prompt(input);
     return output!;
   }
