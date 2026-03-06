@@ -1,0 +1,143 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * HARMONY AI - SECURITY RULES DOCUMENTATION
+     *
+     * CORE PHILOSOPHY:
+     * This ruleset implements a dual-layer security model: strict individual ownership for personal 
+     * profiles and identity verification, and a collaborative membership model for matches and 
+     * conversations. The goal is to ensure that while the application is in a rapid prototyping 
+     * phase, user data remains private and unauthorized access is strictly prevented.
+     *
+     * DATA STRUCTURE:
+     * - Personal Data: Nested under /user_profiles/{userId}/ to enforce path-based ownership.
+     * - Shared Data: Top-level collections (/matches, /conversations) use participant ID fields 
+     *   for membership-based authorization.
+     *
+     * KEY SECURITY DECISIONS:
+     * - Denormalization for Performance: Critical authorization fields (like participantIds) are 
+     *   denormalized onto child documents (like Messages) to ensure fast, independent rule 
+     *   evaluation without cross-document get() calls.
+     * - Public vs. Private: UserProfiles are publicly readable by authenticated users to 
+     *   facilitate matching, but sensitive sub-collections (Personality, Verification) 
+     *   are strictly restricted to the document owner.
+     * - Integrity: Relational integrity is enforced by ensuring that ownership fields 
+     *   in the document data match the secure path parameters during creation.
+     */
+
+    // --- GLOBAL HELPER FUNCTIONS ---
+
+    /** @description Checks if the user is authenticated. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** @description Checks if the authenticated user matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** @description Checks if the user is the owner and the document exists. */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    /** @description Checks if the user is a member of a list of participants. */
+    function isParticipant(participantIds) {
+      return isSignedIn() && request.auth.uid in participantIds;
+    }
+
+    /** @description Checks if the user is one of the two participants in a match. */
+    function isMatchParticipant(u1, u2) {
+      return isSignedIn() && (request.auth.uid == u1 || request.auth.uid == u2);
+    }
+
+    // --- COLLECTION RULES ---
+
+    /**
+     * @description Rules for user profiles. Owners can manage their profile; all signed-in users can view profiles.
+     * @path /user_profiles/{userId}
+     * @allow (get) Any signed-in user viewing another user's profile.
+     * @deny (update) A user attempting to change another user's profile details.
+     * @principle Path-based ownership for writes; public read for authenticated discovery.
+     */
+    match /user_profiles/{userId} {
+      allow get, list: if isSignedIn();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Rules for AI personality data. Strictly owner-only.
+       * @path /user_profiles/{userId}/personality/personality_data
+       * @allow (get) Owner viewing their own personality analysis.
+       * @deny (list) An unauthorized user listing personality data in another user's subcollection.
+       * @principle Restricts sensitive AI analysis to the data subject.
+       */
+      match /personality/personality_data {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Rules for identity verification requests. Strictly owner-only.
+       * @path /user_profiles/{userId}/verification_requests/{requestId}
+       * @allow (create) User submitting their ID and selfie for verification.
+       * @deny (get) Another user trying to access sensitive ID document URLs.
+       * @principle Ensures PII (Personally Identifiable Information) is isolated to the owner.
+       */
+      match /verification_requests/{requestId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+
+    /**
+     * @description Rules for matches. Accessible only by the two involved users.
+     * @path /matches/{matchId}
+     * @allow (get) A user viewing a match where they are user1Id or user2Id.
+     * @deny (update) A user trying to accept a match they are not a part of.
+     * @principle Multi-party shared access based on internal ID fields.
+     */
+    match /matches/{matchId} {
+      allow get, list: if isSignedIn() && isMatchParticipant(resource.data.user1Id, resource.data.user2Id);
+      allow create: if isSignedIn() && isMatchParticipant(request.resource.data.user1Id, request.resource.data.user2Id);
+      allow update: if resource != null && isMatchParticipant(resource.data.user1Id, resource.data.user2Id);
+      allow delete: if resource != null && isMatchParticipant(resource.data.user1Id, resource.data.user2Id);
+    }
+
+    /**
+     * @description Rules for conversations. Accessible only by participants in the participantIds array.
+     * @path /conversations/{conversationId}
+     * @allow (list) A user fetching their active chat list using an array-contains filter.
+     * @deny (create) A user creating a conversation and trying to insert a third party they aren't.
+     * @principle Closed collaborator model using array membership.
+     */
+    match /conversations/{conversationId} {
+      allow get, list: if isSignedIn() && isParticipant(resource.data.participantIds);
+      allow create: if isSignedIn() && isParticipant(request.resource.data.participantIds);
+      allow update: if resource != null && isParticipant(resource.data.participantIds);
+      allow delete: if resource != null && isParticipant(resource.data.participantIds);
+
+      /**
+       * @description Rules for messages within a conversation. Uses denormalized participantIds for speed.
+       * @path /conversations/{conversationId}/messages/{messageId}
+       * @allow (create) A participant sending a new text message.
+       * @deny (get) A user who is not in the conversation trying to read message content.
+       * @principle Authorization independence through denormalization.
+       */
+      match /messages/{messageId} {
+        allow get, list: if isSignedIn() && isParticipant(resource.data.participantIds);
+        allow create: if isSignedIn() && isParticipant(request.resource.data.participantIds);
+        allow update: if resource != null && isParticipant(resource.data.participantIds);
+        allow delete: if resource != null && isParticipant(resource.data.participantIds);
+      }
+    }
+  }
+}
