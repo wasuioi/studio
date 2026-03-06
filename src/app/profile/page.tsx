@@ -1,19 +1,32 @@
+
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth as useProfileAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { CheckCircle2, AlertCircle, Edit3, ShieldAlert, ArrowRight, Heart, Sparkles, X, Save } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { CheckCircle2, AlertCircle, Edit3, ShieldAlert, ArrowRight, Heart, Sparkles, X, Save, Camera, Plus, Trash2, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { doc } from 'firebase/firestore';
-import { initiateAnonymousSignIn, useAuth as useFirebaseAuth, useFirestore, updateDocumentNonBlocking } from '@/firebase';
+import { doc, collection, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { 
+  initiateAnonymousSignIn, 
+  useAuth as useFirebaseAuth, 
+  useFirestore, 
+  updateDocumentNonBlocking, 
+  addDocumentNonBlocking,
+  deleteDocumentNonBlocking,
+  useCollection,
+  useMemoFirebase
+} from '@/firebase';
 import { cn } from '@/lib/utils';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function ProfilePage() {
   const { profile, user, loading } = useProfileAuth();
@@ -23,8 +36,17 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [editedBio, setEditedBio] = useState('');
+  const [newPostContent, setNewPostContent] = useState('');
+  const [showPhotoSelector, setShowPhotoSelector] = useState(false);
 
-  // Initialize form when profile loads
+  // Posts for the current user
+  const postsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(db, 'user_profiles', user.uid, 'posts'), orderBy('createdAt', 'desc'));
+  }, [db, user]);
+
+  const { data: posts } = useCollection(postsQuery);
+
   useEffect(() => {
     if (profile) {
       setEditedName(profile.displayName || profile.name || '');
@@ -32,234 +54,210 @@ export default function ProfilePage() {
     }
   }, [profile]);
 
-  const handleSignIn = () => {
-    if (auth) {
-      initiateAnonymousSignIn(auth);
-    }
-  };
-
-  const handleSave = () => {
+  const handleSaveProfile = () => {
     if (!user || !profile) return;
-
     const userRef = doc(db, 'user_profiles', user.uid);
-    const updates = {
+    updateDocumentNonBlocking(userRef, {
       id: user.uid,
       name: editedName,
       displayName: editedName,
       bio: editedBio,
       updatedAt: new Date().toISOString(),
-    };
-
-    updateDocumentNonBlocking(userRef, updates);
+    });
     setIsEditing(false);
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background">
-        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-primary font-medium animate-pulse">Syncing with HarmonyAI...</p>
-      </div>
-    );
-  }
+  const handleUpdatePhoto = (url: string) => {
+    if (!user || !profile) return;
+    const userRef = doc(db, 'user_profiles', user.uid);
+    updateDocumentNonBlocking(userRef, {
+      id: user.uid,
+      photoURL: url,
+      profilePhotoUrl: url,
+      updatedAt: new Date().toISOString(),
+    });
+    setShowPhotoSelector(false);
+  };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-        <div className="mb-8 relative">
-          <div className="absolute -inset-4 bg-primary/20 rounded-full blur-xl animate-pulse" />
-          <Heart className="w-20 h-20 text-primary relative fill-primary/10" />
-        </div>
-        <h1 className="text-4xl font-extrabold tracking-tight mb-4">HarmonyAI</h1>
-        <p className="text-muted-foreground max-w-xs mb-8 text-lg">
-          The world's first AI-driven dating experience designed for meaningful connections.
-        </p>
-        <Button 
-          onClick={handleSignIn}
-          size="lg" 
-          className="rounded-2xl h-14 px-10 text-lg font-bold shadow-xl shadow-primary/20 hover:scale-105 transition-transform"
-        >
-          Get Started
-          <Sparkles className="ml-2 w-5 h-5" />
-        </Button>
-      </div>
-    );
-  }
+  const handleCreatePost = () => {
+    if (!user || !newPostContent.trim()) return;
+    const postsRef = collection(db, 'user_profiles', user.uid, 'posts');
+    addDocumentNonBlocking(postsRef, {
+      userId: user.uid,
+      content: newPostContent,
+      createdAt: new Date().toISOString(),
+    });
+    setNewPostContent('');
+  };
+
+  const handleDeletePost = (postId: string) => {
+    if (!user) return;
+    const postRef = doc(db, 'user_profiles', user.uid, 'posts', postId);
+    deleteDocumentNonBlocking(postRef);
+  };
+
+  if (loading) return (
+    <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background">
+      <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  if (!user) return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+      <Heart className="w-20 h-20 text-primary mb-4" />
+      <h1 className="text-4xl font-extrabold mb-4">HarmonyAI</h1>
+      <Button onClick={() => initiateAnonymousSignIn(auth)} size="lg" className="rounded-2xl h-14 px-10">
+        Get Started
+      </Button>
+    </div>
+  );
 
   if (!profile) return null;
 
   return (
-    <div className="max-w-md mx-auto p-4 pt-8 md:pt-24 min-h-screen pb-32">
+    <div className="max-w-2xl mx-auto p-4 pt-8 md:pt-24 min-h-screen pb-32 space-y-8">
       <Navigation />
       
-      <Card className="overflow-hidden border-none shadow-lg mb-8 rounded-[2.5rem] bg-white">
-        <div className="relative h-64 w-full bg-primary/10">
+      {/* Profile Header Card */}
+      <Card className="overflow-hidden border-none shadow-xl rounded-[2.5rem] bg-white">
+        <div className="relative h-64 w-full bg-primary/10 group">
           <Image 
             src={profile.photoURL} 
             alt={profile.displayName} 
             fill 
             className="object-cover"
-            data-ai-hint="user portrait"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <Button variant="secondary" className="rounded-full" onClick={() => setShowPhotoSelector(true)}>
+              <Camera className="w-4 h-4 mr-2" /> Change Photo
+            </Button>
+          </div>
         </div>
-        <CardContent className="pt-6 relative">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex-1 mr-4">
+        
+        <CardContent className="pt-6">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
               {isEditing ? (
                 <div className="space-y-3">
-                  <Input 
-                    value={editedName} 
-                    onChange={(e) => setEditedName(e.target.value)}
-                    placeholder="Your Name"
-                    className="font-bold text-lg rounded-xl h-12"
-                  />
-                  <Textarea 
-                    value={editedBio} 
-                    onChange={(e) => setEditedBio(e.target.value)}
-                    placeholder="Tell us about yourself..."
-                    className="text-sm rounded-xl min-h-[100px]"
-                  />
+                  <Input value={editedName} onChange={(e) => setEditedName(e.target.value)} className="font-bold text-xl h-12 rounded-xl" />
+                  <Textarea value={editedBio} onChange={(e) => setEditedBio(e.target.value)} className="rounded-xl" />
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveProfile} className="rounded-xl flex-1"><Save className="w-4 h-4 mr-2" /> Save</Button>
+                    <Button variant="ghost" onClick={() => setIsEditing(false)} className="rounded-xl"><X className="w-4 h-4" /></Button>
+                  </div>
                 </div>
               ) : (
                 <>
-                  <h1 className="text-3xl font-bold flex items-center gap-2 mb-1 text-card-foreground">
-                    {profile.displayName}
+                  <div className="flex items-center gap-2 mb-2">
+                    <h1 className="text-3xl font-bold">{profile.displayName}</h1>
                     {profile.isVerified ? (
-                      <Badge className="bg-verified hover:bg-verified text-white gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Verified
-                      </Badge>
+                      <Badge className="bg-verified text-white rounded-full px-2 py-0.5 text-[10px]">VERIFIED</Badge>
                     ) : (
-                      <Badge className="bg-unverified hover:bg-unverified text-white gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider">
-                        <AlertCircle className="w-3 h-3" />
-                        Unverified
-                      </Badge>
+                      <Badge className="bg-unverified text-white rounded-full px-2 py-0.5 text-[10px]">UNVERIFIED</Badge>
                     )}
-                  </h1>
-                  <p className="text-muted-foreground text-sm font-medium">{profile.bio}</p>
+                  </div>
+                  <p className="text-muted-foreground">{profile.bio}</p>
                 </>
               )}
             </div>
             {!isEditing && (
-              <Button 
-                size="icon" 
-                variant="secondary" 
-                className="rounded-2xl bg-muted h-12 w-12 hover:bg-primary/10 transition-colors"
-                onClick={() => setIsEditing(true)}
-              >
+              <Button size="icon" variant="ghost" onClick={() => setIsEditing(true)} className="rounded-full">
                 <Edit3 className="w-5 h-5 text-primary" />
               </Button>
             )}
           </div>
-
-          <div className="flex gap-2 mt-4">
-            {isEditing ? (
-              <>
-                <Button 
-                  className="flex-1 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold h-14 text-lg shadow-lg shadow-primary/10"
-                  onClick={handleSave}
-                >
-                  <Save className="w-5 h-5 mr-2" />
-                  Save Changes
-                </Button>
-                <Button 
-                  variant="outline"
-                  className="rounded-2xl h-14 w-14 border-2"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setEditedName(profile.displayName || profile.name || '');
-                    setEditedBio(profile.bio || '');
-                  }}
-                >
-                  <X className="w-5 h-5" />
-                </Button>
-              </>
-            ) : (
-              <Button 
-                className="w-full rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold h-14 text-lg shadow-lg shadow-primary/10"
-                onClick={() => setIsEditing(true)}
-              >
-                Edit Profile
-              </Button>
-            )}
-          </div>
-
-          {!profile.isVerified && !isEditing && (
-            <Link href="/verification">
-              <div className="mt-6 p-4 bg-primary/5 border border-primary/10 rounded-3xl flex items-center gap-4 group cursor-pointer hover:bg-primary/10 transition-colors">
-                <div className="bg-primary/10 p-2 rounded-2xl group-hover:scale-110 transition-transform">
-                  <ShieldAlert className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-bold text-primary mb-0.5">Safety First</p>
-                  <p className="text-[11px] text-muted-foreground leading-tight">
-                    Verify your identity to unlock messaging and trusted matches.
-                  </p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-primary/40" />
-              </div>
-            </Link>
-          )}
         </CardContent>
       </Card>
 
-      {!isEditing && (
-        <div className="space-y-4">
-          <FeatureLinkCard 
-            title="AI Personality Bot"
-            description="Analyze your communication style and values with our advanced AI."
-            href="/bot"
-            icon={<Sparkles className="w-5 h-5" />}
-            buttonText="Start Interview"
-          />
+      {/* Post Creation */}
+      <Card className="border-none shadow-lg rounded-[2rem] bg-white">
+        <CardContent className="p-6">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <Plus className="w-5 h-5 text-primary" /> Share an update
+          </h3>
+          <div className="flex gap-3">
+            <Avatar className="w-10 h-10 rounded-xl">
+              <AvatarImage src={profile.photoURL} />
+              <AvatarFallback>{profile.displayName[0]}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 space-y-3">
+              <Textarea 
+                placeholder="What's on your mind?" 
+                value={newPostContent}
+                onChange={(e) => setNewPostContent(e.target.value)}
+                className="min-h-[100px] border-none bg-muted/30 rounded-2xl resize-none focus-visible:ring-primary/20"
+              />
+              <div className="flex justify-between items-center">
+                <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground">
+                  <ImageIcon className="w-4 h-4 mr-2" /> Add Image
+                </Button>
+                <Button onClick={handleCreatePost} disabled={!newPostContent.trim()} className="rounded-full px-6">
+                  Post
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-          <FeatureLinkCard 
-            title="My Matches"
-            description="Explore curated profiles that resonate with your unique personality."
-            href="/matches"
-            icon={<Heart className="w-5 h-5" />}
-            buttonText="Explore"
-          />
+      {/* Posts Feed */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold px-2">My Posts</h3>
+        {posts?.map((post) => (
+          <Card key={post.id} className="border-none shadow-md rounded-[2rem] bg-white overflow-hidden animate-in fade-in slide-in-from-bottom-4">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10 rounded-xl">
+                    <AvatarImage src={profile.photoURL} />
+                    <AvatarFallback>{profile.displayName[0]}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-bold text-sm">{profile.displayName}</p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(post.createdAt).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => handleDeletePost(post.id)}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-sm leading-relaxed text-foreground/80">{post.content}</p>
+            </CardContent>
+          </Card>
+        ))}
+        {posts?.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground italic">No posts yet. Start sharing!</div>
+        )}
+      </div>
 
-          <FeatureLinkCard 
-            title="Messages"
-            description="Connect and chat with your matches in a secure environment."
-            href="/messages"
-            buttonText="Open Inbox"
-            disabled={!profile.isVerified}
-            disabledMessage="Verification required"
-          />
+      {/* Photo Selector Modal */}
+      {showPhotoSelector && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden">
+            <CardHeader className="border-b bg-muted/20">
+              <div className="flex justify-between items-center">
+                <CardTitle>Choose Profile Photo</CardTitle>
+                <Button variant="ghost" size="icon" onClick={() => setShowPhotoSelector(false)}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-2 gap-4">
+                {PlaceHolderImages.map((img) => (
+                  <button 
+                    key={img.id} 
+                    className="relative aspect-square rounded-2xl overflow-hidden hover:ring-4 ring-primary transition-all group"
+                    onClick={() => handleUpdatePhoto(img.imageUrl)}
+                  >
+                    <Image src={img.imageUrl} alt={img.description} fill className="object-cover group-hover:scale-110 transition-transform" />
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
-  );
-}
-
-function FeatureLinkCard({ title, description, href, buttonText, disabled, disabledMessage, icon }: any) {
-  return (
-    <Card className={cn("rounded-[2rem] border-none shadow-sm overflow-hidden bg-white/50 backdrop-blur-sm", disabled && "opacity-80")}>
-      <CardContent className="p-6">
-        <div className="flex items-center gap-3 mb-2">
-          {icon && <div className="text-primary">{icon}</div>}
-          <h3 className="text-xl font-bold text-foreground">{title}</h3>
-        </div>
-        <p className="text-sm text-muted-foreground mb-6 leading-relaxed">{description}</p>
-        <Link href={disabled ? "#" : href} className="block">
-          <Button 
-            className={cn(
-              "w-full rounded-2xl font-bold flex items-center justify-between h-12 px-6 transition-all",
-              disabled 
-                ? "bg-muted text-muted-foreground cursor-not-allowed opacity-50" 
-                : "bg-accent text-accent-foreground hover:bg-primary/10 hover:text-primary"
-            )}
-            disabled={disabled}
-          >
-            <span>{disabled ? (disabledMessage || "Locked") : buttonText}</span>
-            <ArrowRight className="w-4 h-4" />
-          </Button>
-        </Link>
-      </CardContent>
-    </Card>
   );
 }

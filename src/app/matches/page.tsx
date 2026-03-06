@@ -6,7 +6,7 @@ import { Navigation } from '@/components/Navigation';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Heart, MapPin, Sparkles, BrainCircuit, Check } from 'lucide-react';
+import { Heart, MapPin, Sparkles, BrainCircuit, Check, ShieldAlert, Lock } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -42,17 +42,10 @@ export default function MatchesPage() {
       bio: 'Travel enthusiast and tech geek. Let\'s explore the world together.',
       photo: PlaceHolderImages[2].imageUrl,
       verified: false
-    },
-    { 
-      id: 'm4', 
-      name: 'David', 
-      age: 31, 
-      match: '89%', 
-      bio: 'Fitness coach and wellness advocate. Always learning.',
-      photo: PlaceHolderImages[3].imageUrl,
-      verified: true
     }
   ];
+
+  const isVerified = profile?.isVerified || profile?.verificationStatus === 'verified';
 
   return (
     <div className="max-w-4xl mx-auto p-4 pt-8 md:pt-24 mb-20">
@@ -86,16 +79,31 @@ export default function MatchesPage() {
                   src={match.photo} 
                   alt={match.name} 
                   fill 
-                  className="object-cover transition-transform group-hover:scale-105"
+                  className={cn("object-cover transition-all duration-500", !isVerified && "blur-xl grayscale scale-110")}
                   data-ai-hint="dating profile photo"
                 />
+                
+                {/* Overlay for unverified users */}
+                {!isVerified && (
+                  <div className="absolute inset-0 z-10 bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center text-white">
+                    <Lock className="w-12 h-12 mb-4 opacity-80" />
+                    <h4 className="text-xl font-bold mb-2">Verified Members Only</h4>
+                    <p className="text-sm text-white/80 mb-6">Complete identity verification to unlock match profiles and social posts.</p>
+                    <Link href="/verification">
+                      <Button className="rounded-2xl bg-white text-primary hover:bg-white/90 font-bold">
+                        Verify Now
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                 
                 <div className="absolute bottom-0 left-0 p-6 w-full">
                   <div className="flex justify-between items-end">
                     <div className="text-white">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-xl font-bold">{match.name}, {match.age}</h3>
+                        <h3 className="text-xl font-bold">{isVerified ? `${match.name}, ${match.age}` : "Harmony Member"}</h3>
                         {match.verified && (
                           <div className="bg-verified p-0.5 rounded-full">
                             <Check className="w-3 h-3 text-white stroke-[4]" />
@@ -103,11 +111,13 @@ export default function MatchesPage() {
                         )}
                       </div>
                       <p className="text-white/80 text-xs flex items-center gap-1 mb-2">
-                        <MapPin className="w-3 h-3" /> 2 miles away
+                        <MapPin className="w-3 h-3" /> {isVerified ? "2 miles away" : "Hidden location"}
                       </p>
-                      <p className="text-sm line-clamp-2 text-white/90">{match.bio}</p>
+                      <p className="text-sm line-clamp-2 text-white/90">
+                        {isVerified ? match.bio : "Connect with verified users to see their full profile and posts."}
+                      </p>
                     </div>
-                    <div className="bg-primary/90 backdrop-blur-sm text-white font-bold text-xs px-3 py-2 rounded-2xl flex flex-col items-center">
+                    <div className="bg-primary/90 backdrop-blur-sm text-white font-bold text-xs px-3 py-2 rounded-2xl flex flex-col items-center shrink-0">
                       <Heart className="w-4 h-4 mb-0.5 fill-current" />
                       {match.match}
                     </div>
@@ -121,3 +131,5 @@ export default function MatchesPage() {
     </div>
   );
 }
+
+import { cn } from '@/lib/utils';

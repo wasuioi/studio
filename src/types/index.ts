@@ -1,10 +1,11 @@
+
 export interface UserProfile {
-  id: string; // Required by security rules
+  id: string;
   uid: string;
   displayName: string;
-  name: string; // Alias for displayName to match backend schema
+  name: string;
   photoURL: string;
-  profilePhotoUrl: string; // Alias for photoURL to match backend schema
+  profilePhotoUrl: string;
   bio: string;
   gender: string;
   dateOfBirth: string;
@@ -21,6 +22,14 @@ export interface UserProfile {
   };
 }
 
+export interface Post {
+  id: string;
+  userId: string;
+  content: string;
+  imageUrl?: string;
+  createdAt: string;
+}
+
 export interface Match {
   id: string;
   user1Id: string;
@@ -29,13 +38,5 @@ export interface Match {
   status: 'pending' | 'accepted' | 'rejected' | 'blocked';
   isMutual: boolean;
   createdAt: string;
-  user?: UserProfile; // Joined profile for display
-}
-
-export interface ChatMessage {
-  id: string;
-  conversationId: string;
-  senderId: string;
-  content: string;
-  sentAt: string;
+  user?: UserProfile;
 }

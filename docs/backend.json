@@ -17,7 +17,7 @@
         },
         "profilePhotoUrl": {
           "type": "string",
-          "description": "URL to the user's profile photo stored in Firebase Storage.",
+          "description": "URL to the user's profile photo.",
           "format": "uri"
         },
         "bio": {
@@ -26,33 +26,31 @@
         },
         "gender": {
           "type": "string",
-          "description": "The user's gender identity (e.g., 'male', 'female', 'non-binary', 'prefer not to say')."
+          "description": "The user's gender identity."
         },
         "dateOfBirth": {
           "type": "string",
-          "description": "The user's date of birth, used for age calculation.",
+          "description": "The user's date of birth.",
           "format": "date"
         },
         "location": {
           "type": "string",
-          "description": "The user's general location (e.g., city, state) for local matching."
+          "description": "The user's general location."
         },
         "isVerified": {
           "type": "boolean",
-          "description": "Indicates if the user's identity has been successfully verified. (Derived from verificationStatus)."
+          "description": "Indicates if the user's identity has been successfully verified."
         },
         "verificationStatus": {
           "type": "string",
-          "description": "The current status of the user's identity verification process. (enum: 'not_verified', 'pending', 'verified', 'rejected')."
+          "description": "The current status of the user's identity verification process."
         },
         "createdAt": {
           "type": "string",
-          "description": "Timestamp when the user profile was created.",
           "format": "date-time"
         },
         "updatedAt": {
           "type": "string",
-          "description": "Timestamp when the user profile was last updated.",
           "format": "date-time"
         }
       },
@@ -60,286 +58,66 @@
         "id",
         "name",
         "profilePhotoUrl",
-        "bio",
-        "gender",
-        "dateOfBirth",
-        "location",
         "isVerified",
         "verificationStatus",
         "createdAt",
         "updatedAt"
       ]
     },
+    "Post": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Post",
+      "type": "object",
+      "description": "A social post shared by a user on their profile.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "content", "createdAt"]
+    },
     "UserPersonality": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserPersonality",
       "type": "object",
-      "description": "Stores the personality and communication style analysis results for a user, derived from the AI interview feature.",
+      "description": "Stores the personality and communication style analysis results for a user.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the UserPersonality entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the UserProfile this personality analysis belongs to."
-        },
-        "personalityType": {
-          "type": "string",
-          "description": "AI-derived primary personality type or category."
-        },
-        "communicationStyle": {
-          "type": "string",
-          "description": "AI-derived description of the user's communication style."
-        },
-        "keyTraits": {
-          "type": "array",
-          "description": "An array of key personality traits identified by the AI.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "datingPreferences": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "values": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "summary": {
-          "type": "string"
-        },
-        "chatHistory": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "role": { "type": "string", "enum": ["user", "model"] },
-              "message": { "type": "string" },
-              "timestamp": { "type": "string", "format": "date-time" }
-            }
-          }
-        },
-        "lastAnalysisDate": {
-          "type": "string",
-          "description": "Timestamp of the most recent AI personality analysis.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "personalityType": { "type": "string" },
+        "summary": { "type": "string" },
+        "lastAnalysisDate": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "userId",
-        "lastAnalysisDate"
-      ]
+      "required": ["id", "userId", "lastAnalysisDate"]
     },
     "Match": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Match",
       "type": "object",
-      "description": "Represents a potential or confirmed match between two users, based on AI analysis and user interaction.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Match entity."
-        },
-        "user1Id": {
-          "type": "string",
-          "description": "Reference to the UserProfile of the first participant in the match."
-        },
-        "user2Id": {
-          "type": "string",
-          "description": "Reference to the UserProfile of the second participant in the match."
-        },
-        "matchScore": {
-          "type": "number",
-          "description": "A numerical score indicating the compatibility between user1 and user2, typically 0-100."
-        },
-        "status": {
-          "type": "string",
-          "description": "The status of the match from user1's perspective towards user2. (enum: 'pending', 'accepted', 'rejected', 'blocked')."
-        },
-        "user1ActionedAt": {
-          "type": "string",
-          "description": "Timestamp when user1 last interacted with this match (e.g., liked or rejected).",
-          "format": "date-time"
-        },
-        "user2ActionedAt": {
-          "type": "string",
-          "description": "Timestamp when user2 last interacted with this match (e.g., liked or rejected).",
-          "format": "date-time"
-        },
-        "isMutual": {
-          "type": "boolean",
-          "description": "Indicates if both users have mutually accepted each other, leading to an active conversation possibility."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when this match record was initially created or suggested.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "user1Id": { "type": "string" },
+        "user2Id": { "type": "string" },
+        "matchScore": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "blocked"] },
+        "isMutual": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "user1Id",
-        "user2Id",
-        "matchScore",
-        "status",
-        "isMutual",
-        "createdAt"
-      ]
+      "required": ["id", "user1Id", "user2Id", "matchScore", "status", "isMutual", "createdAt"]
     },
     "Conversation": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Conversation",
       "type": "object",
-      "description": "Represents a one-on-one chat conversation between two matched users.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Conversation entity."
-        },
-        "participantIds": {
-          "type": "array",
-          "description": "An array containing the IDs of the two UserProfiles participating in this conversation.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "lastMessageContent": {
-          "type": "string",
-          "description": "The content of the most recent message in the conversation."
-        },
-        "lastMessageSenderId": {
-          "type": "string",
-          "description": "Reference to the UserProfile who sent the last message."
-        },
-        "lastMessageSentAt": {
-          "type": "string",
-          "description": "Timestamp when the last message in the conversation was sent.",
-          "format": "date-time"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the conversation was initiated.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp when the conversation was last updated.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "participantIds": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "participantIds",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
-    "Message": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Message",
-      "type": "object",
-      "description": "Represents a single message sent within a conversation.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Message entity."
-        },
-        "conversationId": {
-          "type": "string",
-          "description": "Reference to the Conversation this message belongs to."
-        },
-        "senderId": {
-          "type": "string",
-          "description": "Reference to the UserProfile who sent this message."
-        },
-        "content": {
-          "type": "string",
-          "description": "The actual text content of the message."
-        },
-        "sentAt": {
-          "type": "string",
-          "description": "Timestamp when the message was sent.",
-          "format": "date-time"
-        },
-        "readBy": {
-          "type": "array",
-          "description": "An array of UserProfile IDs who have read this message.",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "id",
-        "conversationId",
-        "senderId",
-        "content",
-        "sentAt"
-      ]
-    },
-    "VerificationRequest": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "VerificationRequest",
-      "type": "object",
-      "description": "Stores details about a user's identity verification submission, including references to uploaded documents.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the VerificationRequest entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the UserProfile for whom this verification request was submitted."
-        },
-        "idCardFrontUrl": {
-          "type": "string",
-          "description": "URL to the front side of the user's identification card.",
-          "format": "uri"
-        },
-        "idCardBackUrl": {
-          "type": "string",
-          "description": "URL to the back side of the user's identification card.",
-          "format": "uri"
-        },
-        "selfieUrl": {
-          "type": "string",
-          "description": "URL to the user's selfie photo.",
-          "format": "uri"
-        },
-        "status": {
-          "type": "string",
-          "description": "The current status of the verification request. (enum: 'pending', 'approved', 'rejected')."
-        },
-        "submittedAt": {
-          "type": "string",
-          "description": "Timestamp when the verification request was submitted.",
-          "format": "date-time"
-        },
-        "reviewedAt": {
-          "type": "string",
-          "description": "Timestamp when the verification request was reviewed (optional).",
-          "format": "date-time"
-        },
-        "reviewerId": {
-          "type": "string",
-          "description": "Reference to the admin or moderator UserProfile who reviewed this request."
-        },
-        "rejectionReason": {
-          "type": "string",
-          "description": "A textual explanation if the verification request was rejected."
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "idCardFrontUrl",
-        "selfieUrl",
-        "status",
-        "submittedAt"
-      ]
+      "required": ["id", "participantIds", "createdAt", "updatedAt"]
     }
   },
   "auth": {
@@ -354,104 +132,32 @@
         "path": "/user_profiles/{userId}",
         "definition": {
           "entityName": "UserProfile",
-          "schema": {
-            "$ref": "#/backend/entities/UserProfile"
-          },
-          "description": "Stores core user profile data.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique Firebase Authentication UID of the user."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/UserProfile" },
+          "description": "Stores core user profile data."
+        }
+      },
+      {
+        "path": "/user_profiles/{userId}/posts/{postId}",
+        "definition": {
+          "entityName": "Post",
+          "schema": { "$ref": "#/backend/entities/Post" },
+          "description": "Social posts by the user."
         }
       },
       {
         "path": "/user_profiles/{userId}/personality/personality_data",
         "definition": {
           "entityName": "UserPersonality",
-          "schema": {
-            "$ref": "#/backend/entities/UserPersonality"
-          },
-          "description": "Stores AI-derived personality and communication style analysis results for a specific user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique Firebase Authentication UID of the user."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/user_profiles/{userId}/verification_requests/{requestId}",
-        "definition": {
-          "entityName": "VerificationRequest",
-          "schema": {
-            "$ref": "#/backend/entities/VerificationRequest"
-          },
-          "description": "Stores details about a user's identity verification submission.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique Firebase Authentication UID of the user."
-            },
-            {
-              "name": "requestId",
-              "description": "The unique identifier for the specific verification request."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/UserPersonality" },
+          "description": "Stores AI personality analysis."
         }
       },
       {
         "path": "/matches/{matchId}",
         "definition": {
           "entityName": "Match",
-          "schema": {
-            "$ref": "#/backend/entities/Match"
-          },
-          "description": "Represents a potential or confirmed match between two users.",
-          "params": [
-            {
-              "name": "matchId",
-              "description": "The unique identifier for the match."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/conversations/{conversationId}",
-        "definition": {
-          "entityName": "Conversation",
-          "schema": {
-            "$ref": "#/backend/entities/Conversation"
-          },
-          "description": "Represents a one-on-one chat conversation between two matched users.",
-          "params": [
-            {
-              "name": "conversationId",
-              "description": "The unique identifier for the conversation."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/conversations/{conversationId}/messages/{messageId}",
-        "definition": {
-          "entityName": "Message",
-          "schema": {
-            "$ref": "#/backend/entities/Message"
-          },
-          "description": "Represents a single message sent within a conversation.",
-          "params": [
-            {
-              "name": "conversationId",
-              "description": "The unique identifier of the parent conversation."
-            },
-            {
-              "name": "messageId",
-              "description": "The unique identifier for the message."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Match" },
+          "description": "Represents a potential or confirmed match."
         }
       }
     ]
