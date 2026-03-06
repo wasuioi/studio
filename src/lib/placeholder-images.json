@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "user1",
+      "description": "Sophisticated woman portrait",
+      "imageUrl": "https://picsum.photos/seed/harmony1/400/400",
+      "imageHint": "woman portrait"
+    },
+    {
+      "id": "user2",
+      "description": "Friendly man portrait",
+      "imageUrl": "https://picsum.photos/seed/harmony2/400/400",
+      "imageHint": "man portrait"
+    },
+    {
+      "id": "user3",
+      "description": "Artist woman portrait",
+      "imageUrl": "https://picsum.photos/seed/harmony3/400/400",
+      "imageHint": "woman artist"
+    },
+    {
+      "id": "user4",
+      "description": "Professional man portrait",
+      "imageUrl": "https://picsum.photos/seed/harmony4/400/400",
+      "imageHint": "man professional"
+    }
+  ]
 }
