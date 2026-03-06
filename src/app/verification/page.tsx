@@ -1,38 +1,128 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Upload, Camera, CheckCircle, Clock, ShieldCheck, FileText } from 'lucide-react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Upload, Camera, CheckCircle, Clock, ShieldCheck, FileText, X } from 'lucide-react';
+import { doc, setDoc, updateDoc, collection } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image';
 
 export default function VerificationPage() {
   const { profile } = useAuth();
   const db = useFirestore();
   const router = useRouter();
+  const { toast } = useToast();
+  
   const [step, setStep] = useState(1); // 1: Info, 2: Upload, 3: Success
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [idCardUrl, setIdCardUrl] = useState<string | null>(null);
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!profile) return;
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (isCameraActive) {
+      const getCameraPermission = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          setHasCameraPermission(true);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (error) {
+          console.error('Error accessing camera:', error);
+          setHasCameraPermission(false);
+          toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please enable camera permissions in your browser settings to use this app.',
+          });
+        }
+      };
+      getCameraPermission();
+    }
+  }, [isCameraActive, toast]);
+
+  const handleCaptureSelfie = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        setSelfieUrl(dataUrl);
+        setIsCameraActive(false);
+        // Stop the stream
+        const stream = video.srcObject as MediaStream;
+        stream?.getTracks().forEach(track => track.stop());
+      }
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setIdCardUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!profile || !idCardUrl || !selfieUrl) return;
     setIsSubmitting(true);
     
-    try {
-      // Update status in user_profiles collection
-      const userRef = doc(db, 'user_profiles', profile.uid);
-      await updateDoc(userRef, {
-        verificationStatus: 'pending'
+    const requestId = crypto.randomUUID();
+    const requestPath = `user_profiles/${profile.uid}/verification_requests/${requestId}`;
+    const requestRef = doc(db, requestPath);
+    
+    const verificationData = {
+      id: requestId,
+      userId: profile.uid,
+      idCardFrontUrl: idCardUrl,
+      selfieUrl: selfieUrl,
+      status: 'pending',
+      submittedAt: new Date().toISOString(),
+    };
+
+    // 1. Create the verification request
+    setDoc(requestRef, verificationData)
+      .then(() => {
+        // 2. Update the user profile status
+        const userRef = doc(db, 'user_profiles', profile.uid);
+        updateDoc(userRef, {
+          verificationStatus: 'pending'
+        }).catch(err => console.error("Profile update failed", err));
+        
+        setStep(3);
+      })
+      .catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: requestRef.path,
+          operation: 'create',
+          requestResourceData: verificationData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => {
+        setIsSubmitting(false);
       });
-      setStep(3);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   if (profile?.verificationStatus === 'verified') {
@@ -105,26 +195,77 @@ export default function VerificationPage() {
         <div className="space-y-6">
           <Card className="rounded-3xl p-6 border-none shadow-md">
             <h3 className="font-bold mb-4">Upload ID Card</h3>
-            <div className="border-2 border-dashed border-muted rounded-2xl p-8 text-center bg-muted/20">
-              <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm font-medium">Click to upload photo of ID</p>
-              <p className="text-xs text-muted-foreground mt-1">PNG, JPG up to 10MB</p>
-            </div>
+            {idCardUrl ? (
+              <div className="relative aspect-video rounded-2xl overflow-hidden group">
+                <Image src={idCardUrl} alt="ID Card" fill className="object-cover" />
+                <Button 
+                  size="icon" 
+                  variant="destructive" 
+                  className="absolute top-2 right-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => setIdCardUrl(null)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <label className="border-2 border-dashed border-muted rounded-2xl p-8 text-center bg-muted/20 cursor-pointer hover:bg-muted/30 transition-colors block">
+                <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+                <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm font-medium">Click to upload photo of ID</p>
+                <p className="text-xs text-muted-foreground mt-1">PNG, JPG up to 10MB</p>
+              </label>
+            )}
           </Card>
 
           <Card className="rounded-3xl p-6 border-none shadow-md">
             <h3 className="font-bold mb-4">Take Selfie</h3>
-            <div className="border-2 border-dashed border-muted rounded-2xl p-8 text-center bg-muted/20">
-              <Camera className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm font-medium">Take a live selfie</p>
-              <p className="text-xs text-muted-foreground mt-1">Make sure your face is visible</p>
-            </div>
+            {selfieUrl ? (
+              <div className="relative aspect-video rounded-2xl overflow-hidden group">
+                <Image src={selfieUrl} alt="Selfie" fill className="object-cover" />
+                <Button 
+                  size="icon" 
+                  variant="destructive" 
+                  className="absolute top-2 right-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => setSelfieUrl(null)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : isCameraActive ? (
+              <div className="space-y-4">
+                <video ref={videoRef} className="w-full aspect-video rounded-2xl bg-black" autoPlay muted playsInline />
+                <canvas ref={canvasRef} className="hidden" />
+                {hasCameraPermission === false && (
+                  <Alert variant="destructive">
+                    <AlertTitle>Camera Access Required</AlertTitle>
+                    <AlertDescription>Please allow camera access to use this feature.</AlertDescription>
+                  </Alert>
+                )}
+                <div className="flex gap-2">
+                  <Button className="flex-1 rounded-xl" onClick={handleCaptureSelfie} disabled={hasCameraPermission === false}>
+                    Capture Photo
+                  </Button>
+                  <Button variant="outline" className="rounded-xl" onClick={() => setIsCameraActive(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div 
+                className="border-2 border-dashed border-muted rounded-2xl p-8 text-center bg-muted/20 cursor-pointer hover:bg-muted/30 transition-colors"
+                onClick={() => setIsCameraActive(true)}
+              >
+                <Camera className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm font-medium">Take a live selfie</p>
+                <p className="text-xs text-muted-foreground mt-1">Make sure your face is visible</p>
+              </div>
+            )}
           </Card>
 
           <Button 
             className="w-full h-14 rounded-2xl bg-primary font-bold text-lg shadow-lg" 
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !idCardUrl || !selfieUrl}
           >
             {isSubmitting ? "Uploading..." : "Submit for Review"}
           </Button>
