@@ -7,13 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BrainCircuit, Send, Sparkles } from 'lucide-react';
-import { aiPersonalityInterview, type AiPersonalityInterviewOutput } from '@/ai/flows/ai-personality-interview';
+import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/firebase/config';
+import { useFirestore } from '@/firebase';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 export default function AIProfileBot() {
   const { profile } = useAuth();
+  const db = useFirestore();
   const router = useRouter();
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'model', message: string }>>([
     { role: 'model', message: "Hi! I'm HarmonyAI. I'll help you discover your dating personality. Ready to start?" }
@@ -24,7 +26,10 @@ export default function AIProfileBot() {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
     }
   }, [messages]);
 
@@ -48,8 +53,8 @@ export default function AIProfileBot() {
 
       if (response.interviewComplete && response.personalityProfile && profile) {
         // Save the profile to Firestore
-        const userRef = doc(db, 'users', profile.uid);
-        await updateDoc(userRef, {
+        const userRef = doc(db, 'user_profiles', profile.uid);
+        updateDoc(userRef, {
           personalityProfile: response.personalityProfile
         });
         
@@ -131,8 +136,4 @@ export default function AIProfileBot() {
       </div>
     </div>
   );
-}
-
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
 }

@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Upload, Camera, CheckCircle, Clock, ShieldCheck, FileText } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/firebase/config';
+import { useFirestore } from '@/firebase';
 import { useRouter } from 'next/navigation';
 
 export default function VerificationPage() {
   const { profile } = useAuth();
+  const db = useFirestore();
   const router = useRouter();
   const [step, setStep] = useState(1); // 1: Info, 2: Upload, 3: Success
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,8 +22,9 @@ export default function VerificationPage() {
     setIsSubmitting(true);
     
     try {
-      // Simulate backend processing
-      await updateDoc(doc(db, 'users', profile.uid), {
+      // Update status in user_profiles collection
+      const userRef = doc(db, 'user_profiles', profile.uid);
+      await updateDoc(userRef, {
         verificationStatus: 'pending'
       });
       setStep(3);
