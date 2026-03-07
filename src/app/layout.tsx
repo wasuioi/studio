@@ -1,7 +1,9 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
 import { Toaster } from '@/components/ui/toaster';
+import { RequestNotificationListener } from '@/components/RequestNotificationListener';
 
 export const metadata: Metadata = {
   title: 'TrueVibe - Real Connections, Real Vibes',
@@ -22,6 +24,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased min-h-screen bg-background pb-20 md:pb-0">
         <FirebaseClientProvider>
+          <RequestNotificationListener />
           {children}
           <Toaster />
         </FirebaseClientProvider>
