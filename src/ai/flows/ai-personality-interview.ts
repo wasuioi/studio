@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI agent that conducts a personality interview to build a user profile.
@@ -44,6 +43,14 @@ const prompt = ai.definePrompt({
   name: 'aiPersonalityInterviewPrompt',
   input: { schema: AiPersonalityInterviewInputSchema },
   output: { schema: AiPersonalityInterviewOutputSchema },
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+    ],
+  },
   prompt: `You are an AI personality bot named HarmonyAI. Your goal is to conduct an interview with the user to understand their dating preferences, values, and communication style.
 
 IMPORTANT: Mirror the user's communication style, vocabulary, and emotional tone. If the user is brief and direct, you should be brief and direct. If the user is expressive and verbose, you should match that energy. Your primary objective is to make the user feel heard and understood through mirroring.

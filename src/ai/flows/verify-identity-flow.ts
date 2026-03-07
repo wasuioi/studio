@@ -40,6 +40,14 @@ const prompt = ai.definePrompt({
   name: 'verifyIdentityPrompt',
   input: { schema: VerifyIdentityInputSchema },
   output: { schema: VerifyIdentityOutputSchema },
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+    ],
+  },
   prompt: `You are an expert identity verification specialist. Your task is to compare two images: 
 1. An ID card (Passport, Driver's License, or National ID).
 2. A live selfie of the person who provided the ID.
@@ -57,6 +65,18 @@ Selfie Photo: {{media url=selfiePhotoUri}}
 
 Provide a detailed reason for your decision.`,
 });
+
+const diagnosePlantFlow = ai.defineFlow(
+  {
+    name: 'verifyIdentityFlow',
+    inputSchema: VerifyIdentityInputSchema,
+    outputSchema: VerifyIdentityOutputSchema,
+  },
+  async (input) => {
+    const { output } = await prompt(input);
+    return output!;
+  }
+);
 
 const verifyIdentityFlow = ai.defineFlow(
   {
