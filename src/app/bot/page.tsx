@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -14,17 +13,19 @@ import {
   useFirestore, 
   useDoc, 
   useMemoFirebase, 
-  setDocumentNonBlocking, 
   updateDocumentNonBlocking, 
-  deleteDocumentNonBlocking 
+  deleteDocumentNonBlocking,
+  setDocumentNonBlocking
 } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AIProfileBot() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const db = useFirestore();
   const router = useRouter();
+  const { toast } = useToast();
   const [input, setInput] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -72,6 +73,7 @@ export default function AIProfileBot() {
       timestamp: new Date().toISOString() 
     }];
 
+    // Save user message to Firestore immediately
     setDocumentNonBlocking(personalityRef, {
       id: 'personality_data',
       userId: user.uid,
@@ -99,11 +101,16 @@ export default function AIProfileBot() {
       if (response.interviewComplete && response.personalityProfile) {
         Object.assign(updatePayload, response.personalityProfile);
         
+        // Update main profile with the results
         const userRef = doc(db, 'user_profiles', user.uid);
         updateDocumentNonBlocking(userRef, {
-          id: user.uid,
           personalityProfile: response.personalityProfile,
           updatedAt: new Date().toISOString()
+        });
+
+        toast({
+          title: "Profile Complete!",
+          description: "HarmonyAI has analyzed your personality. Redirecting to matches...",
         });
       }
 
@@ -116,6 +123,11 @@ export default function AIProfileBot() {
       }
     } catch (error) {
       console.error("AI Interview error", error);
+      toast({
+        variant: "destructive",
+        title: "AI Connection Error",
+        description: "Harmony encountered an issue. Please try again.",
+      });
     } finally {
       setIsAiThinking(false);
     }
@@ -124,20 +136,24 @@ export default function AIProfileBot() {
   const handleReset = () => {
     if (!user || !personalityRef) return;
     
-    // 1. Clear personality data doc
+    // Clear Firestore personality data
     deleteDocumentNonBlocking(personalityRef);
 
-    // 2. Clear status from main profile doc
+    // Clear personality profile in the main user doc
     const userRef = doc(db, 'user_profiles', user.uid);
     updateDocumentNonBlocking(userRef, {
-      id: user.uid,
       personalityProfile: null,
       updatedAt: new Date().toISOString()
     });
 
-    // 3. Clear local states
+    // Reset local UI state
     setIsAiThinking(false);
     setInput('');
+
+    toast({
+      title: "Interview Reset",
+      description: "You can now start your interview from the beginning.",
+    });
   };
 
   return (
@@ -174,7 +190,7 @@ export default function AIProfileBot() {
                 m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
               )}>
                 <div className={cn(
-                  "p-4 rounded-2xl text-sm leading-relaxed",
+                  "p-4 rounded-3xl text-sm leading-relaxed",
                   m.role === 'user' 
                     ? "bg-primary text-white rounded-tr-none shadow-sm" 
                     : "bg-muted text-foreground rounded-tl-none border border-border"
@@ -192,18 +208,18 @@ export default function AIProfileBot() {
         </ScrollArea>
 
         <div className="p-4 border-t bg-background/50">
-          <div className="relative flex items-center">
+          <div className="relative flex items-center gap-2">
             <Input 
               placeholder="Type your answer..." 
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              className="pr-12 rounded-2xl h-12 bg-white border-none shadow-inner"
+              className="rounded-2xl h-12 bg-white border-none shadow-inner"
               disabled={isAiThinking}
             />
             <Button 
               size="icon" 
-              className="absolute right-1 rounded-xl bg-primary hover:bg-primary/90 transition-transform active:scale-95"
+              className="shrink-0 rounded-xl bg-primary hover:bg-primary/90 transition-transform active:scale-95"
               onClick={handleSend}
               disabled={isAiThinking || !input.trim()}
             >
