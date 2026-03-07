@@ -11,14 +11,20 @@ service cloud.firestore {
     }
     
     function isEmailVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
+      // Check the custom verified status in the user's profile
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.emailVerified == true;
     }
 
     match /users/{userId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create, update, delete: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId); // Simplified for custom verification flow
       
+      match /private/verification {
+        allow read, write: if isOwner(userId);
+      }
+
       match /posts/{postId} {
         allow read: if isSignedIn();
         allow write: if isOwner(userId) && isEmailVerified();

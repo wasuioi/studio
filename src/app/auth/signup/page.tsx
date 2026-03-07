@@ -2,8 +2,9 @@
 "use client";
 
 import { useState } from 'react';
-import { useAuth as useFirebaseAuth } from '@/firebase';
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { useAuth as useFirebaseAuth, useFirestore } from '@/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,11 +20,11 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const auth = useFirebaseAuth();
+  const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
 
   const validatePassword = (pass: string) => {
-    // Min 8 chars, letters and numbers
     return pass.length >= 8 && /[a-zA-Z]/.test(pass) && /[0-9]/.test(pass);
   };
 
@@ -47,12 +48,36 @@ export default function SignupPage() {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // Send verification email immediately
-      await sendEmailVerification(userCredential.user);
+      const user = userCredential.user;
+
+      // Generate a verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Store verification code in a private subcollection
+      const verificationRef = doc(db, 'users', user.uid, 'private', 'verification');
+      await setDoc(verificationRef, {
+        code: verificationCode,
+        createdAt: new Date().toISOString(),
+      });
+
+      // Send verification email via professional service (API Route)
+      const emailResponse = await fetch('/api/auth/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user.email,
+          code: verificationCode,
+          displayName: user.displayName || 'TrueVibe User',
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        throw new Error('Failed to send verification email');
+      }
       
       toast({
         title: "Account Created!",
-        description: "Please check your email to verify your account.",
+        description: "A professional verification link has been sent to your email.",
       });
       
       router.push('/auth/verify');
@@ -139,7 +164,7 @@ export default function SignupPage() {
           </p>
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground bg-accent/50 px-6 py-3 rounded-2xl font-bold uppercase tracking-wider">
             <ShieldCheck className="w-4 h-4 text-primary fill-current" />
-            End-to-End Vibe Security
+            Secure Professional Verification
           </div>
         </CardFooter>
       </Card>

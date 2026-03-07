@@ -32,27 +32,31 @@ export function useAuth() {
       return;
     }
 
-    // Mandatory Email Verification Protection
-    if (!user.emailVerified && pathname !== '/auth/verify') {
-      router.push('/auth/verify');
-      return;
-    }
-
-    // If verified and trying to access verify page, move to dashboard
-    if (user.emailVerified && pathname === '/auth/verify') {
-      router.push('/bot');
-      return;
-    }
-
     setLoading(true);
     const userRef = doc(db, 'users', user.uid);
     
     const unsubscribe = onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as UserProfile;
+        
+        // Custom Email Verification Protection (Checking Firestore status)
+        if (!data.emailVerified && pathname !== '/auth/verify' && !isPublicPath) {
+          router.push('/auth/verify');
+          setLoading(false);
+          return;
+        }
+
+        // If verified and trying to access verify page, move to dashboard
+        if (data.emailVerified && pathname === '/auth/verify') {
+          router.push('/bot');
+          setLoading(false);
+          return;
+        }
+
         setProfile(data);
         setLoading(false);
       } else {
+        // Initialize profile
         const now = new Date().toISOString();
         const newProfile: UserProfile = {
           id: user.uid,
@@ -63,7 +67,7 @@ export function useAuth() {
           photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/400/400`,
           profilePhotoUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/400/400`,
           bio: "Just joined TrueVibe! Looking for real vibes.",
-          emailVerified: user.emailVerified,
+          emailVerified: false, // Default to false, verified via custom flow
           identityVerified: false,
           verificationStatus: 'not_verified',
           profileCompleted: false,
@@ -77,6 +81,9 @@ export function useAuth() {
           .then(() => {
             setProfile(newProfile);
             setLoading(false);
+            if (pathname !== '/auth/verify') {
+              router.push('/auth/verify');
+            }
           })
           .catch((err) => {
             const permissionError = new FirestorePermissionError({
@@ -89,7 +96,6 @@ export function useAuth() {
           });
       }
     }, (error) => {
-      // Don't emit error if we're just loading or on a public path
       if (!isPublicPath) {
         const permissionError = new FirestorePermissionError({
           path: userRef.path,
