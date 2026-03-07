@@ -2,8 +2,12 @@
 
 import { useState } from 'react';
 import { useAuth as useFirebaseAuth, useFirestore } from '@/firebase';
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { 
+  createUserWithEmailAndPassword, 
+  sendEmailVerification, 
+  signInWithEmailAndPassword 
+} from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +30,9 @@ export default function SignupPage() {
   const { toast } = useToast();
 
   const validatePassword = (pass: string) => {
-    return pass.length >= 8 && /[a-zA-Z]/.test(pass) && /[0-9]/.test(pass);
+    // Min 8 chars, at least one letter and one number
+    const regex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    return regex.test(pass);
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -45,13 +51,14 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
+      // 1. Create account
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Send native Firebase verification email
+      // 2. Send verification
       await sendEmailVerification(user);
 
-      // Create initial Firestore profile
+      // 3. Initialize Firestore profile
       const userRef = doc(db, 'users', user.uid);
       await setDoc(userRef, {
         id: user.uid,
@@ -69,16 +76,28 @@ export default function SignupPage() {
       }, { merge: true });
 
       toast({
-        title: "Account Created!",
+        title: "Welcome to TrueVibe!",
         description: "A verification email has been sent to your inbox.",
       });
       
       router.push('/auth/verify');
-    } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        setError("This email is already registered.");
+    } catch (err: any) {
+      // 4. Auto-recover if email exists
+      if (err.code === 'auth/email-already-in-use') {
+        try {
+          const loginCred = await signInWithEmailAndPassword(auth, email, password);
+          if (!loginCred.user.emailVerified) {
+            await sendEmailVerification(loginCred.user);
+            router.push('/auth/verify');
+          } else {
+            router.push('/bot');
+          }
+          return;
+        } catch (loginErr: any) {
+          setError("This email is already registered. Please log in with your correct password.");
+        }
       } else {
-        setError(error.message || "Could not create account.");
+        setError(err.message || "Could not create account.");
       }
     } finally {
       setLoading(false);
@@ -107,13 +126,6 @@ export default function SignupPage() {
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm font-bold p-4 rounded-2xl border border-destructive/20 animate-in fade-in slide-in-from-top-1">
                 {error}
-                {error === "This email is already registered." && (
-                  <div className="mt-2 flex gap-2">
-                    <Link href="/auth/login" className="underline hover:opacity-80">Log in</Link>
-                    <span>or</span>
-                    <Link href="/auth/verify" className="underline hover:opacity-80">Verify Email</Link>
-                  </div>
-                )}
               </div>
             )}
             <div className="space-y-2">
@@ -138,7 +150,7 @@ export default function SignupPage() {
                 required 
                 className="rounded-2xl h-14 bg-muted/30 border-none shadow-inner"
               />
-              <p className="text-[10px] text-muted-foreground font-bold px-1">Min. 8 chars, letters & numbers.</p>
+              <p className="text-[10px] text-muted-foreground font-bold px-1 uppercase tracking-widest">Min. 8 chars, letters & numbers.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword" title="confirm password" className="font-bold text-xs uppercase tracking-widest ml-1">Confirm Password</Label>
@@ -153,7 +165,7 @@ export default function SignupPage() {
             </div>
             <Button 
               type="submit" 
-              className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none mt-4"
+              className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none mt-4 transition-all active:scale-95"
               disabled={loading}
             >
               {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Create Account"}
@@ -169,7 +181,7 @@ export default function SignupPage() {
           </p>
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground bg-accent/50 px-6 py-3 rounded-2xl font-bold uppercase tracking-wider">
             <ShieldCheck className="w-4 h-4 text-primary fill-current" />
-            Native Firebase Security
+            Verified Secure Auth
           </div>
         </CardFooter>
       </Card>

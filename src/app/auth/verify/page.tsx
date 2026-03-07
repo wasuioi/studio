@@ -18,18 +18,21 @@ export default function VerifyPage() {
   const [resending, setResending] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
+  // Guard: Redirect unauthenticated users
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/auth/login');
     }
   }, [user, isUserLoading, router]);
 
+  // Guard: Redirect already verified users
   useEffect(() => {
     if (user?.emailVerified) {
       router.push('/bot');
     }
-  }, [user]);
+  }, [user, router]);
 
+  // Countdown logic for anti-spam
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -46,12 +49,12 @@ export default function VerifyPage() {
         title: "Verification Sent",
         description: "Check your inbox (and spam) for a new verification link.",
       });
-      setCountdown(60); // Rate limit resend for 60 seconds
+      setCountdown(60); // 60s cooldown
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to resend email.",
       });
     } finally {
       setResending(false);
@@ -64,13 +67,13 @@ export default function VerifyPage() {
       await user.reload();
       if (user.emailVerified) {
         toast({
-          title: "Email Verified!",
+          title: "Account Activated!",
           description: "Welcome to the TrueVibe community.",
         });
         router.push('/bot');
       } else {
         toast({
-          description: "Email is not verified yet. Please check your inbox.",
+          description: "Still waiting! Please click the link in your email.",
         });
       }
     } catch (error: any) {
@@ -99,29 +102,29 @@ export default function VerifyPage() {
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary rounded-full blur-[100px]" />
       </div>
 
-      <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden">
+      <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white/95 backdrop-blur-xl">
         <div className="truevibe-gradient h-2" />
         <CardHeader className="space-y-4 text-center pt-8">
-          <div className="mx-auto bg-primary/10 w-20 h-20 rounded-3xl flex items-center justify-center">
-            <Mail className="w-10 h-10 text-primary animate-bounce" />
+          <div className="mx-auto bg-primary/10 w-24 h-24 rounded-3xl flex items-center justify-center">
+            <Mail className="w-12 h-12 text-primary animate-bounce" />
           </div>
           <div>
-            <CardTitle className="text-3xl font-black tracking-tight">Verify Your Email</CardTitle>
-            <CardDescription className="text-base">
+            <CardTitle className="text-3xl font-black tracking-tight">Activate Account</CardTitle>
+            <CardDescription className="text-base font-medium">
               We sent a verification link to<br/>
-              <span className="font-black text-foreground">{user?.email}</span>
+              <span className="font-black text-foreground break-all">{user?.email}</span>
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="bg-muted/30 p-6 rounded-3xl border border-border/50">
-            <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-              Please click the link in that email to activate your account. You must verify your email before using TrueVibe.
+            <p className="text-sm font-bold text-muted-foreground leading-relaxed text-center">
+              Safety First: You must verify your email before using TrueVibe features.
             </p>
           </div>
           
           <Button 
-            className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none"
+            className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none transition-all active:scale-95"
             onClick={handleCheckStatus}
           >
             I've Verified My Email
@@ -129,18 +132,18 @@ export default function VerifyPage() {
 
           <Button 
             variant="ghost"
-            className="w-full h-12 rounded-xl gap-2 font-bold text-muted-foreground hover:text-primary"
+            className="w-full h-12 rounded-xl gap-2 font-bold text-muted-foreground hover:text-primary transition-all"
             onClick={handleResend}
             disabled={resending || countdown > 0}
           >
             {resending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            {countdown > 0 ? `Resend in ${countdown}s` : "Resend Verification Email"}
+            {countdown > 0 ? `Resend in ${countdown}s` : "Resend Verification Link"}
           </Button>
         </CardContent>
         <CardFooter className="flex flex-col gap-6 pb-10 border-t pt-6 bg-muted/5">
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-black uppercase tracking-widest">
             <ShieldCheck className="w-4 h-4 text-primary" />
-            Secure Authentication
+            Anti-Spam Protection Active
           </div>
           <Button variant="ghost" onClick={handleSignOut} className="text-muted-foreground gap-2 font-bold hover:text-foreground">
             <ArrowLeft className="w-4 h-4" /> Sign out & Back to Login

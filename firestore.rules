@@ -15,8 +15,10 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
+      // Profile reads allowed if signed in
       allow get: if isSignedIn();
       allow list: if isSignedIn();
+      // Profile writes strictly require ownership
       allow create: if isOwner(userId);
       allow update: if isOwner(userId);
       
@@ -26,6 +28,7 @@ service cloud.firestore {
 
       match /posts/{postId} {
         allow read: if isSignedIn();
+        // Posts require ownership AND email verification for safety
         allow write: if isOwner(userId) && isEmailVerified();
       }
       
@@ -41,23 +44,27 @@ service cloud.firestore {
     }
 
     match /bot_chats/{chatId} {
+      // Bot chats strictly tied to the owner and require email verification
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && isEmailVerified();
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     match /matches/{matchId} {
+      // Matches require email verification to initiate and ownership to read
       allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
       allow create: if isSignedIn() && isEmailVerified();
       allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
     }
 
     match /conversations/{conversationId} {
+      // Conversations require email verification and participation
       allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
       allow create: if isSignedIn() && isEmailVerified();
       allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
 
       match /messages/{messageId} {
+        // Sub-collection rules inherit participation from parent conversation
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
         allow create: if isSignedIn() && isEmailVerified() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
       }

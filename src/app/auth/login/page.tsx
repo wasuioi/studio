@@ -27,10 +27,13 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
+      // Force status update from server
+      await user.reload();
+      
       if (!user.emailVerified) {
         toast({
           title: "Verification Required",
-          description: "Please verify your email before accessing the platform.",
+          description: "Please verify your email to unlock your TrueVibe account.",
         });
         router.push('/auth/verify');
       } else {
@@ -91,7 +94,7 @@ export default function LoginPage() {
             </div>
             <Button 
               type="submit" 
-              className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none mt-4"
+              className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none mt-4 transition-all active:scale-95"
               disabled={loading}
             >
               {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Sign In"}
