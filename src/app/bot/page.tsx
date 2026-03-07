@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
@@ -9,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { Sparkles, Send, Zap, Loader2, Star, Globe, RotateCcw, Trash2 } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
-import { doc, collection, deleteField } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { 
   useFirestore, 
   useDoc, 
@@ -57,7 +58,6 @@ export default function AIProfileBot() {
   useEffect(() => {
     if (personalityData?.chatHistory && personalityData.chatHistory.length > 0) {
       setSessionMessages(personalityData.chatHistory);
-      // If history exists, we infer language isn't needed or already set
       setSelectedLanguage(personalityData.preferredLanguage === 'Thai' ? 'th' : 'en');
     }
   }, [personalityData]);
@@ -85,7 +85,6 @@ export default function AIProfileBot() {
 
     setSessionMessages([firstMsg]);
 
-    // Save initial preference to Firestore
     if (personalityRef && user) {
       setDocumentNonBlocking(personalityRef, {
         id: 'personality_data',
@@ -97,29 +96,58 @@ export default function AIProfileBot() {
     }
   };
 
-  const handleResetConversation = () => {
+  const handleResetConversation = async () => {
     if (!user || !personalityRef) return;
 
-    // 1. Delete the detailed personality doc
-    deleteDocumentNonBlocking(personalityRef);
+    try {
+      // 1. Delete personality data
+      deleteDocumentNonBlocking(personalityRef);
 
-    // 2. Reset the user's profile status
-    const userRef = doc(db, 'users', user.uid);
-    updateDocumentNonBlocking(userRef, {
-      profileCompleted: false,
-      personalityProfile: null,
-      updatedAt: new Date().toISOString()
-    });
+      // 2. Reset the user's profile status and top matches
+      const userRef = doc(db, 'users', user.uid);
+      updateDocumentNonBlocking(userRef, {
+        profileCompleted: false,
+        personalityProfile: null,
+        topMatches: null,
+        updatedAt: new Date().toISOString()
+      });
 
-    // 3. Clear local state
-    setSessionMessages([]);
-    setSelectedLanguage(null);
-    setInput('');
+      // 3. AGGRESSIVE CLEANUP: Delete all chat requests and conversations
+      // We do this to ensure simulated profiles like Tania reset to the "Message" state.
+      const requestsRef = collection(db, 'chat_requests');
+      const qSender = query(requestsRef, where('senderId', '==', user.uid));
+      const qReceiver = query(requestsRef, where('receiverId', '==', user.uid));
+      
+      const convsRef = collection(db, 'conversations');
+      const qConvs = query(convsRef, where('participantIds', 'array-contains', user.uid));
 
-    toast({
-      title: "Conversation Reset",
-      description: "You can now start a fresh interview with Vera.",
-    });
+      const [snap1, snap2, snap3] = await Promise.all([
+        getDocs(qSender),
+        getDocs(qReceiver),
+        getDocs(qConvs)
+      ]);
+
+      snap1.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
+      snap2.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
+      snap3.forEach(d => deleteDocumentNonBlocking(doc(db, 'conversations', d.id)));
+
+      // 4. Clear local state
+      setSessionMessages([]);
+      setSelectedLanguage(null);
+      setInput('');
+
+      toast({
+        title: "Profile Deep Reset",
+        description: "Your vibes and connections have been cleared. Start fresh with Vera!",
+      });
+    } catch (e) {
+      console.error("Reset failed", e);
+      toast({
+        variant: "destructive",
+        title: "Reset Error",
+        description: "Could not fully clear connections. Some data may persist.",
+      });
+    }
   };
 
   const handleSend = async () => {
@@ -136,7 +164,6 @@ export default function AIProfileBot() {
       timestamp: now 
     };
 
-    // Log to permanent history
     addDocumentNonBlocking(collection(db, 'bot_chats'), {
       userId: user.uid,
       ...newUserMsg,
@@ -146,7 +173,6 @@ export default function AIProfileBot() {
     const updatedHistory = [...sessionMessages, newUserMsg];
     setSessionMessages(updatedHistory);
 
-    // Update active session doc
     updateDocumentNonBlocking(personalityRef, {
       chatHistory: updatedHistory,
       lastAnalysisDate: now
@@ -165,7 +191,6 @@ export default function AIProfileBot() {
         timestamp: new Date().toISOString() 
       };
 
-      // Log AI response to permanent history
       addDocumentNonBlocking(collection(db, 'bot_chats'), {
         userId: user.uid,
         ...aiMsg,
@@ -241,15 +266,15 @@ export default function AIProfileBot() {
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-2xl font-black tracking-tight">Reset Conversation?</AlertDialogTitle>
+                <AlertDialogTitle className="text-2xl font-black tracking-tight">Reset Everything?</AlertDialogTitle>
                 <AlertDialogDescription className="font-medium">
-                  This will clear your current chat history and personality profile. Vera will need to get to know you again from the beginning.
+                  This will clear your current chat history, personality profile, AND all existing chat requests or matches. Vera will need to start from scratch.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleResetConversation} className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Yes, Reset
+                  Yes, Reset All
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -267,7 +292,7 @@ export default function AIProfileBot() {
               <h2 className="text-2xl font-black tracking-tight">Choose Your Language</h2>
               <p className="text-muted-foreground font-medium">Please select your preferred language to start chatting with Vera.</p>
             </div>
-            <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+            <div className="grid grid-cols-2 gap-4 w-full max-sm:grid-cols-1 max-w-sm">
               <Button 
                 onClick={() => handleLanguageSelect('en')}
                 className="h-20 rounded-3xl text-lg font-black bg-white border-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-md"
