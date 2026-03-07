@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -20,21 +19,18 @@ export default function VerifyPage() {
   const [resending, setResending] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
-  // Guard: Redirect unauthenticated users
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/auth/login');
     }
   }, [user, isUserLoading, router]);
 
-  // Guard: Redirect already verified users
   useEffect(() => {
     if (user?.emailVerified) {
       router.push('/bot');
     }
   }, [user, router]);
 
-  // Countdown logic for anti-spam
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -51,7 +47,7 @@ export default function VerifyPage() {
         title: "Verification Sent",
         description: "Check your inbox (and spam) for a new verification link.",
       });
-      setCountdown(60); // 60s cooldown
+      setCountdown(60);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -93,18 +89,18 @@ export default function VerifyPage() {
   };
 
   if (isUserLoading) return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-background">
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
     </div>
   );
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-full -z-10 opacity-10">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary rounded-full blur-[100px]" />
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[100px]" />
       </div>
 
-      <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white/95 backdrop-blur-xl">
+      <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white/95 backdrop-blur-xl z-10">
         <div className="truevibe-gradient h-2" />
         <CardHeader className="space-y-4 text-center pt-8">
           <Logo size="md" className="mx-auto mb-4" />

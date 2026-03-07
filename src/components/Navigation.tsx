@@ -17,7 +17,6 @@ export function Navigation() {
   const { user } = useUser();
   const db = useFirestore();
 
-  // Fetch pending requests for the badge
   const requestsQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -38,7 +37,6 @@ export function Navigation() {
   const authPaths = ['/', '/auth/login', '/auth/signup', '/auth/verify'];
   const isAuthPage = authPaths.includes(pathname);
 
-  // If on landing page and not logged in, show a simplified header instead of full nav
   if (isAuthPage && !user) return null;
 
   const navItems = [
@@ -52,8 +50,7 @@ export function Navigation() {
 
   return (
     <>
-      {/* Mobile Bottom Navigation - Sticky at bottom */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-border z-[100] safe-area-bottom pb-2">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-border z-[100] safe-area-bottom pb-2 shadow-[0_-4px_20px_rgba(108,59,255,0.05)]">
         <div className="flex w-full justify-around items-center h-16 px-2">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -67,28 +64,27 @@ export function Navigation() {
                   isActive ? "text-primary" : "text-muted-foreground hover:text-primary"
                 )}
               >
-                <div className={cn("p-1 rounded-xl transition-colors", isActive && "bg-primary/10")}>
-                  <Icon className={cn("w-6 h-6", isActive && "fill-current")} />
+                <div className={cn("p-1.5 rounded-xl transition-colors", isActive && "bg-primary/10")}>
+                  <Icon className={cn("w-5 h-5", isActive && "fill-current")} />
                 </div>
                 {item.showBadge && pendingCount > 0 && (
-                  <span className="absolute top-0.5 right-1.5 flex h-4 w-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-primary text-[10px] text-white font-black items-center justify-center border border-white">
+                  <span className="absolute top-0 right-1.5 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-accent text-[9px] text-white font-black items-center justify-center border border-white">
                       {pendingCount}
                     </span>
                   </span>
                 )}
-                <span className="text-[9px] font-bold uppercase tracking-wider">{item.label}</span>
+                <span className="text-[8px] font-bold uppercase tracking-wider">{item.label}</span>
               </Link>
             );
           })}
         </div>
       </nav>
 
-      {/* Desktop Top Navigation */}
       <nav className="hidden md:flex fixed top-0 left-0 right-0 h-20 bg-white/80 backdrop-blur-md border-b border-border z-[100] items-center justify-between px-8 lg:px-20 shadow-sm">
         <Link href="/" className="flex items-center gap-2 group">
-          <Logo size="sm" />
+          <Logo size="sm" className="opacity-100" />
         </Link>
         <div className="flex items-center gap-2 lg:gap-6">
           {navItems.map((item) => {
@@ -109,8 +105,8 @@ export function Navigation() {
                 <span className="hidden lg:inline">{item.label}</span>
                 {item.showBadge && pendingCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-5 w-5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-5 w-5 bg-primary text-[10px] text-white font-black items-center justify-center border-2 border-white">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-5 w-5 bg-accent text-[10px] text-white font-black items-center justify-center border-2 border-white">
                       {pendingCount}
                     </span>
                   </span>

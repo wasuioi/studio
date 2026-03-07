@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -92,12 +91,12 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-full -z-10 opacity-10">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary rounded-full blur-[100px]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-secondary rounded-full blur-[100px]" />
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[100px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent/20 rounded-full blur-[100px]" />
       </div>
 
-      <Card className="w-full max-w-md rounded-[3rem] border-none shadow-2xl bg-white/90 backdrop-blur-xl">
+      <Card className="w-full max-w-md rounded-[3rem] border-none shadow-2xl bg-white/90 backdrop-blur-xl z-10">
         <CardHeader className="space-y-4 text-center pt-10">
           <Logo size="md" className="mx-auto mb-4" />
           <div>
@@ -171,7 +170,7 @@ export default function SignupPage() {
               Log in
             </Link>
           </p>
-          <div className="flex items-center gap-3 text-[10px] text-muted-foreground bg-accent/50 px-6 py-3 rounded-2xl font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground bg-primary/5 px-6 py-3 rounded-2xl font-bold uppercase tracking-wider">
             <ShieldCheck className="w-4 h-4 text-primary fill-current" />
             Verified Secure Auth
           </div>
