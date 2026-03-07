@@ -95,7 +95,6 @@ export default function MatchesPage() {
   const [requestConfirmation, setRequestConfirmation] = useState<any>(null);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
 
-  // Track outgoing requests
   const outgoingQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -106,7 +105,6 @@ export default function MatchesPage() {
 
   const { data: outgoingRequests } = useCollection<ChatRequest>(outgoingQuery);
 
-  // Track active conversations
   const conversationsQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -123,31 +121,25 @@ export default function MatchesPage() {
     }
   }, [profile?.topMatches]);
 
-  // Robust Simulated Acceptance Logic
   useEffect(() => {
     if (!user || !outgoingRequests) return;
-
     const pendingSimRequests = outgoingRequests.filter(
       r => r.status === 'pending' && r.receiverId.startsWith('sim_')
     );
-
     pendingSimRequests.forEach(req => {
       const timer = setTimeout(() => {
         updateDocumentNonBlocking(doc(db, 'chat_requests', req.id), { status: 'accepted' });
-        
         const convId = `conv_${user.uid}_${req.receiverId}`;
         setDocumentNonBlocking(doc(db, 'conversations', convId), {
           id: convId,
           participantIds: [user.uid, req.receiverId],
-          lastMessage: "Vibe check passed! You can now chat.",
+          lastMessage: "Vibe check passed!",
           updatedAt: new Date().toISOString(),
           createdAt: new Date().toISOString()
         }, { merge: true });
-
         const matchName = SIMULATED_PROFILES.find(p => p.id === req.receiverId)?.name || 'Match';
-        toast({ title: "Request Accepted!", description: `${matchName} is ready to chat!` });
+        toast({ title: "Connection Unlocked", description: `${matchName} is ready to vibe!` });
       }, 2000);
-
       return () => clearTimeout(timer);
     });
   }, [outgoingRequests, user, db, toast]);
@@ -190,9 +182,9 @@ export default function MatchesPage() {
       });
 
       setMatches(processedMatches);
-      toast({ title: "Vibe Analysis Complete!", description: "We've saved your top 3 high-energy connections." });
+      toast({ title: "Vibe Check Complete", description: "Your cosmic matches are ready." });
     } catch (err) {
-      toast({ variant: "destructive", title: "Scan Failed", description: "Vera is having trouble sensing right now." });
+      toast({ variant: "destructive", title: "Analysis Failed", description: "Could not sense your frequency." });
     } finally {
       setIsScanning(false);
     }
@@ -200,33 +192,28 @@ export default function MatchesPage() {
 
   const handleMessageClick = (match: any) => {
     if (!profile || !user) return;
-    
     const hasActiveConv = activeConversations?.some(conv => conv.participantIds.includes(match.id));
-    
     if (hasActiveConv) {
       router.push('/messages');
       return;
     }
-
     if (profile.tier !== 'premium') {
       setLockedFeature('Unlimited Messaging');
       setShowUpgradeModal(true);
       return;
     }
-
     const pending = outgoingRequests?.find(r => r.receiverId === match.id && r.status === 'pending');
     if (pending) {
-      toast({ description: `Request to ${match.name} is already pending.` });
+      toast({ description: "Vibe check is already pending." });
       return;
     }
-
     setRequestConfirmation(match);
   };
 
   const handleAnalysisClick = (match: any) => {
     if (!profile) return;
     if (profile.tier === 'free') {
-      setLockedFeature('Detailed Vibe Analysis');
+      setLockedFeature('Detailed Vibe Insights');
       setShowUpgradeModal(true);
       return;
     }
@@ -236,11 +223,9 @@ export default function MatchesPage() {
   const sendChatRequest = () => {
     if (!user || !profile || !requestConfirmation) return;
     setIsSendingRequest(true);
-
     const requestId = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 3);
-
     const requestData: ChatRequest = {
       id: requestId,
       senderId: user.uid,
@@ -253,10 +238,8 @@ export default function MatchesPage() {
       createdAt: new Date().toISOString(),
       expiresAt: expiresAt.toISOString(),
     };
-
     setDocumentNonBlocking(doc(db, 'chat_requests', requestId), requestData, { merge: true });
-    
-    toast({ title: "Request Sent", description: `We've sent your vibe check to ${requestConfirmation.name}.` });
+    toast({ title: "Request Sent", description: "Sending your energy to " + requestConfirmation.name });
     setRequestConfirmation(null);
     setIsSendingRequest(false);
   };
@@ -271,13 +254,13 @@ export default function MatchesPage() {
     <div className="max-w-7xl mx-auto p-4 pt-8 md:pt-28 mb-24 min-h-screen">
       <Navigation />
       
-      <header className="mb-8 md:mb-12 flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-2">
+      <header className="mb-12 flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-2">
         <div className="space-y-2">
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight flex items-center gap-3">
-            Top 3 Vibe Matches <Sparkles className="text-primary fill-current w-6 h-6 md:w-10 md:h-10" />
+          <h1 className="text-4xl md:text-6xl font-black tracking-tight flex items-center gap-3">
+            Your Vibe <Sparkles className="text-accent fill-current w-8 h-8 md:w-12 md:h-12" />
           </h1>
-          <p className="text-muted-foreground font-medium max-w-lg text-sm md:text-base">
-            Vera has analyzed your unique energy to find your most compatible connections.
+          <p className="text-white/60 font-medium max-w-lg text-sm md:text-lg">
+            Vera has synced with your frequency to find your most compatible connections.
           </p>
         </div>
         
@@ -285,85 +268,85 @@ export default function MatchesPage() {
           <Button 
             onClick={handleScanForMatches} 
             disabled={isScanning} 
-            className="w-full sm:w-auto rounded-2xl h-14 px-8 font-black truevibe-gradient border-none shadow-xl shadow-primary/20 transition-all active:scale-95"
+            className="w-full sm:w-auto rounded-2xl h-14 px-8 font-black truevibe-button-gradient border-none text-white shadow-xl"
           >
             {isScanning ? (
-              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Analyzing...</>
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Analyzing Universe...</>
             ) : (
-              <>{matches.length > 0 ? <RefreshCw className="mr-2 h-5 w-5" /> : <Zap className="mr-2 h-5 w-5 fill-current" />} {matches.length > 0 ? 'Refresh' : 'Find Matches'}</>
+              <>{matches.length > 0 ? <RefreshCw className="mr-2 h-5 w-5" /> : <Zap className="mr-2 h-5 w-5 fill-current" />} {matches.length > 0 ? 'Sync Frequency' : 'Find Matches'}</>
             )}
           </Button>
         )}
       </header>
 
       {!profile?.personalityProfile ? (
-        <Card className="p-10 md:p-20 text-center rounded-[2.5rem] md:rounded-[4rem] border-none shadow-2xl bg-white animate-in zoom-in-95 mx-2">
-          <BrainCircuit className="w-16 h-16 md:w-24 md:h-24 mx-auto mb-6 text-primary opacity-20" />
-          <h3 className="text-2xl md:text-4xl font-black mb-3">Vibe Profile Missing</h3>
-          <p className="text-muted-foreground font-medium mb-8 max-w-sm mx-auto text-sm md:text-lg">Complete your vibe-check with Vera to unlock weighted matching.</p>
+        <Card className="glass-card p-12 md:p-24 text-center rounded-[3rem] md:rounded-[4rem] animate-in zoom-in-95">
+          <BrainCircuit className="w-16 h-16 md:w-24 md:h-24 mx-auto mb-8 text-primary/40" />
+          <h3 className="text-3xl md:text-5xl font-black mb-4 text-white">Vibe Profile Hidden</h3>
+          <p className="text-white/60 font-medium mb-10 max-w-sm mx-auto text-base md:text-xl">Vera needs to know your energy before she can match you.</p>
           <Link href="/bot">
-            <Button className="w-full sm:w-auto rounded-2xl h-16 px-12 text-lg md:text-xl font-black truevibe-gradient border-none shadow-xl">Start Vibe Check</Button>
+            <Button className="w-full sm:w-auto rounded-2xl h-16 px-12 text-lg md:text-xl font-black truevibe-button-gradient border-none">Initiate Vibe Check</Button>
           </Link>
         </Card>
       ) : matches.length === 0 ? (
-        <div className="text-center py-20 md:py-32 bg-muted/20 rounded-[3rem] md:rounded-[4rem] border-4 border-dashed border-muted/30 mx-2">
-          <Heart className="w-12 h-12 md:w-20 md:h-20 mx-auto mb-4 text-muted-foreground/30" />
-          <p className="text-lg md:text-2xl font-bold text-muted-foreground">Ready to find your vibes? Click above.</p>
+        <div className="text-center py-32 glass-card rounded-[3rem] border-dashed border-white/10 mx-2">
+          <Heart className="w-12 h-12 md:w-20 md:h-20 mx-auto mb-4 text-white/10" />
+          <p className="text-xl md:text-3xl font-bold text-white/40 italic">Waiting for the stars to align. Click sync above.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10 px-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12 px-2">
           {matches.map((match) => {
             const hasSentRequest = outgoingRequests?.some(r => r.receiverId === match.id && r.status === 'pending');
             const hasAcceptedRequest = outgoingRequests?.some(r => r.receiverId === match.id && r.status === 'accepted');
             const hasActiveConv = activeConversations?.some(conv => conv.participantIds.includes(match.id));
 
             return (
-              <Card key={match.id} className="group relative rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden border-none shadow-2xl transition-all duration-500 hover:translate-y-[-8px]">
+              <Card key={match.id} className="glass-card group relative rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden transition-all duration-500 hover:translate-y-[-10px] hover:shadow-primary/20">
                 <div className="relative aspect-[4/5] w-full">
                   <Image 
                     src={match.photoURL} 
                     alt={match.name} 
                     fill 
                     className={cn(
-                      "object-cover transition-all duration-700 group-hover:scale-105",
-                      profile.tier === 'free' && "blur-2xl scale-110"
+                      "object-cover transition-all duration-700 group-hover:scale-110",
+                      profile.tier === 'free' && "blur-3xl opacity-50"
                     )}
                   />
                   
                   {profile.tier === 'free' && (
-                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-center p-6 text-white z-20 backdrop-blur-md">
-                      <Crown className="w-10 h-10 mb-4 text-primary fill-current" />
-                      <h4 className="text-xl md:text-2xl font-black mb-2">Member Only</h4>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8 z-20 backdrop-blur-md bg-black/40">
+                      <Crown className="w-12 h-12 mb-4 text-accent fill-current animate-pulse" />
+                      <h4 className="text-2xl md:text-3xl font-black mb-4 text-white">Mystery Match</h4>
                       <Button 
-                        className="bg-white text-primary rounded-2xl h-12 px-6 font-black text-sm"
-                        onClick={() => { setLockedFeature('Profile Reveals'); setShowUpgradeModal(true); }}
+                        className="bg-white text-primary rounded-2xl h-12 px-8 font-black text-sm hover:bg-white/90"
+                        onClick={() => { setLockedFeature('Identity Reveal'); setShowUpgradeModal(true); }}
                       >
-                        Reveal Profile
+                        Reveal Energy
                       </Button>
                     </div>
                   )}
 
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
                   
-                  <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1.5 md:px-4 md:py-2 rounded-xl md:rounded-2xl flex items-center gap-2 border border-white/30 z-10">
-                    <span className="text-white font-black text-base md:text-lg">{match.score}%</span>
-                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-verified animate-pulse" />
+                  <div className="absolute top-6 right-6 truevibe-button-gradient px-4 py-2 rounded-2xl flex items-center gap-2 shadow-lg border border-white/20 z-10">
+                    <span className="text-white font-black text-lg">{match.score}% Match</span>
+                    <Star className="w-4 h-4 text-white fill-current animate-pulse" />
                   </div>
 
-                  <div className="absolute bottom-0 p-6 md:p-8 text-white w-full z-30">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-2xl md:text-3xl font-black">{profile.tier === 'free' ? 'TrueVibe User' : match.name}</h3>
-                      <Check className="w-4 h-4 md:w-5 md:h-5 bg-verified rounded-full p-1" />
+                  <div className="absolute bottom-0 p-8 md:p-10 text-white w-full z-30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <h3 className="text-3xl md:text-4xl font-black tracking-tight">{profile.tier === 'free' ? 'Hidden Vibe' : match.name}</h3>
+                      <Check className="w-5 h-5 bg-verified text-white rounded-full p-1 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
                     </div>
                     
-                    <p className="text-white/80 text-xs md:text-sm font-medium leading-relaxed mb-6 line-clamp-2 md:line-clamp-3">
-                      {match.reason}
+                    <p className="text-white/70 text-sm md:text-base font-medium leading-relaxed mb-8 line-clamp-2 md:line-clamp-3 italic">
+                      "{match.reason}"
                     </p>
                     
-                    <div className="flex gap-2 md:gap-3">
+                    <div className="flex gap-3">
                       <Button 
                         className={cn(
-                          "flex-1 rounded-xl md:rounded-2xl h-12 md:h-14 font-black text-xs md:text-sm transition-all",
+                          "flex-1 rounded-2xl h-14 font-black text-sm transition-all",
                           (hasActiveConv || hasAcceptedRequest) ? "bg-verified text-white" : "bg-white text-black hover:bg-white/90"
                         )}
                         onClick={(e) => {
@@ -373,23 +356,23 @@ export default function MatchesPage() {
                         disabled={isScanning}
                       >
                         {hasActiveConv || hasAcceptedRequest ? (
-                          <><MessageCircle className="w-4 h-4 mr-1.5" /> Chat Now</>
+                          <><MessageCircle className="w-5 h-5 mr-2" /> Chat Now</>
                         ) : hasSentRequest ? (
-                          <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Pending...</>
+                          <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Syncing...</>
                         ) : (
-                          <><UserPlus className="w-4 h-4 mr-1.5" /> Message</>
+                          <><UserPlus className="w-5 h-5 mr-2" /> Connect</>
                         )}
                       </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-12 w-12 md:h-14 md:w-14 rounded-xl md:rounded-2xl bg-white/10 border-white/20 hover:bg-white/20 text-white"
+                        className="h-14 w-14 rounded-2xl glass-card bg-white/10 hover:bg-white/20 text-white border-white/10"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAnalysisClick(match);
                         }}
                       >
-                        <Info className="w-5 h-5 md:w-6 md:h-6" />
+                        <Info className="w-6 h-6" />
                       </Button>
                     </div>
                   </div>
@@ -400,62 +383,60 @@ export default function MatchesPage() {
         </div>
       )}
 
-      {/* Send Request Confirmation */}
       <Dialog open={!!requestConfirmation} onOpenChange={() => setRequestConfirmation(null)}>
-        <DialogContent className="rounded-[2rem] md:rounded-[2.5rem] border-none shadow-2xl max-w-[90vw] md:max-w-sm bg-white p-8 md:p-10">
-          <DialogHeader className="items-center text-center space-y-4">
-            <div className="truevibe-gradient p-3 md:p-4 rounded-full">
-              <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-white fill-current" />
+        <DialogContent className="glass-card rounded-[2.5rem] md:rounded-[3rem] border-white/10 max-w-sm p-8 md:p-12 text-center">
+          <DialogHeader className="items-center space-y-6">
+            <div className="truevibe-button-gradient p-5 rounded-3xl shadow-2xl">
+              <Sparkles className="w-10 h-10 text-white fill-current" />
             </div>
             <div>
-              <DialogTitle className="text-xl md:text-2xl font-black">Request to Chat?</DialogTitle>
-              <DialogDescription className="font-medium text-sm md:text-base">
-                You and {requestConfirmation?.name} have a <strong>{requestConfirmation?.score}%</strong> compatibility match. Send a vibe check to start chatting!
+              <DialogTitle className="text-2xl md:text-3xl font-black text-white">Send Vibe Check?</DialogTitle>
+              <DialogDescription className="text-white/60 font-medium text-base">
+                Your souls are vibrating at <strong>{requestConfirmation?.score}%</strong> harmony. Initiate connection?
               </DialogDescription>
             </div>
           </DialogHeader>
-          <DialogFooter className="flex flex-col gap-2 mt-4 sm:flex-col sm:space-x-0">
+          <DialogFooter className="flex flex-col gap-3 mt-8">
             <Button 
-              className="w-full h-12 md:h-14 rounded-xl md:rounded-2xl font-black truevibe-gradient border-none shadow-lg"
+              className="w-full h-14 rounded-2xl font-black truevibe-button-gradient border-none"
               onClick={sendChatRequest}
               disabled={isSendingRequest}
             >
-              {isSendingRequest ? <Loader2 className="animate-spin" /> : "Send Vibe Check"}
+              {isSendingRequest ? <Loader2 className="animate-spin" /> : "Initiate Connection"}
             </Button>
-            <Button variant="ghost" onClick={() => setRequestConfirmation(null)} className="font-bold h-12">Cancel</Button>
+            <Button variant="ghost" onClick={() => setRequestConfirmation(null)} className="text-white/60 hover:text-white font-bold h-12">Maybe Later</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Vibe Analysis Detail Dialog */}
       <Dialog open={!!selectedAnalysis} onOpenChange={() => setSelectedAnalysis(null)}>
-        <DialogContent className="rounded-[2rem] md:rounded-[2.5rem] border-none shadow-2xl max-w-[90vw] md:max-w-lg bg-white p-6 md:p-10">
-          <DialogHeader className="items-center text-center space-y-4">
-            <div className="bg-primary/10 p-3 md:p-4 rounded-full">
-              <Star className="w-8 h-8 md:w-10 md:h-10 text-primary fill-current" />
+        <DialogContent className="glass-card rounded-[2.5rem] md:rounded-[3rem] border-white/10 max-w-lg p-8 md:p-12">
+          <DialogHeader className="items-center text-center space-y-6">
+            <div className="bg-primary/20 p-5 rounded-full shadow-2xl">
+              <Star className="w-10 h-10 text-primary fill-current" />
             </div>
             <div>
-              <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight">Vibe Analysis</DialogTitle>
-              <DialogDescription className="font-medium text-sm md:text-base">
-                Why you and {selectedAnalysis?.name} are a high-energy match.
+              <DialogTitle className="text-3xl md:text-4xl font-black tracking-tight text-white">Soul Insight</DialogTitle>
+              <DialogDescription className="text-white/60 text-lg">
+                Vera's detailed explanation of your connection with {selectedAnalysis?.name}.
               </DialogDescription>
             </div>
           </DialogHeader>
           
-          <div className="py-4 md:py-8 space-y-4 md:space-y-6 max-h-[40vh] overflow-y-auto pr-2">
-            <div className="bg-muted/30 p-5 md:p-8 rounded-2xl md:rounded-[2rem] border-l-4 border-primary">
-              <p className="text-sm md:text-base text-foreground leading-relaxed font-medium">
-                {selectedAnalysis?.reason}
+          <div className="py-8 space-y-6">
+            <div className="bg-white/5 p-8 rounded-[2rem] border-l-4 border-accent italic">
+              <p className="text-base md:text-lg text-white/90 leading-relaxed font-medium">
+                "{selectedAnalysis?.reason}"
               </p>
             </div>
           </div>
 
-          <DialogFooter className="mt-4">
+          <DialogFooter>
             <Button 
-              className="w-full h-12 md:h-14 rounded-xl md:rounded-2xl font-black truevibe-gradient border-none"
+              className="w-full h-14 rounded-2xl font-black truevibe-button-gradient border-none"
               onClick={() => setSelectedAnalysis(null)}
             >
-              Back to Matches
+              Close Insight
             </Button>
           </DialogFooter>
         </DialogContent>
