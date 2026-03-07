@@ -4,9 +4,9 @@ import { googleAI } from '@genkit-ai/google-genai';
 export const ai = genkit({
   plugins: [
     googleAI({
-      apiKey: 'AIzaSyAAmmDPjXdM3rGKbD2qa0NBbEyf7p-z-VQ', 
+      apiKey: 'AIzaSyAvdLPexEarcLrYCIsU1gOKW2ztDMc7Ql0', 
     }),
   ],
-  // Use the standard model name without the '-latest' suffix to avoid 404 errors in some regions/versions
-  model: 'googleai/gemini-1.5-flash', 
+  // Use the standard model identifier to ensure compatibility and avoid 404 errors.
+  model: 'googleai/gemini-1.5-flash',
 });
