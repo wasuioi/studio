@@ -4,11 +4,17 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
+    
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isPremium() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tier == 'premium';
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().tier == 'premium';
     }
 
     match /users/{userId} {
@@ -35,12 +41,16 @@ service cloud.firestore {
       allow create, update, delete: if isOwner(userId);
     }
 
-    // Corrected bot_chats rules for history listing and document access
     match /bot_chats/{chatId} {
       // Allow creation if the document belongs to the signed-in user
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      // Allow reading, updating, or deleting if the existing document belongs to the signed-in user
-      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // Explicitly allow get and list operations for the owner
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // Allow updates/deletes only for the owner
+      allow update, delete: if isOwner(resource.data.userId);
     }
 
     match /matches/{matchId} {
