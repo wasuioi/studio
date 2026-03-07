@@ -133,7 +133,7 @@ export default function VerificationPage() {
 
   if (profile?.identityVerified && step !== 4) {
     return (
-      <div className="max-w-md mx-auto p-4 text-center">
+      <div className="max-w-md mx-auto p-4 text-center pt-20">
         <Navigation />
         <div className="bg-verified/10 p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] mx-4 mt-8">
           <CheckCircle className="w-12 h-12 md:w-16 md:h-16 text-verified mx-auto mb-4" />
@@ -146,10 +146,10 @@ export default function VerificationPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto p-4 mb-24 min-h-screen">
+    <div className="max-w-md mx-auto p-4 mb-24 min-h-screen pt-20">
       <Navigation />
       
-      <header className="mb-6 md:mb-8 px-2 mt-8">
+      <header className="mb-6 md:mb-8 px-2">
         <h1 className="text-2xl md:text-3xl font-black tracking-tight">Vibe Check Verification</h1>
         <p className="text-muted-foreground font-medium text-sm md:text-base">Keep TrueVibe safe and genuine for everyone.</p>
       </header>

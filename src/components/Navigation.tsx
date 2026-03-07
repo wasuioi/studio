@@ -49,13 +49,13 @@ export function Navigation() {
   ];
 
   return (
-    <div className="w-full relative z-[100] bg-transparent">
-      {/* Mobile Nav - Stable Top Header */}
-      <nav className="md:hidden flex h-16 bg-black/40 backdrop-blur-3xl border-b border-white/5 items-center justify-between px-4">
+    <div className="fixed top-0 left-0 right-0 z-[100] w-full bg-black/40 backdrop-blur-3xl border-b border-white/5 shadow-2xl h-16">
+      {/* Mobile Nav - Top Header */}
+      <nav className="md:hidden flex h-full items-center justify-between px-4">
         <Link href="/" className="shrink-0">
           <Logo size="sm" showText={false} />
         </Link>
-        <div className="flex flex-1 justify-center items-center gap-4">
+        <div className="flex flex-1 justify-center items-center gap-3">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -91,17 +91,17 @@ export function Navigation() {
         </div>
       </nav>
 
-      {/* Desktop Nav - Perfectly Balanced and Centered */}
-      <nav className="hidden md:flex h-16 bg-black/20 backdrop-blur-2xl border-b border-white/5 items-center justify-between px-8 shadow-xl">
-        {/* Left Section: Logo (Fixed width to balance right side) */}
-        <div className="flex items-center w-[200px]">
-          <Link href="/" className="flex items-center group">
-            <Logo size="sm" className="opacity-100" />
+      {/* Desktop Nav - Centered Flexbox */}
+      <nav className="hidden md:flex h-full items-center justify-between px-8">
+        {/* Left Section: Logo */}
+        <div className="flex items-center w-[180px]">
+          <Link href="/" className="flex items-center">
+            <Logo size="sm" />
           </Link>
         </div>
 
-        {/* Center Section: Navigation Tabs (Stay perfectly centered) */}
-        <div className="flex items-center justify-center flex-1 gap-6">
+        {/* Center Section: Tabs */}
+        <div className="flex items-center justify-center flex-1 gap-2 lg:gap-4">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -130,8 +130,8 @@ export function Navigation() {
           })}
         </div>
 
-        {/* Right Section: Sign Out (Fixed width to match left side) */}
-        <div className="flex items-center justify-end w-[200px]">
+        {/* Right Section: Sign Out */}
+        <div className="flex items-center justify-end w-[180px]">
           {user && (
             <Button 
               variant="ghost" 

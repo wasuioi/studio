@@ -225,10 +225,10 @@ export default function AIProfileBot() {
   );
 
   return (
-    <div className="max-w-2xl mx-auto min-h-screen flex flex-col p-4 relative">
+    <div className="max-w-2xl mx-auto min-h-screen flex flex-col p-4 relative pt-20">
       <Navigation />
       
-      <div className="flex items-center justify-between mb-6 px-2 mt-8">
+      <div className="flex items-center justify-between mb-6 px-2">
         <div className="flex items-center gap-3">
           <div className="truevibe-gradient p-2.5 rounded-2xl shadow-xl">
             <Zap className="text-white w-5 h-5 fill-current" />
@@ -267,7 +267,7 @@ export default function AIProfileBot() {
         )}
       </div>
 
-      <div className="flex-1 glass-card rounded-[2.5rem] overflow-hidden flex flex-col mb-20 md:mb-8 relative h-[600px] md:h-[700px]">
+      <div className="flex-1 glass-card rounded-[2.5rem] overflow-hidden flex flex-col mb-4 relative h-[calc(100vh-200px)] min-h-[500px]">
         {!selectedLanguage ? (
           <div className="flex-1 flex flex-col items-center justify-center p-10 text-center space-y-8 animate-in fade-in zoom-in-95">
             <div className="bg-primary/10 p-8 rounded-full shadow-[0_0_40px_rgba(106,92,255,0.1)]">

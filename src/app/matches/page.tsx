@@ -251,10 +251,10 @@ export default function MatchesPage() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto p-4 min-h-screen">
+    <div className="max-w-6xl mx-auto p-4 min-h-screen pt-20">
       <Navigation />
       
-      <header className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-2 mt-8">
+      <header className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-2">
         <div className="space-y-1">
           <h1 className="text-3xl md:text-5xl font-black tracking-tight flex items-center gap-3">
             Your Vibe <Sparkles className="text-accent fill-current w-6 h-6 md:w-10 md:h-10" />

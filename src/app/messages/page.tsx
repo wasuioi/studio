@@ -177,7 +177,7 @@ export default function MessagesPage() {
 
   if (profile && !isVerified) {
     return (
-      <div className="flex flex-col min-h-screen items-center justify-center p-6 text-center">
+      <div className="flex flex-col min-h-screen items-center justify-center p-6 text-center pt-20">
         <Navigation />
         <Card className="glass-card p-12 rounded-[3rem] space-y-8 max-w-md mx-4 mt-8">
           <div className="bg-unverified/10 p-8 rounded-full inline-block animate-bounce shadow-[0_0_30px_rgba(234,179,8,0.1)]">
@@ -196,7 +196,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen w-full bg-background overflow-hidden relative max-w-[1920px] mx-auto">
+    <div className="flex flex-col h-screen w-full bg-background overflow-hidden relative max-w-[1920px] mx-auto pt-16">
       <Navigation />
       
       <div className="flex flex-1 overflow-hidden h-full">
@@ -284,7 +284,7 @@ export default function MessagesPage() {
                 </AlertDialog>
               </div>
 
-              <ScrollArea className="flex-1 p-6 h-[500px] md:h-full" ref={scrollRef}>
+              <ScrollArea className="flex-1 p-6" ref={scrollRef}>
                 <div className="space-y-6 max-w-2xl mx-auto pb-10">
                   {messages?.map((m, idx) => {
                     const isMe = m.senderId === user?.uid;
