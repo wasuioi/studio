@@ -1,10 +1,7 @@
+
 'use server';
 /**
- * @fileOverview An AI agent that conducts a personality interview to build a user profile.
- *
- * - aiPersonalityInterview - A function that handles the AI personality interview process.
- * - AiPersonalityInterviewInput - The input type for the aiPersonalityInterview function.
- * - AiPersonalityInterviewOutput - The return type for the aiPersonalityInterview function.
+ * @fileOverview An AI agent that conducts a personality interview to build a structured matching profile.
  */
 
 import { ai } from '@/ai/genkit';
@@ -14,24 +11,29 @@ const AiPersonalityInterviewInputSchema = z.object({
   chatHistory: z.array(z.object({
     role: z.enum(['user', 'model']),
     message: z.string(),
-  })).describe('A history of previous chat messages between the user and the AI, used for context.').optional().default([]),
-  currentMessage: z.string().describe('The user\'s latest message in the interview.').nullable(),
+  })).describe('A history of previous chat messages.').optional().default([]),
+  currentMessage: z.string().describe('The user\'s latest message.').nullable(),
 });
 export type AiPersonalityInterviewInput = z.infer<typeof AiPersonalityInterviewInputSchema>;
 
+const AiPersonalityTraitsSchema = z.object({
+  communicationStyle: z.string().describe('Direct, empathetic, witty, etc.'),
+  introversionLevel: z.number().min(0).max(1).describe('0 for extreme extravert, 1 for extreme introvert.'),
+  emotionalExpression: z.number().min(0).max(1).describe('How much they express emotions.'),
+  lifestyle: z.string().describe('Active, social, homebody, career-focused, etc.'),
+  relationshipIntent: z.string().describe('Casual, long-term, marriage, exploring, etc.'),
+  values: z.array(z.string()).describe('Core values like honesty, growth, family, etc.'),
+});
+
 const AiPersonalityProfileSchema = z.object({
-  datingPreferences: z.array(z.string()).describe('A list of the user\'s dating preferences.'),
-  values: z.array(z.string()).describe('A list of the user\'s core values.'),
-  communicationStyle: z.string().describe('A description of the user\'s communication style.'),
-  summary: z.string().describe('A comprehensive summary of the user\'s personality based on the interview.'),
-  personalityType: z.string().optional().describe('AI-derived primary personality type.'),
-  keyTraits: z.array(z.string()).optional().describe('Key personality traits identified.'),
+  traits: AiPersonalityTraitsSchema,
+  summary: z.string().describe('A comprehensive summary of the user\'s personality.'),
 });
 
 const AiPersonalityInterviewOutputSchema = z.object({
-  response: z.string().describe('The AI\'s conversational response to the user.'),
-  personalityProfile: AiPersonalityProfileSchema.optional().describe('The extracted personality profile, if enough information has been gathered.'),
-  interviewComplete: z.boolean().describe('Indicates if the AI has gathered enough information to complete the personality profile.'),
+  response: z.string().describe('The AI\'s response to the user.'),
+  personalityProfile: AiPersonalityProfileSchema.optional().describe('Structured traits if interview is complete.'),
+  interviewComplete: z.boolean().describe('True if enough info has been gathered.'),
 });
 export type AiPersonalityInterviewOutput = z.infer<typeof AiPersonalityInterviewOutputSchema>;
 
@@ -51,11 +53,14 @@ const prompt = ai.definePrompt({
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
     ],
   },
-  prompt: `You are an AI personality bot named HarmonyAI. Your goal is to conduct an interview with the user to understand their dating preferences, values, and communication style.
+  prompt: `You are HarmonyAI, a sophisticated dating psychologist. Your goal is to interview the user to build a matching profile.
 
-IMPORTANT: Mirror the user's communication style, vocabulary, and emotional tone. If the user is brief and direct, you should be brief and direct. If the user is expressive and verbose, you should match that energy. Your primary objective is to make the user feel heard and understood through mirroring.
+Ask questions one-by-one about:
+1. Communication style and conflict resolution.
+2. Values and relationship expectations.
+3. Lifestyle and introversion/extraversion.
 
-Guide the conversation naturally, asking one question at a time. Once you believe you have enough information to fill out the full personality profile (datingPreferences, values, communicationStyle, personalityType, keyTraits, and a summary), set 'interviewComplete' to true and provide the complete 'personalityProfile' object. Otherwise, set 'interviewComplete' to false and continue the conversation.
+Mirror the user's tone. Once you have a clear picture of their communicationStyle, introversionLevel (0-1), emotionalExpression (0-1), lifestyle, relationshipIntent, and core values, set 'interviewComplete' to true and output the structured 'personalityProfile'.
 
 Chat History:
 {{#each chatHistory}}
@@ -64,7 +69,7 @@ Chat History:
 
 User: {{{currentMessage}}}
 
-AI (Your next response and profile update):`,
+AI Response:`,
 });
 
 const aiPersonalityInterviewFlow = ai.defineFlow(

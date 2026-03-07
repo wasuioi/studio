@@ -1,55 +1,60 @@
+
 {
   "entities": {
     "UserProfile": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user's public profile within the HarmonyAI application.",
+      "description": "Represents a user's public profile and AI-derived personality traits.",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
         "bio": { "type": "string" },
-        "profilePhotoUrl": { "type": "string", "format": "uri" },
+        "photoURL": { "type": "string", "format": "uri" },
         "isVerified": { "type": "boolean" },
         "verificationStatus": { "type": "string" },
+        "personalityProfile": {
+          "type": "object",
+          "properties": {
+            "traits": {
+              "type": "object",
+              "properties": {
+                "communicationStyle": { "type": "string" },
+                "introversionLevel": { "type": "number" },
+                "emotionalExpression": { "type": "number" },
+                "lifestyle": { "type": "string" },
+                "relationshipIntent": { "type": "string" },
+                "values": { "type": "array", "items": { "type": "string" } }
+              }
+            },
+            "summary": { "type": "string" }
+          }
+        },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "name", "isVerified", "createdAt", "updatedAt"]
     },
-    "VerificationRequest": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "VerificationRequest",
-      "type": "object",
-      "description": "Tracks an identity verification attempt.",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "status": { "type": "string" },
-        "aiScore": { "type": "number" },
-        "aiReason": { "type": "string" },
-        "submittedAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "Conversation": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Conversation",
+    "Match": {
+      "title": "Match",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "participantIds": { "type": "array", "items": { "type": "string" } },
-        "lastMessage": { "type": "string" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "score": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
       }
     },
-    "Message": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Message",
+    "Notification": {
+      "title": "Notification",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "senderId": { "type": "string" },
-        "text": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     }
@@ -63,28 +68,21 @@
         "path": "/user_profiles/{userId}",
         "definition": {
           "entityName": "UserProfile",
-          "description": "Primary user profile collection."
+          "description": "Primary user profiles."
         }
       },
       {
-        "path": "/user_profiles/{userId}/verification_requests/{requestId}",
+        "path": "/matches/{matchId}",
         "definition": {
-          "entityName": "VerificationRequest",
-          "description": "User verification history."
+          "entityName": "Match",
+          "description": "Compatibility matches between users."
         }
       },
       {
-        "path": "/conversations/{conversationId}",
+        "path": "/user_profiles/{userId}/notifications/{notifId}",
         "definition": {
-          "entityName": "Conversation",
-          "description": "Chat conversation metadata."
-        }
-      },
-      {
-        "path": "/conversations/{conversationId}/messages/{messageId}",
-        "definition": {
-          "entityName": "Message",
-          "description": "Individual chat messages."
+          "entityName": "Notification",
+          "description": "User notifications."
         }
       }
     ]

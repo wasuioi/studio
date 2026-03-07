@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -99,7 +100,7 @@ export default function AIProfileBot() {
       };
 
       if (response.interviewComplete && response.personalityProfile) {
-        Object.assign(updatePayload, response.personalityProfile);
+        updatePayload.personalityProfile = response.personalityProfile;
         
         // Update main profile with the results
         const userRef = doc(db, 'user_profiles', user.uid);
@@ -110,7 +111,7 @@ export default function AIProfileBot() {
 
         toast({
           title: "Profile Complete!",
-          description: "HarmonyAI has analyzed your personality. Redirecting to matches...",
+          description: "HarmonyAI has analyzed your personality. Scanning for matches...",
         });
       }
 
