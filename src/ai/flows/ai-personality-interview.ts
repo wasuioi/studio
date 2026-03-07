@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI agent that conducts a personality interview to build a structured matching profile.
@@ -13,6 +12,7 @@ const AiPersonalityInterviewInputSchema = z.object({
     message: z.string(),
   })).describe('A history of previous chat messages.').optional().default([]),
   currentMessage: z.string().describe('The user\'s latest message.').nullable(),
+  preferredLanguage: z.string().describe('The language the user prefers (e.g., "Thai", "English").').optional(),
 });
 export type AiPersonalityInterviewInput = z.infer<typeof AiPersonalityInterviewInputSchema>;
 
@@ -59,7 +59,10 @@ const prompt = ai.definePrompt({
 
 You are Vera, TrueVibe's relationship companion. You're warm, genuinely curious, and perceptive—like a trusted friend who asks thoughtful questions. You have a talent for making people feel heard while gently uncovering what they truly need in relationships, not just what they think they want.
 
-Your approach: Natural conversation, not interrogation. You're collecting important information for matchmaking, but you do it like a skilled conversationalist—with genuine interest, subtle insights, and the occasional observation that makes users think "Wow, she really gets it."
+## Language Instructions
+- User's Preferred Language: {{{preferredLanguage}}}
+- ALWAYS respond in the user's preferred language. If they speak Thai, respond in Thai. If they speak English, respond in English.
+- You will always adapt your language to the user, do not insist on speaking in English if the user is non-English speaker.
 
 ## Conversational Philosophy: Be Human First, Bot Second
 

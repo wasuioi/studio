@@ -6,7 +6,8 @@ import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sparkles, Send, Zap, Loader2, Star } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Sparkles, Send, Zap, Loader2, Star, Globe } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
 import { doc, collection } from 'firebase/firestore';
 import { 
@@ -28,6 +29,7 @@ export default function AIProfileBot() {
   const { toast } = useToast();
   const [input, setInput] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'th' | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const personalityRef = useMemoFirebase(() => {
@@ -41,13 +43,10 @@ export default function AIProfileBot() {
   const [sessionMessages, setSessionMessages] = useState<any[]>([]);
 
   useEffect(() => {
-    if (personalityData?.chatHistory) {
+    if (personalityData?.chatHistory && personalityData.chatHistory.length > 0) {
       setSessionMessages(personalityData.chatHistory);
-    } else {
-      setSessionMessages([{ 
-        role: 'model' as const, 
-        message: "Hi! I'm Vera, your TrueVibe relationship companion. I'm here to understand your unique energy and help find your perfect match. Ready to vibe?" 
-      }]);
+      // If history exists, we infer language isn't needed or already set
+      setSelectedLanguage(personalityData.preferredLanguage || 'en');
     }
   }, [personalityData]);
 
@@ -60,8 +59,34 @@ export default function AIProfileBot() {
     }
   }, [sessionMessages, isAiThinking]);
 
+  const handleLanguageSelect = (lang: 'en' | 'th') => {
+    setSelectedLanguage(lang);
+    const initialMsg = lang === 'en' 
+      ? "Hi! I'm Vera, your TrueVibe relationship companion. I'm here to understand your unique energy and help find your perfect match. Ready to vibe?" 
+      : "สวัสดีค่ะ! ฉันคือ Vera เพื่อนคู่คิดด้านความสัมพันธ์ของคุณ ฉันอยู่ที่นี่เพื่อทำความเข้าใจพลังงานที่เป็นเอกลักษณ์ของคุณและช่วยหาคู่ที่เหมาะสมที่สุดสำหรับคุณ พร้อมจะทำความรู้จักกันหรือยังคะ?";
+    
+    const firstMsg = { 
+      role: 'model' as const, 
+      message: initialMsg, 
+      timestamp: new Date().toISOString() 
+    };
+
+    setSessionMessages([firstMsg]);
+
+    // Save initial preference to Firestore
+    if (personalityRef && user) {
+      setDocumentNonBlocking(personalityRef, {
+        id: 'personality_data',
+        userId: user.uid,
+        preferredLanguage: lang === 'th' ? 'Thai' : 'English',
+        chatHistory: [firstMsg],
+        lastAnalysisDate: new Date().toISOString()
+      }, { merge: true });
+    }
+  };
+
   const handleSend = async () => {
-    if (!input.trim() || isAiThinking || !user || !personalityRef) return;
+    if (!input.trim() || isAiThinking || !user || !personalityRef || !selectedLanguage) return;
 
     const currentMsg = input;
     const now = new Date().toISOString();
@@ -84,17 +109,16 @@ export default function AIProfileBot() {
     setSessionMessages(updatedHistory);
 
     // Update active session doc
-    setDocumentNonBlocking(personalityRef, {
-      id: 'personality_data',
-      userId: user.uid,
+    updateDocumentNonBlocking(personalityRef, {
       chatHistory: updatedHistory,
       lastAnalysisDate: now
-    }, { merge: true });
+    });
 
     try {
       const response = await aiPersonalityInterview({
         chatHistory: sessionMessages.map(m => ({ role: m.role, message: m.message })),
-        currentMessage: currentMsg
+        currentMessage: currentMsg,
+        preferredLanguage: selectedLanguage === 'th' ? 'Thai' : 'English'
       });
 
       const aiMsg = { 
@@ -171,51 +195,79 @@ export default function AIProfileBot() {
       </div>
 
       <div className="flex-1 bg-white rounded-[3rem] shadow-2xl shadow-primary/5 border border-border/50 overflow-hidden flex flex-col mb-24 md:mb-8">
-        <ScrollArea className="flex-1 p-6" ref={scrollRef}>
-          <div className="space-y-6">
-            {sessionMessages.map((m, i) => (
-              <div key={i} className={cn(
-                "flex flex-col max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-500",
-                m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
-              )}>
-                <div className={cn(
-                  "p-5 rounded-[2rem] text-sm leading-relaxed font-medium",
-                  m.role === 'user' 
-                    ? "truevibe-gradient text-white rounded-tr-none shadow-md" 
-                    : "bg-muted/50 text-foreground rounded-tl-none border border-border/50"
-                )}>
-                  {m.message}
-                </div>
-              </div>
-            ))}
-            {isAiThinking && (
-              <div className="flex items-center gap-2 text-primary text-xs animate-pulse font-black uppercase tracking-widest ml-4">
-                <Star className="w-3 h-3 fill-current" /> Vera is sensing...
-              </div>
-            )}
+        {!selectedLanguage && sessionMessages.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-10 text-center space-y-8">
+            <div className="bg-primary/10 p-6 rounded-full">
+              <Globe className="w-12 h-12 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black tracking-tight">Choose Your Language</h2>
+              <p className="text-muted-foreground font-medium">Please select your preferred language to start chatting with Vera.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+              <Button 
+                onClick={() => handleLanguageSelect('en')}
+                className="h-20 rounded-3xl text-lg font-black bg-white border-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-md"
+              >
+                🇺🇸 English
+              </Button>
+              <Button 
+                onClick={() => handleLanguageSelect('th')}
+                className="h-20 rounded-3xl text-lg font-black bg-white border-2 border-secondary/20 text-secondary hover:bg-secondary hover:text-white transition-all shadow-md"
+              >
+                🇹🇭 ภาษาไทย
+              </Button>
+            </div>
           </div>
-        </ScrollArea>
+        ) : (
+          <>
+            <ScrollArea className="flex-1 p-6" ref={scrollRef}>
+              <div className="space-y-6">
+                {sessionMessages.map((m, i) => (
+                  <div key={i} className={cn(
+                    "flex flex-col max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-500",
+                    m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
+                  )}>
+                    <div className={cn(
+                      "p-5 rounded-[2rem] text-sm leading-relaxed font-medium",
+                      m.role === 'user' 
+                        ? "truevibe-gradient text-white rounded-tr-none shadow-md" 
+                        : "bg-muted/50 text-foreground rounded-tl-none border border-border/50"
+                    )}>
+                      {m.message}
+                    </div>
+                  </div>
+                ))}
+                {isAiThinking && (
+                  <div className="flex items-center gap-2 text-primary text-xs animate-pulse font-black uppercase tracking-widest ml-4">
+                    <Star className="w-3 h-3 fill-current" /> {selectedLanguage === 'th' ? 'Vera กำลังประมวลผล...' : 'Vera is sensing...'}
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
 
-        <div className="p-6 border-t bg-background/30 backdrop-blur-sm">
-          <div className="relative flex items-center gap-3">
-            <Input 
-              placeholder="Tell Vera about yourself..." 
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              className="rounded-2xl h-14 bg-white border-none shadow-inner px-6 text-base focus-visible:ring-primary/20"
-              disabled={isAiThinking}
-            />
-            <Button 
-              size="icon" 
-              className="shrink-0 w-14 h-14 rounded-2xl truevibe-gradient hover:scale-105 transition-all duration-300 active:scale-95 shadow-lg border-none"
-              onClick={handleSend}
-              disabled={isAiThinking || !input.trim()}
-            >
-              <Send className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
+            <div className="p-6 border-t bg-background/30 backdrop-blur-sm">
+              <div className="relative flex items-center gap-3">
+                <Input 
+                  placeholder={selectedLanguage === 'th' ? "คุยกับ Vera เกี่ยวกับตัวคุณ..." : "Tell Vera about yourself..."}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  className="rounded-2xl h-14 bg-white border-none shadow-inner px-6 text-base focus-visible:ring-primary/20"
+                  disabled={isAiThinking}
+                />
+                <Button 
+                  size="icon" 
+                  className="shrink-0 w-14 h-14 rounded-2xl truevibe-gradient hover:scale-105 transition-all duration-300 active:scale-95 shadow-lg border-none"
+                  onClick={handleSend}
+                  disabled={isAiThinking || !input.trim()}
+                >
+                  <Send className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
