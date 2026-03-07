@@ -38,6 +38,7 @@ export async function verifyIdentity(input: VerifyIdentityInput): Promise<Verify
 
 const prompt = ai.definePrompt({
   name: 'verifyIdentityPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: VerifyIdentityInputSchema },
   output: { schema: VerifyIdentityOutputSchema },
   config: {
@@ -65,18 +66,6 @@ Selfie Photo: {{media url=selfiePhotoUri}}
 
 Provide a detailed reason for your decision.`,
 });
-
-const diagnosePlantFlow = ai.defineFlow(
-  {
-    name: 'verifyIdentityFlow',
-    inputSchema: VerifyIdentityInputSchema,
-    outputSchema: VerifyIdentityOutputSchema,
-  },
-  async (input) => {
-    const { output } = await prompt(input);
-    return output!;
-  }
-);
 
 const verifyIdentityFlow = ai.defineFlow(
   {
