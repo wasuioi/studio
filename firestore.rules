@@ -45,12 +45,11 @@ service cloud.firestore {
       // Allow creation if the document belongs to the signed-in user
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       
-      // Explicitly allow get and list operations for the owner
-      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Allow the owner to read (get/list) their own messages
+      allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
       
       // Allow updates/deletes only for the owner
-      allow update, delete: if isOwner(resource.data.userId);
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     match /matches/{matchId} {
