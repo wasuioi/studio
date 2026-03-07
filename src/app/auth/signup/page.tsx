@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldCheck, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/Logo';
@@ -110,6 +110,14 @@ export default function SignupPage() {
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm font-bold p-4 rounded-2xl border border-destructive/20 animate-in fade-in slide-in-from-top-1">
                 {error}
+                {error === "This email is already registered." && (
+                  <div className="mt-2 text-xs flex items-center gap-1">
+                    Already a member? 
+                    <Link href="/auth/login" className="text-primary hover:underline underline-offset-2 flex items-center gap-1">
+                      Login now <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
             <div className="space-y-2">

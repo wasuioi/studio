@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -6,7 +7,7 @@ import { signOut, sendEmailVerification } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Loader2, ArrowLeft, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Loader2, ArrowLeft, RefreshCw, ShieldCheck, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/Logo';
 
@@ -107,6 +108,9 @@ export default function VerifyPage() {
         <div className="truevibe-gradient h-2" />
         <CardHeader className="space-y-4 text-center pt-8">
           <Logo size="md" className="mx-auto mb-4" />
+          <div className="bg-primary/5 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-2 animate-bounce">
+            <Mail className="w-10 h-10 text-primary" />
+          </div>
           <div>
             <CardTitle className="text-3xl font-black tracking-tight">Activate Account</CardTitle>
             <CardDescription className="text-base font-medium">
