@@ -86,8 +86,8 @@ const SIMULATED_PROFILES = [
 export default function MatchesPage() {
   const { profile, user, loading } = useAuth();
   const db = useFirestore();
-  const { toast } = useToast();
   const router = useRouter();
+  const { toast } = useToast();
   const [isScanning, setIsScanning] = useState(false);
   const [matches, setMatches] = useState<any[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -96,6 +96,7 @@ export default function MatchesPage() {
   const [requestConfirmation, setRequestConfirmation] = useState<any>(null);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
 
+  // Track outgoing requests to see what is pending
   const outgoingQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -105,6 +106,17 @@ export default function MatchesPage() {
   }, [db, user]);
 
   const { data: outgoingRequests } = useCollection<ChatRequest>(outgoingQuery);
+
+  // Track active conversations to determine "Chat Now" status
+  const conversationsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(db, 'conversations'),
+      where('participantIds', 'array-contains', user.uid)
+    );
+  }, [db, user]);
+
+  const { data: activeConversations } = useCollection<any>(conversationsQuery);
 
   useEffect(() => {
     if (profile?.topMatches) {
@@ -159,18 +171,20 @@ export default function MatchesPage() {
   };
 
   const handleMessageClick = (match: any) => {
-    if (!profile) return;
+    if (!profile || !user) return;
     
+    // Check if conversation already exists
+    const hasActiveConv = activeConversations?.some(conv => conv.participantIds.includes(match.id));
+    
+    if (hasActiveConv) {
+      router.push('/messages');
+      return;
+    }
+
     // Check for Premium for messaging
     if (profile.tier !== 'premium') {
       setLockedFeature('Unlimited Messaging');
       setShowUpgradeModal(true);
-      return;
-    }
-
-    const isAccepted = outgoingRequests?.some(r => r.receiverId === match.id && r.status === 'accepted');
-    if (isAccepted) {
-      router.push('/messages');
       return;
     }
 
@@ -294,7 +308,7 @@ export default function MatchesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {matches.map((match) => {
             const hasSentRequest = outgoingRequests?.some(r => r.receiverId === match.id && r.status === 'pending');
-            const isAccepted = outgoingRequests?.some(r => r.receiverId === match.id && r.status === 'accepted');
+            const hasActiveConv = activeConversations?.some(conv => conv.participantIds.includes(match.id));
 
             return (
               <Card key={match.id} className="group relative rounded-[3rem] overflow-hidden border-none shadow-2xl transition-all duration-500 hover:translate-y-[-8px]">
@@ -343,15 +357,14 @@ export default function MatchesPage() {
                       <Button 
                         className={cn(
                           "flex-1 rounded-2xl h-14 font-black text-sm transition-all",
-                          isAccepted ? "bg-verified text-white" : "bg-white text-black hover:bg-white/90"
+                          hasActiveConv ? "bg-verified text-white" : "bg-white text-black hover:bg-white/90"
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleMessageClick(match);
                         }}
-                        disabled={hasSentRequest}
                       >
-                        {isAccepted ? (
+                        {hasActiveConv ? (
                           <><MessageCircle className="w-4 h-4 mr-2" /> Chat Now</>
                         ) : hasSentRequest ? (
                           <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Pending...</>

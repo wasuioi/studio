@@ -20,7 +20,7 @@ import {
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking
 } from '@/firebase';
-import { collection, query, where, orderBy, doc, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, limit, getDocs } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { useToast } from '@/hooks/use-toast';
@@ -103,7 +103,7 @@ export default function MessagesPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const isVerified = profile?.identityVerified;
-  const isPremium = profile?.tier === 'premium';
+  const isPremium = profile?.tier === 'premium' || profile?.tier === 'lite';
 
   // Fetch all conversations for the user
   const convQuery = useMemoFirebase(() => {
@@ -170,15 +170,29 @@ export default function MessagesPage() {
     setMessageText('');
   };
 
-  const handleDeleteConversation = () => {
-    if (!activeConversation || !user) return;
+  const handleDeleteConversation = async () => {
+    if (!activeConversation || !user || !otherParticipantId) return;
     
+    // 1. Find and delete the associated chat request so a new one must be sent later
+    const requestsRef = collection(db, 'chat_requests');
+    const qSender = query(requestsRef, where('senderId', '==', user.uid), where('receiverId', '==', otherParticipantId));
+    const qReceiver = query(requestsRef, where('senderId', '==', otherParticipantId), where('receiverId', '==', user.uid));
+    
+    try {
+      const [snap1, snap2] = await Promise.all([getDocs(qSender), getDocs(qReceiver)]);
+      snap1.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
+      snap2.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
+    } catch (e) {
+      console.error("Failed to cleanup requests", e);
+    }
+
+    // 2. Delete the conversation itself
     deleteDocumentNonBlocking(doc(db, 'conversations', activeConversation.id));
     
     setActiveConversation(null);
     toast({
       title: "Conversation Deleted",
-      description: "You've removed this chat from your list.",
+      description: "Chat removed. You'll need to send a new vibe check to connect again.",
     });
   };
 
