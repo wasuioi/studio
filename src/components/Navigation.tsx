@@ -37,6 +37,7 @@ export function Navigation() {
   const authPaths = ['/', '/auth/login', '/auth/signup', '/auth/verify'];
   const isAuthPage = authPaths.includes(pathname);
 
+  // If we are on an auth page and the user isn't logged in, we don't show the nav.
   if (isAuthPage && !user) return null;
 
   const navItems = [
@@ -50,9 +51,11 @@ export function Navigation() {
 
   return (
     <div className="w-full relative z-[100] bg-transparent">
-      {/* Mobile Nav - Top Header */}
-      <nav className="md:hidden relative bg-black/40 backdrop-blur-3xl border-b border-white/5 py-2 px-4 shadow-sm h-16 flex items-center justify-between">
-        <Logo size="sm" showText={false} className="shrink-0" />
+      {/* Mobile Nav - Static Header */}
+      <nav className="md:hidden flex h-16 bg-black/40 backdrop-blur-3xl border-b border-white/5 items-center justify-between px-4">
+        <Link href="/" className="shrink-0">
+          <Logo size="sm" showText={false} />
+        </Link>
         <div className="flex flex-1 justify-around items-center px-2">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -62,12 +65,12 @@ export function Navigation() {
                 key={item.href} 
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center justify-center transition-all duration-300 relative min-w-[36px]",
+                  "flex flex-col items-center justify-center transition-all duration-300 relative",
                   isActive ? "text-primary" : "text-white/40 hover:text-white"
                 )}
               >
                 <div className={cn("p-1.5 rounded-lg transition-colors", isActive && "bg-white/10")}>
-                  <Icon className={cn("w-[18px] h-[18px]", isActive && "fill-current")} />
+                  <Icon className={cn("w-5 h-5", isActive && "fill-current")} />
                 </div>
                 {item.showBadge && pendingCount > 0 && (
                   <span className="absolute -top-1 right-0 flex h-3.5 w-3.5">
@@ -87,16 +90,18 @@ export function Navigation() {
         )}
       </nav>
 
-      {/* Desktop Nav - Centered & Wide Header */}
-      <nav className="hidden md:flex relative h-[72px] bg-black/10 backdrop-blur-xl border-b border-white/5 items-center justify-center px-8 lg:px-12 shadow-lg">
-        <div className="flex items-center justify-between w-full max-w-[1400px]">
-          {/* Logo Section */}
-          <Link href="/" className="flex items-center gap-2 group shrink-0 w-[120px]">
-            <Logo size="sm" className="opacity-100" />
-          </Link>
+      {/* Desktop Nav - Static & Balanced Header */}
+      <nav className="hidden md:flex h-[72px] bg-black/20 backdrop-blur-2xl border-b border-white/5 items-center justify-center px-8 lg:px-12 shadow-xl">
+        <div className="flex items-center justify-between w-full max-w-[1440px]">
+          {/* Logo Section - Fixed width for balance */}
+          <div className="flex items-center w-[160px] lg:w-[200px]">
+            <Link href="/" className="flex items-center gap-3 group">
+              <Logo size="sm" className="opacity-100" />
+            </Link>
+          </div>
 
-          {/* Perfectly Centered Nav Items spanning the length */}
-          <div className="flex items-center justify-center flex-1 gap-2 lg:gap-6 px-4">
+          {/* Centered Nav Items */}
+          <div className="flex items-center justify-center flex-1 gap-2 lg:gap-4 px-4">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;
@@ -105,14 +110,14 @@ export function Navigation() {
                   key={item.href} 
                   href={item.href}
                   className={cn(
-                    "text-[10px] lg:text-xs font-black transition-all duration-300 flex items-center gap-2 px-5 py-2.5 rounded-full relative uppercase tracking-[0.15em] border border-transparent whitespace-nowrap",
+                    "text-[10px] lg:text-xs font-bold transition-all duration-300 flex items-center gap-2 px-4 lg:px-5 py-2.5 rounded-full relative uppercase tracking-widest border border-transparent whitespace-nowrap",
                     isActive 
-                      ? "bg-white/10 text-white shadow-xl shadow-primary/10 border-white/10 scale-105" 
-                      : "text-white/40 hover:text-white hover:bg-white/5 hover:border-white/5"
+                      ? "bg-white/10 text-white shadow-xl shadow-primary/10 border-white/10" 
+                      : "text-white/50 hover:text-white hover:bg-white/5"
                   )}
                 >
-                  <Icon className={cn("w-[18px] h-[18px]", isActive && "fill-current")} />
-                  <span className="hidden lg:inline">{item.label}</span>
+                  <Icon className={cn("w-4 h-4", isActive && "fill-current")} />
+                  <span>{item.label}</span>
                   {item.showBadge && pendingCount > 0 && (
                     <span className="absolute -top-1 -right-1 flex h-5 w-5">
                       <span className="relative inline-flex rounded-full h-5 w-5 bg-accent text-[9px] text-white font-black items-center justify-center border-2 border-background shadow-glow">
@@ -125,17 +130,17 @@ export function Navigation() {
             })}
           </div>
 
-          {/* Action Section */}
-          <div className="flex items-center justify-end shrink-0 w-[120px]">
+          {/* Action Section - Fixed width to balance the logo */}
+          <div className="flex items-center justify-end w-[160px] lg:w-[200px]">
             {user && (
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={handleLogout} 
-                className="rounded-full text-white/30 hover:text-white hover:bg-destructive/10 hover:text-destructive gap-2 font-black uppercase tracking-widest text-[9px]"
+                className="rounded-full text-white/40 hover:text-white hover:bg-destructive/10 hover:text-destructive gap-2 font-black uppercase tracking-widest text-[10px]"
               >
                 <LogOut className="w-4 h-4" />
-                <span className="hidden xl:inline">Exit</span>
+                <span>Sign Out</span>
               </Button>
             )}
           </div>
