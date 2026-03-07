@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { User, MessageCircle, Heart, ShieldCheck, LogOut, Zap } from 'lucide-react';
+import { User, MessageCircle, Heart, ShieldCheck, LogOut, Zap, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth as useFirebaseAuth, useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -44,7 +44,8 @@ export function Navigation() {
   const navItems = [
     { label: 'Profile', href: '/profile', icon: User },
     { label: 'Vera AI', href: '/bot', icon: Zap },
-    { label: 'Matches', href: '/matches', icon: Heart, showBadge: true },
+    { label: 'Matches', href: '/matches', icon: Heart },
+    { label: 'Requests', href: '/requests', icon: Inbox, showBadge: true },
     { label: 'Chat', href: '/messages', icon: MessageCircle },
     { label: 'Verify', href: '/verification', icon: ShieldCheck },
   ];

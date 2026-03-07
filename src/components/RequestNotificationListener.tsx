@@ -5,7 +5,6 @@ import { useEffect, useRef } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles } from 'lucide-react';
 import { ChatRequest } from '@/types';
 
 /**
@@ -44,7 +43,7 @@ export function RequestNotificationListener() {
       
       toast({
         title: "New Vibe Check!",
-        description: `${newRequest.senderName} wants to connect with you. Check your Matches!`,
+        description: `${newRequest.senderName} wants to connect with you. Check your Requests tab!`,
       });
     }
 

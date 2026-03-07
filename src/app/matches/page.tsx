@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   Dialog, 
@@ -14,12 +14,11 @@ import {
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
-import { Sparkles, BrainCircuit, Check, Crown, MessageCircle, Loader2, Info, Zap, Heart, RefreshCw, Star, UserPlus, XCircle, CheckCircle } from 'lucide-react';
+import { Sparkles, BrainCircuit, Check, Crown, MessageCircle, Loader2, Info, Zap, Heart, RefreshCw, Star, UserPlus } from 'lucide-react';
 import Image from 'next/image';
 import { 
   useFirestore, 
   updateDocumentNonBlocking,
-  addDocumentNonBlocking,
   useCollection,
   useMemoFirebase,
   setDocumentNonBlocking
@@ -28,9 +27,10 @@ import { cn } from '@/lib/utils';
 import { findMatches } from '@/ai/flows/find-matches-flow';
 import { useToast } from '@/hooks/use-toast';
 import { UpgradeModal } from '@/components/UpgradeModal';
-import { doc, collection, query, where, orderBy, getDoc } from 'firebase/firestore';
+import { doc, collection, query, where } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { ChatRequest } from '@/types';
+import Link from 'next/link';
 
 const SIMULATED_PROFILES = [
   {
@@ -63,7 +63,7 @@ const SIMULATED_PROFILES = [
     gender: 'Female',
     age: 30,
     photoURL: 'https://picsum.photos/seed/mary4/600/800',
-    summary: "Mary is a 30-year-old female in Bangkok seeking marriage. Secure attachment style, high self-worth."
+    summary: "Mary is a 30-year-old female from Bangkok seeking marriage. Secure attachment style, high self-worth."
   },
   {
     id: 'sim_5',
@@ -79,7 +79,7 @@ const SIMULATED_PROFILES = [
     gender: 'Female',
     age: 36,
     photoURL: 'https://picsum.photos/seed/su6/600/800',
-    summary: "Su is a 36-year-old female in Bangkok seeking marriage for companionship and mutual growth."
+    summary: "Su is a 36-year-old female from Bangkok seeking marriage for companionship and mutual growth."
   }
 ];
 
@@ -95,18 +95,6 @@ export default function MatchesPage() {
   const [selectedAnalysis, setSelectedAnalysis] = useState<any>(null);
   const [requestConfirmation, setRequestConfirmation] = useState<any>(null);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
-
-  // Real-time chat requests for the user
-  const requestsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-      collection(db, 'chat_requests'),
-      where('receiverId', '==', user.uid),
-      where('status', '==', 'pending')
-    );
-  }, [db, user]);
-
-  const { data: incomingRequests } = useCollection<ChatRequest>(requestsQuery);
 
   // Real-time outgoing requests to prevent duplicates
   const outgoingQuery = useMemoFirebase(() => {
@@ -180,14 +168,12 @@ export default function MatchesPage() {
       return;
     }
 
-    // Check if we already have an accepted conversation
     const existingConv = outgoingRequests?.find(r => r.receiverId === match.id && r.status === 'accepted');
     if (existingConv) {
       router.push('/messages');
       return;
     }
 
-    // Check if we already have a pending request
     const pending = outgoingRequests?.find(r => r.receiverId === match.id && r.status === 'pending');
     if (pending) {
       toast({ description: `Request to ${match.name} is already pending.` });
@@ -220,12 +206,10 @@ export default function MatchesPage() {
 
     setDocumentNonBlocking(doc(db, 'chat_requests', requestId), requestData, { merge: true });
     
-    // DEMO AUTO-ACCEPT SIMULATION
     if (requestConfirmation.id.startsWith('sim_')) {
       setTimeout(() => {
         updateDocumentNonBlocking(doc(db, 'chat_requests', requestId), { status: 'accepted' });
         
-        // Create conversation room
         const convId = `conv_${user.uid}_${requestConfirmation.id}`;
         setDocumentNonBlocking(doc(db, 'conversations', convId), {
           id: convId,
@@ -242,32 +226,6 @@ export default function MatchesPage() {
     toast({ title: "Request Sent", description: `We've sent your vibe check to ${requestConfirmation.name}.` });
     setRequestConfirmation(null);
     setIsSendingRequest(false);
-  };
-
-  const handleAcceptRequest = async (request: ChatRequest) => {
-    if (!user) return;
-    
-    const convId = `conv_${request.senderId}_${user.uid}`;
-    
-    // Update request
-    updateDocumentNonBlocking(doc(db, 'chat_requests', request.id), { status: 'accepted' });
-    
-    // Create conversation
-    setDocumentNonBlocking(doc(db, 'conversations', convId), {
-      id: convId,
-      participantIds: [request.senderId, user.uid],
-      lastMessage: "Vibe check passed! You can now chat.",
-      updatedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString()
-    }, { merge: true });
-
-    toast({ title: "Request Accepted", description: "Conversation unlocked!" });
-    router.push('/messages');
-  };
-
-  const handleDeclineRequest = (request: ChatRequest) => {
-    updateDocumentNonBlocking(doc(db, 'chat_requests', request.id), { status: 'rejected' });
-    toast({ description: "Request declined." });
   };
 
   if (loading) return (
@@ -304,42 +262,6 @@ export default function MatchesPage() {
           </Button>
         )}
       </header>
-
-      {/* Incoming Requests Section */}
-      {incomingRequests && incomingRequests.length > 0 && (
-        <section className="mb-12 space-y-4">
-          <h2 className="text-xl font-black px-2 uppercase tracking-tight flex items-center gap-2">
-            <UserPlus className="text-primary w-5 h-5" /> Incoming Requests
-          </h2>
-          <div className="grid grid-cols-1 gap-4">
-            {incomingRequests.map((req) => (
-              <Card key={req.id} className="rounded-3xl border-none shadow-lg bg-white overflow-hidden animate-in slide-in-from-top-4">
-                <div className="flex flex-col md:flex-row p-6 gap-6 items-center">
-                  <Avatar className="w-20 h-20 rounded-2xl shadow-md border-4 border-accent">
-                    <AvatarImage src={req.senderPhotoURL} />
-                    <AvatarFallback>{req.senderName[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
-                      <h4 className="text-lg font-black">{req.senderName}</h4>
-                      <Badge className="bg-primary/10 text-primary border-none text-[10px]">{req.matchScore}% Match</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground font-medium italic">"{req.reason}"</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" className="rounded-xl h-12 gap-2 text-destructive hover:bg-destructive/10" onClick={() => handleDeclineRequest(req)}>
-                      <XCircle className="w-4 h-4" /> Decline
-                    </Button>
-                    <Button className="rounded-xl h-12 gap-2 bg-verified hover:bg-verified/90 text-white" onClick={() => handleAcceptRequest(req)}>
-                      <CheckCircle className="w-4 h-4" /> Accept
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </section>
-      )}
 
       {!profile?.personalityProfile ? (
         <Card className="p-16 text-center rounded-[3rem] border-none shadow-2xl bg-white animate-in zoom-in-95">
@@ -510,7 +432,3 @@ export default function MatchesPage() {
     </div>
   );
 }
-
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
