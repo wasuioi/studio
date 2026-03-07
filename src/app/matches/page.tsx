@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -84,7 +83,9 @@ export default function MatchesPage() {
         currentUser: {
           id: user.uid,
           name: profile.displayName || profile.name,
-          summary: profile.personalityProfile.summary
+          persona: profile.personalityProfile.user_persona,
+          ideal_partner: profile.personalityProfile.ideal_partner,
+          weights: profile.personalityProfile.weights
         },
         potentialMatches: SIMULATED_PROFILES.map(p => ({
           id: p.id,
@@ -105,6 +106,7 @@ export default function MatchesPage() {
       setMatches(processedMatches);
       toast({ title: "Vibe Analysis Complete!", description: "We found some high-energy connections for you." });
     } catch (err) {
+      console.error(err);
       toast({ variant: "destructive", title: "Scan Failed", description: "Vera is having trouble sensing right now." });
     } finally {
       setIsScanning(false);
@@ -135,7 +137,7 @@ export default function MatchesPage() {
           <h1 className="text-4xl font-black tracking-tight flex items-center gap-3">
             Your Vibe Matches <Sparkles className="text-primary fill-current w-8 h-8" />
           </h1>
-          <p className="text-muted-foreground font-medium mt-2">AI-powered compatibility analysis based on your energy.</p>
+          <p className="text-muted-foreground font-medium mt-2">Weighted AI-powered compatibility analysis based on your energy.</p>
         </div>
         
         {profile?.personalityProfile && (
@@ -145,7 +147,7 @@ export default function MatchesPage() {
             className="rounded-2xl h-14 px-8 font-black truevibe-gradient border-none shadow-xl shadow-primary/20 active:scale-95 transition-all"
           >
             {isScanning ? (
-              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Analyzing Vibes...</>
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Calculating Weights...</>
             ) : (
               <><Zap className="mr-2 h-5 w-5 fill-current" /> Scan for Matches</>
             )}
@@ -157,7 +159,7 @@ export default function MatchesPage() {
         <Card className="p-16 text-center rounded-[3rem] border-none shadow-2xl bg-white animate-in zoom-in-95">
           <BrainCircuit className="w-20 h-20 mx-auto mb-6 text-primary opacity-20" />
           <h3 className="text-3xl font-black mb-3">Vibe Profile Missing</h3>
-          <p className="text-muted-foreground font-medium mb-8 max-w-sm mx-auto">Complete your interview with Vera to unlock AI-powered matching.</p>
+          <p className="text-muted-foreground font-medium mb-8 max-w-sm mx-auto">Complete your vibe-check with Vera to unlock weighted matching.</p>
           <Link href="/bot">
             <Button className="rounded-2xl h-16 px-12 text-xl font-black truevibe-gradient border-none shadow-lg">Start Vibe Check</Button>
           </Link>

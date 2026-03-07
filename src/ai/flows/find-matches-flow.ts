@@ -1,44 +1,56 @@
-
 'use server';
 /**
- * @fileOverview AI flow to calculate compatibility between users and suggest matches.
+ * @fileOverview Weighted Matching Engine for TrueVibe.
+ * Calculates compatibility using persona-to-persona alignment and category weights.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 const ProfileSchema = z.object({
   id: z.string(),
   name: z.string(),
-  traits: z.object({
-    communicationStyle: z.string().optional(),
-    introversionLevel: z.number().optional(),
-    emotionalExpression: z.number().optional(),
-    lifestyle: z.string().optional(),
-    relationshipIntent: z.string().optional(),
-    values: z.array(z.string()).optional(),
+  persona: z.object({
+    summary: z.string(),
+    tags: z.array(z.string()),
   }).optional(),
-  summary: z.string(),
+  summary: z.string().describe('Full descriptive summary of the potential match.'),
 });
 
 const FindMatchesInputSchema = z.object({
-  currentUser: ProfileSchema,
+  currentUser: z.object({
+    id: z.string(),
+    name: z.string(),
+    persona: z.object({
+      summary: z.string(),
+      tags: z.array(z.string()),
+    }),
+    ideal_partner: z.object({
+      summary: z.string(),
+      tags: z.array(z.string()),
+    }),
+    weights: z.object({
+      career: z.number(),
+      lifestyle: z.number(),
+      emotionalIntelligence: z.number(),
+      humor: z.number(),
+      physicalActivity: z.number(),
+    }),
+  }),
   potentialMatches: z.array(ProfileSchema),
 });
-export type FindMatchesInput = z.infer<typeof FindMatchesInputSchema>;
 
 const MatchResultSchema = z.object({
   targetUserId: z.string(),
   score: z.number().min(0).max(100),
-  reason: z.string().describe('A short, 1-2 sentence explanation of the compatibility.'),
+  reason: z.string().describe('A 1-2 sentence explanation focusing on why their vibes match based on user weights.'),
 });
 
 const FindMatchesOutputSchema = z.object({
   matches: z.array(MatchResultSchema),
 });
-export type FindMatchesOutput = z.infer<typeof FindMatchesOutputSchema>;
 
-export async function findMatches(input: FindMatchesInput): Promise<FindMatchesOutput> {
+export async function findMatches(input: z.infer<typeof FindMatchesInputSchema>): Promise<z.infer<typeof FindMatchesOutputSchema>> {
   return findMatchesFlow(input);
 }
 
@@ -46,19 +58,32 @@ const prompt = ai.definePrompt({
   name: 'findMatchesPrompt',
   input: { schema: FindMatchesInputSchema },
   output: { schema: FindMatchesOutputSchema },
-  prompt: `You are a high-end matchmaking AI specialist. Your task is to calculate compatibility scores (0-100) between a User and a list of Potential Matches based on their detailed personality summaries and traits.
+  prompt: `You are a high-end Relationship Psychologist and Matching Specialist. 
+Your task is to calculate compatibility scores (0-100) between a User and Potential Matches.
 
-Compatibility should be based on:
-1. Values Alignment: Do their core values, cultural backgrounds, and long-term goals (marriage, children) overlap?
-2. Communication Style: Will their communication styles (direct vs. reflective, intellectual vs. emotional) complement each other?
-3. Lifestyle Compatibility: Social vs. Homebody, Career-focused vs. Adventure-seeking, Independence vs. Togetherness needs.
-4. Emotional Intelligence: Can they support each other's emotional needs and conflict resolution styles?
+## Matching Logic:
+1. **Core Alignment**: Compare the User's 'Ideal Partner' profile against the Potential Match's persona.
+2. **Weighted Priority**: Use the User's Weights (1-5) to prioritize certain categories. 
+   - If User weights 'Emotional Intelligence' as 5, a match with high EQ scores much higher.
+   - If 'Career' is weighted 1, differences in ambition are less penalized.
+3. **Vibe Match**: Look for overlap in 'Trait Tags'.
 
-User Profile:
+## User Profile:
 Name: {{{currentUser.name}}}
-Summary: {{{currentUser.summary}}}
+Persona: {{{currentUser.persona.summary}}}
+Tags: {{#each currentUser.persona.tags}}{{{this}}}, {{/each}}
 
-Potential Matches:
+## User's Ideal Partner:
+Desire: {{{currentUser.ideal_partner.summary}}}
+Ideal Tags: {{#each currentUser.ideal_partner.tags}}{{{this}}}, {{/each}}
+Weights (Priority):
+- Career: {{{currentUser.weights.career}}}
+- Lifestyle: {{{currentUser.weights.lifestyle}}}
+- EQ: {{{currentUser.weights.emotionalIntelligence}}}
+- Humor: {{{currentUser.weights.humor}}}
+- Activity: {{{currentUser.weights.physicalActivity}}}
+
+## Potential Matches:
 {{#each potentialMatches}}
 ---
 ID: {{{this.id}}}
@@ -66,9 +91,7 @@ Name: {{{this.name}}}
 Summary: {{{this.summary}}}
 {{/each}}
 
-Analyze the detailed summaries carefully. Some profiles have specific deal-breakers (e.g., tattoos, religion, smoking). If the user summary mentions these, factor them heavily into the score.
-
-Return a ranked list of all matches with scores and concise reasons (max 2 sentences).`,
+Rank matches by score and provide a concise reason for the vibe match.`,
 });
 
 const findMatchesFlow = ai.defineFlow(

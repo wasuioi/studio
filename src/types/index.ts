@@ -1,4 +1,3 @@
-
 export interface UserProfile {
   id: string;
   uid: string;
@@ -20,8 +19,22 @@ export interface UserProfile {
   updatedAt: string;
   tier: 'free' | 'lite' | 'premium';
   personalityProfile?: {
-    traits: any;
-    summary: string;
+    user_persona: {
+      summary: string;
+      tags: string[];
+    };
+    ideal_partner: {
+      summary: string;
+      tags: string[];
+    };
+    weights: {
+      career: number;
+      lifestyle: number;
+      emotionalIntelligence: number;
+      humor: number;
+      physicalActivity: number;
+    };
+    readiness_score: number;
   };
 }
 
