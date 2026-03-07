@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Lock, Send, MessageCircle, ArrowLeft, Loader2, Crown, Sparkles } from 'lucide-react';
+import { Lock, Send, MessageCircle, ArrowLeft, Loader2, Crown, Sparkles, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { 
   useFirestore, 
@@ -17,11 +17,24 @@ import {
   useDoc,
   useMemoFirebase, 
   addDocumentNonBlocking, 
-  updateDocumentNonBlocking 
+  updateDocumentNonBlocking,
+  deleteDocumentNonBlocking
 } from '@/firebase';
 import { collection, query, where, orderBy, doc, limit } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { UpgradeModal } from '@/components/UpgradeModal';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // Static lookup for simulated profiles to ensure they display correctly in the chat list
 const SIM_PROFILES: Record<string, { name: string; photo: string }> = {
@@ -83,6 +96,7 @@ function ConversationListItem({ conversation, currentUserId, isActive, onClick }
 export default function MessagesPage() {
   const { profile, user, loading } = useAuth();
   const db = useFirestore();
+  const { toast } = useToast();
   const [activeConversation, setActiveConversation] = useState<any>(null);
   const [messageText, setMessageText] = useState('');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -91,7 +105,7 @@ export default function MessagesPage() {
   const isVerified = profile?.identityVerified;
   const isSubscriber = profile?.tier === 'premium' || profile?.tier === 'lite';
 
-  // Fetch all conversations for the user - even if not premium yet, so they can see their matches
+  // Fetch all conversations for the user
   const convQuery = useMemoFirebase(() => {
     if (!user?.uid) return null;
     return query(
@@ -154,6 +168,18 @@ export default function MessagesPage() {
     });
     
     setMessageText('');
+  };
+
+  const handleDeleteConversation = () => {
+    if (!activeConversation || !user) return;
+    
+    deleteDocumentNonBlocking(doc(db, 'conversations', activeConversation.id));
+    
+    setActiveConversation(null);
+    toast({
+      title: "Conversation Deleted",
+      description: "You've removed this chat from your list.",
+    });
   };
 
   if (loading || convLoading) return (
@@ -252,6 +278,28 @@ export default function MessagesPage() {
                   </div>
                 </div>
               </div>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-xl hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 className="w-5 h-5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-2xl font-black">Delete Conversation?</AlertDialogTitle>
+                    <AlertDialogDescription className="font-medium">
+                      This will remove the chat from your list for good. You'll need to send a new vibe check to connect with {activeDisplayName} again.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteConversation} className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Delete Chat
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
 
             {/* Messages List */}

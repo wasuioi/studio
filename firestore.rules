@@ -57,6 +57,7 @@ service cloud.firestore {
       // Conversations created via requests, usually server-side or after verification
       allow create: if isSignedIn() && isEmailVerified();
       allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow delete: if isSignedIn() && request.auth.uid in resource.data.participantIds;
 
       match /messages/{messageId} {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
