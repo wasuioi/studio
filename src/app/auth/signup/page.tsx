@@ -1,12 +1,11 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth as useFirebaseAuth, useFirestore } from '@/firebase';
 import { 
   createUserWithEmailAndPassword, 
-  sendEmailVerification, 
-  signInWithEmailAndPassword 
+  sendEmailVerification 
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -14,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Loader2, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/Logo';
@@ -25,7 +24,6 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showResetLink, setShowResetLink] = useState(false);
   
   const auth = useFirebaseAuth();
   const db = useFirestore();
@@ -40,7 +38,6 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setShowResetLink(false);
     
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -70,6 +67,7 @@ export default function SignupPage() {
         emailVerified: false,
         identityVerified: false,
         profileCompleted: false,
+        verificationStatus: 'not_verified',
         tier: 'free',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -83,7 +81,6 @@ export default function SignupPage() {
       router.push('/auth/verify');
     } catch (err: any) {
       if (err.code === 'auth/email-already-in-use') {
-        setShowResetLink(true);
         setError("This email is already registered.");
       } else {
         setError(err.message || "Could not create account.");
@@ -113,11 +110,6 @@ export default function SignupPage() {
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm font-bold p-4 rounded-2xl border border-destructive/20 animate-in fade-in slide-in-from-top-1">
                 {error}
-                {showResetLink && process.env.NODE_ENV === 'development' && (
-                  <Link href="/admin/reset-user" className="block mt-2 text-primary hover:underline flex items-center gap-1">
-                    <RefreshCw className="w-3 h-3" /> Reset this account (Dev Only)
-                  </Link>
-                )}
               </div>
             )}
             <div className="space-y-2">
