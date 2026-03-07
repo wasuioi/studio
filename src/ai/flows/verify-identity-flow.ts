@@ -38,7 +38,6 @@ export async function verifyIdentity(input: VerifyIdentityInput): Promise<Verify
 
 const prompt = ai.definePrompt({
   name: 'verifyIdentityPrompt',
-  model: 'googleai/gemini-1.5-flash',
   input: { schema: VerifyIdentityInputSchema },
   output: { schema: VerifyIdentityOutputSchema },
   config: {

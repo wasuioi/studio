@@ -41,7 +41,6 @@ export async function aiPersonalityInterview(input: AiPersonalityInterviewInput)
 
 const prompt = ai.definePrompt({
   name: 'aiPersonalityInterviewPrompt',
-  model: 'googleai/gemini-1.5-flash',
   input: { schema: AiPersonalityInterviewInputSchema },
   output: { schema: AiPersonalityInterviewOutputSchema },
   config: {
