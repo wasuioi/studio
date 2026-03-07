@@ -4,8 +4,8 @@ import { FirebaseClientProvider } from '@/firebase';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'HarmonyAI - Find Your Perfect Match',
-  description: 'AI-driven dating platform for meaningful connections.',
+  title: 'TrueVibe - Real Connections, Real Vibes',
+  description: 'AI-powered relationship companion helping you find meaningful connections through authentic vibe analysis.',
 };
 
 export default function RootLayout({
@@ -18,7 +18,7 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased min-h-screen bg-background pb-20 md:pb-0">
         <FirebaseClientProvider>

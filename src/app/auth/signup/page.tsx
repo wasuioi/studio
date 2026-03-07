@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -9,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { BrainCircuit, Loader2, ShieldCheck } from 'lucide-react';
+import { Sparkles, Loader2, ShieldCheck, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 
@@ -30,7 +29,7 @@ export default function SignupPage() {
     e.preventDefault();
     
     if (password !== confirmPassword) {
-      toast({ variant: "destructive", title: "Passwords match error", description: "Passwords do not match." });
+      toast({ variant: "destructive", title: "Match Error", description: "Passwords do not match." });
       return;
     }
 
@@ -38,7 +37,7 @@ export default function SignupPage() {
       toast({ 
         variant: "destructive", 
         title: "Weak Password", 
-        description: "Password must be at least 8 characters and contain both letters and numbers." 
+        description: "Must be 8+ chars with letters and numbers." 
       });
       return;
     }
@@ -49,8 +48,8 @@ export default function SignupPage() {
       await sendEmailVerification(userCredential.user);
       
       toast({
-        title: "Account Created",
-        description: "Please check your email for a verification link.",
+        title: "Welcome to TrueVibe!",
+        description: "Check your email for a verification link.",
       });
       
       router.push('/auth/verify');
@@ -66,73 +65,78 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl">
-        <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center">
-            <BrainCircuit className="w-8 h-8 text-primary" />
+    <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-full -z-10 opacity-10">
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary rounded-full blur-[100px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-secondary rounded-full blur-[100px]" />
+      </div>
+
+      <Card className="w-full max-w-md rounded-[3rem] border-none shadow-2xl bg-white/90 backdrop-blur-xl">
+        <CardHeader className="space-y-4 text-center pt-10">
+          <div className="mx-auto truevibe-gradient w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-xl">
+            <Star className="w-10 h-10 text-white fill-current" />
           </div>
           <div>
-            <CardTitle className="text-3xl font-black">Join HarmonyAI</CardTitle>
-            <CardDescription>Start your journey towards meaningful connection.</CardDescription>
+            <CardTitle className="text-4xl font-black tracking-tighter">Join TrueVibe</CardTitle>
+            <CardDescription className="font-medium">Discover connections that match your energy.</CardDescription>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-8">
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="font-bold text-xs uppercase tracking-widest ml-1">Email</Label>
               <Input 
                 id="email" 
                 type="email" 
-                placeholder="name@example.com" 
+                placeholder="you@vibe.com" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required 
-                className="rounded-xl h-12"
+                className="rounded-2xl h-14 bg-muted/30 border-none shadow-inner"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" title="password" className="font-bold text-xs uppercase tracking-widest ml-1">Password</Label>
               <Input 
                 id="password" 
                 type="password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required 
-                className="rounded-xl h-12"
+                className="rounded-2xl h-14 bg-muted/30 border-none shadow-inner"
               />
-              <p className="text-[10px] text-muted-foreground px-1">Min. 8 chars, must include letters and numbers.</p>
+              <p className="text-[10px] text-muted-foreground font-bold px-1">Min. 8 chars, letters and numbers.</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" title="confirm password" className="font-bold text-xs uppercase tracking-widest ml-1">Confirm</Label>
               <Input 
                 id="confirmPassword" 
                 type="password" 
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required 
-                className="rounded-xl h-12"
+                className="rounded-2xl h-14 bg-muted/30 border-none shadow-inner"
               />
             </div>
             <Button 
               type="submit" 
-              className="w-full h-14 rounded-2xl font-bold text-lg shadow-lg"
+              className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none mt-4"
               disabled={loading}
             >
               {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Create Account"}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <p className="text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link href="/auth/login" className="text-primary font-bold hover:underline">
+        <CardFooter className="flex flex-col gap-4 pb-10">
+          <p className="text-sm font-medium text-muted-foreground">
+            Already a member?{" "}
+            <Link href="/auth/login" className="text-primary font-black hover:underline underline-offset-4">
               Log in
             </Link>
           </p>
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-accent/50 px-4 py-2 rounded-xl">
-            <ShieldCheck className="w-4 h-4 text-primary" />
-            Your data is encrypted and secure with HarmonyAI.
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground bg-accent/50 px-6 py-3 rounded-2xl font-bold uppercase tracking-wider">
+            <ShieldCheck className="w-4 h-4 text-primary fill-current" />
+            End-to-End Vibe Security
           </div>
         </CardFooter>
       </Card>

@@ -6,7 +6,7 @@ import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BrainCircuit, Send, Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Send, Zap, Loader2, Star } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
 import { doc, collection } from 'firebase/firestore';
 import { 
@@ -46,7 +46,7 @@ export default function AIProfileBot() {
     } else {
       setSessionMessages([{ 
         role: 'model' as const, 
-        message: "Hi! I'm HarmonyAI. I'll help you discover your dating personality. Ready to start?" 
+        message: "Hi! I'm Vera, your TrueVibe relationship companion. I'm here to understand your unique energy and help find your perfect match. Ready to vibe?" 
       }]);
     }
   }, [personalityData]);
@@ -128,8 +128,8 @@ export default function AIProfileBot() {
         });
 
         toast({
-          title: "Profile Complete!",
-          description: "HarmonyAI has analyzed your personality.",
+          title: "Vibe Check Complete!",
+          description: "Vera has analyzed your personality profile.",
         });
       }
 
@@ -137,8 +137,8 @@ export default function AIProfileBot() {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "AI Error",
-        description: "Harmony encountered an issue. Please try again.",
+        title: "AI Connection Error",
+        description: "Vera encountered a technical issue. Please try again.",
       });
     } finally {
       setIsAiThinking(false);
@@ -152,64 +152,67 @@ export default function AIProfileBot() {
   );
 
   return (
-    <div className="max-w-2xl mx-auto h-screen flex flex-col p-4 md:pt-24 relative">
+    <div className="max-w-2xl mx-auto h-screen flex flex-col p-4 md:pt-28 relative">
       <Navigation />
       
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/20 p-2 rounded-2xl">
-            <BrainCircuit className="text-primary w-6 h-6" />
+      <div className="flex items-center justify-between mb-8 px-2">
+        <div className="flex items-center gap-4">
+          <div className="truevibe-gradient p-3 rounded-2xl shadow-lg">
+            <Zap className="text-white w-6 h-6 fill-current" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">HarmonyAI Interview</h1>
-            <p className="text-xs text-muted-foreground">Discovering the real you</p>
+            <h1 className="text-2xl font-black text-foreground tracking-tight">Vera AI</h1>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 bg-verified rounded-full animate-pulse" />
+              <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Active Analysis</p>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 bg-white rounded-3xl shadow-sm border border-border overflow-hidden flex flex-col mb-24 md:mb-6">
-        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-          <div className="space-y-4">
+      <div className="flex-1 bg-white rounded-[3rem] shadow-2xl shadow-primary/5 border border-border/50 overflow-hidden flex flex-col mb-24 md:mb-8">
+        <ScrollArea className="flex-1 p-6" ref={scrollRef}>
+          <div className="space-y-6">
             {sessionMessages.map((m, i) => (
               <div key={i} className={cn(
-                "flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300",
+                "flex flex-col max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-500",
                 m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
               )}>
                 <div className={cn(
-                  "p-4 rounded-3xl text-sm leading-relaxed",
+                  "p-5 rounded-[2rem] text-sm leading-relaxed font-medium",
                   m.role === 'user' 
-                    ? "bg-primary text-white rounded-tr-none shadow-sm" 
-                    : "bg-muted text-foreground rounded-tl-none border border-border"
+                    ? "truevibe-gradient text-white rounded-tr-none shadow-md" 
+                    : "bg-muted/50 text-foreground rounded-tl-none border border-border/50"
                 )}>
                   {m.message}
                 </div>
               </div>
             ))}
             {isAiThinking && (
-              <div className="flex items-center gap-2 text-primary text-xs animate-pulse font-medium ml-2">
-                <Sparkles className="w-3 h-3" /> Harmony is thinking...
+              <div className="flex items-center gap-2 text-primary text-xs animate-pulse font-black uppercase tracking-widest ml-4">
+                <Star className="w-3 h-3 fill-current" /> Vera is sensing...
               </div>
             )}
           </div>
         </ScrollArea>
 
-        <div className="p-4 border-t bg-background/50">
-          <div className="relative flex items-center gap-2">
+        <div className="p-6 border-t bg-background/30 backdrop-blur-sm">
+          <div className="relative flex items-center gap-3">
             <Input 
-              placeholder="Type your answer..." 
+              placeholder="Tell Vera about yourself..." 
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              className="rounded-2xl h-12 bg-white border-none shadow-inner"
+              className="rounded-2xl h-14 bg-white border-none shadow-inner px-6 text-base focus-visible:ring-primary/20"
               disabled={isAiThinking}
             />
             <Button 
               size="icon" 
-              className="shrink-0 rounded-xl bg-primary hover:bg-primary/90 transition-transform active:scale-95"
+              className="shrink-0 w-14 h-14 rounded-2xl truevibe-gradient hover:scale-105 transition-all duration-300 active:scale-95 shadow-lg border-none"
               onClick={handleSend}
               disabled={isAiThinking || !input.trim()}
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-5 h-5" />
             </Button>
           </div>
         </div>
