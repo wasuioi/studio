@@ -29,7 +29,7 @@ service cloud.firestore {
       return isSignedIn() && 
              data != null && 
              data.participantIds != null && 
-             data.participantIds.hasAny([request.auth.uid]);
+             request.auth.uid in data.participantIds;
     }
 
     // --- COLLECTION RULES ---
@@ -67,14 +67,6 @@ service cloud.firestore {
         allow get: if isSignedIn();
         allow create, update, delete: if isOwner(userId);
       }
-
-      /**
-       * @description User-specific match lists.
-       * @path /user_profiles/{userId}/matches/{matchId}
-       */
-      match /matches/{matchId} {
-        allow read, write: if isOwner(userId);
-      }
     }
 
     /**
@@ -82,6 +74,7 @@ service cloud.firestore {
      * @path /conversations/{conversationId}
      */
     match /conversations/{conversationId} {
+      // Only participants can see the conversation metadata
       allow get, list: if isParticipant(resource.data);
       allow create: if isSignedIn() && isParticipant(request.resource.data);
       allow update: if isParticipant(resource.data) && isParticipant(request.resource.data);
@@ -91,9 +84,11 @@ service cloud.firestore {
        * @path /conversations/{conversationId}/messages/{messageId}
        */
       match /messages/{messageId} {
-        // Fallback to basic check if denormalized participantIds are missing
-        allow read: if isSignedIn(); 
-        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+        // Only participants of the parent conversation can read or create messages
+        allow read: if isParticipant(get(/databases/$(database)/documents/conversations/$(conversationId)).data);
+        allow create: if isSignedIn() && 
+                     request.resource.data.senderId == request.auth.uid &&
+                     isParticipant(get(/databases/$(database)/documents/conversations/$(conversationId)).data);
       }
     }
 

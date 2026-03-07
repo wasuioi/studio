@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
 import { Card } from '@/components/ui/card';
@@ -14,12 +13,67 @@ import Link from 'next/link';
 import { 
   useFirestore, 
   useCollection, 
+  useDoc,
   useMemoFirebase, 
   addDocumentNonBlocking, 
   updateDocumentNonBlocking 
 } from '@/firebase';
 import { collection, query, where, orderBy, doc, limit } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+
+/**
+ * Component to display a single conversation in the sidebar.
+ * Fetches the other participant's profile for a personalized look.
+ */
+function ConversationListItem({ conversation, currentUserId, isActive, onClick }: { 
+  conversation: any, 
+  currentUserId: string, 
+  isActive: boolean,
+  onClick: () => void 
+}) {
+  const db = useFirestore();
+  const otherParticipantId = conversation.participantIds.find((id: string) => id !== currentUserId);
+  
+  const profileRef = useMemoFirebase(() => {
+    if (!otherParticipantId) return null;
+    return doc(db, 'user_profiles', otherParticipantId);
+  }, [db, otherParticipantId]);
+
+  const { data: profile } = useDoc<any>(profileRef);
+
+  return (
+    <button 
+      onClick={onClick}
+      className={cn(
+        "w-full flex items-center gap-3 p-4 rounded-3xl transition-all",
+        isActive ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+      )}
+    >
+      <div className="relative shrink-0">
+        <Avatar className="w-14 h-14 rounded-2xl">
+          <AvatarImage src={profile?.photoURL} />
+          <AvatarFallback>{profile?.displayName?.[0] || 'U'}</AvatarFallback>
+        </Avatar>
+        {profile?.isVerified && (
+          <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm">
+            <CheckCircle2 className="w-4 h-4 text-verified" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 text-left overflow-hidden">
+        <div className="flex justify-between items-center mb-0.5">
+          <span className="font-bold text-sm truncate">{profile?.displayName || 'Harmony User'}</span>
+          <span className="text-[10px] text-muted-foreground">
+            {conversation.updatedAt ? new Date(conversation.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+          </span>
+        </div>
+        <p className="text-xs truncate text-muted-foreground">
+          {conversation.lastMessage || "No messages yet"}
+        </p>
+      </div>
+    </button>
+  );
+}
 
 export default function MessagesPage() {
   const { profile, user, loading } = useAuth();
@@ -29,7 +83,7 @@ export default function MessagesPage() {
 
   // Fetch conversations where current user is a participant
   const convQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !user.uid) return null;
     return query(
       collection(db, 'conversations'),
       where('participantIds', 'array-contains', user.uid),
@@ -51,6 +105,14 @@ export default function MessagesPage() {
 
   const { data: messages } = useCollection(messagesQuery);
 
+  // Fetch profile for the active chat header
+  const otherParticipantId = activeConversation?.participantIds.find((id: string) => id !== user?.uid);
+  const activeChatProfileRef = useMemoFirebase(() => {
+    if (!otherParticipantId) return null;
+    return doc(db, 'user_profiles', otherParticipantId);
+  }, [db, otherParticipantId]);
+  const { data: activeChatProfile } = useDoc<any>(activeChatProfileRef);
+
   const handleSendMessage = () => {
     if (!messageText.trim() || !user || !activeConversation) return;
 
@@ -66,7 +128,7 @@ export default function MessagesPage() {
       messageData
     );
 
-    // Update conversation last message timestamp
+    // Update conversation last message and timestamp
     updateDocumentNonBlocking(doc(db, 'conversations', activeConversation.id), {
       lastMessage: messageText,
       updatedAt: new Date().toISOString(),
@@ -130,34 +192,13 @@ export default function MessagesPage() {
         <ScrollArea className="flex-1">
           <div className="px-3 pb-6 space-y-1">
             {conversations?.map((conv) => (
-              <button 
+              <ConversationListItem 
                 key={conv.id} 
+                conversation={conv} 
+                currentUserId={user?.uid || ''}
+                isActive={activeConversation?.id === conv.id}
                 onClick={() => setActiveConversation(conv)}
-                className={cn(
-                  "w-full flex items-center gap-3 p-4 rounded-3xl transition-all",
-                  activeConversation?.id === conv.id ? "bg-accent text-accent-foreground" : "hover:bg-muted"
-                )}
-              >
-                <div className="relative shrink-0">
-                  <Avatar className="w-14 h-14 rounded-2xl">
-                    <AvatarFallback>U</AvatarFallback>
-                  </Avatar>
-                  <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm">
-                    <CheckCircle2 className="w-4 h-4 text-verified" />
-                  </div>
-                </div>
-                <div className="flex-1 text-left overflow-hidden">
-                  <div className="flex justify-between items-center mb-0.5">
-                    <span className="font-bold text-sm">Conversation</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {conv.updatedAt ? new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                    </span>
-                  </div>
-                  <p className="text-xs truncate text-muted-foreground">
-                    {conv.lastMessage || "No messages yet"}
-                  </p>
-                </div>
-              </button>
+              />
             ))}
             {!convLoading && (!conversations || conversations.length === 0) && (
               <div className="text-center py-12 text-muted-foreground px-6">
@@ -195,14 +236,15 @@ export default function MessagesPage() {
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <Avatar className="w-10 h-10 rounded-xl">
-                  <AvatarFallback>U</AvatarFallback>
+                  <AvatarImage src={activeChatProfile?.photoURL} />
+                  <AvatarFallback>{activeChatProfile?.displayName?.[0] || 'U'}</AvatarFallback>
                 </Avatar>
                 <div>
                   <h3 className="font-bold text-sm leading-tight flex items-center gap-1">
-                    Harmony User
-                    <CheckCircle2 className="w-3 h-3 text-verified" />
+                    {activeChatProfile?.displayName || 'Harmony User'}
+                    {activeChatProfile?.isVerified && <CheckCircle2 className="w-3 h-3 text-verified" />}
                   </h3>
-                  <span className="text-[10px] text-verified font-medium">Verified Match</span>
+                  {activeChatProfile?.isVerified && <span className="text-[10px] text-verified font-medium">Verified Match</span>}
                 </div>
               </div>
               <Button variant="ghost" size="icon" className="rounded-full">
