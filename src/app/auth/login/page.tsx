@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Loader2, ArrowRight, Sparkles } from 'lucide-react';
+import { Loader2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { Logo } from '@/components/Logo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -59,9 +60,7 @@ export default function LoginPage() {
 
       <Card className="w-full max-w-md rounded-[3rem] border-none shadow-2xl bg-white/90 backdrop-blur-xl">
         <CardHeader className="space-y-4 text-center pt-10">
-          <div className="mx-auto truevibe-gradient w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-xl">
-            <Sparkles className="w-10 h-10 text-white" />
-          </div>
+          <Logo size="md" className="mx-auto mb-4" />
           <div>
             <CardTitle className="text-4xl font-black tracking-tighter">Welcome Back</CardTitle>
             <CardDescription className="font-medium">Enter your credentials to find your vibe.</CardDescription>

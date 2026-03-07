@@ -6,8 +6,9 @@ import { signOut, sendEmailVerification } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Mail, Loader2, ArrowLeft, RefreshCw, ShieldCheck, CheckCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Logo } from '@/components/Logo';
 
 export default function VerifyPage() {
   const { user, isUserLoading } = useUser();
@@ -105,9 +106,7 @@ export default function VerifyPage() {
       <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white/95 backdrop-blur-xl">
         <div className="truevibe-gradient h-2" />
         <CardHeader className="space-y-4 text-center pt-8">
-          <div className="mx-auto bg-primary/10 w-24 h-24 rounded-3xl flex items-center justify-center">
-            <Mail className="w-12 h-12 text-primary animate-bounce" />
-          </div>
+          <Logo size="md" className="mx-auto mb-4" />
           <div>
             <CardTitle className="text-3xl font-black tracking-tight">Activate Account</CardTitle>
             <CardDescription className="text-base font-medium">

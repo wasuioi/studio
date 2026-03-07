@@ -1,12 +1,12 @@
-
 "use client";
 
 import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Sparkles, Heart, ShieldCheck, Zap, ArrowRight, Star } from 'lucide-react';
+import { Heart, ShieldCheck, Zap, ArrowRight, Star } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
+import { Logo } from '@/components/Logo';
 
 export default function LandingPage() {
   const { user } = useUser();
@@ -31,6 +31,9 @@ export default function LandingPage() {
       <div className="max-w-5xl mx-auto space-y-16 py-24">
         {/* Hero Section */}
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+          <div className="mb-8">
+            <Logo size="lg" className="mx-auto" />
+          </div>
           <div className="inline-flex items-center gap-2 bg-primary/10 px-6 py-2 rounded-full text-primary font-black text-xs uppercase tracking-widest border border-primary/20">
             <Star className="w-4 h-4 fill-current" />
             Real Vibes Only

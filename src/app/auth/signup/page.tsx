@@ -7,15 +7,16 @@ import {
   sendEmailVerification, 
   signInWithEmailAndPassword 
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Sparkles, Loader2, ShieldCheck, Star } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { Logo } from '@/components/Logo';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -113,9 +114,7 @@ export default function SignupPage() {
 
       <Card className="w-full max-w-md rounded-[3rem] border-none shadow-2xl bg-white/90 backdrop-blur-xl">
         <CardHeader className="space-y-4 text-center pt-10">
-          <div className="mx-auto truevibe-gradient w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-xl">
-            <Star className="w-10 h-10 text-white fill-current" />
-          </div>
+          <Logo size="md" className="mx-auto mb-4" />
           <div>
             <CardTitle className="text-4xl font-black tracking-tighter">Join TrueVibe</CardTitle>
             <CardDescription className="font-medium">Discover connections that match your energy.</CardDescription>

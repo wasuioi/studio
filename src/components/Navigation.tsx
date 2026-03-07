@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { User, MessageCircle, Heart, Sparkles, ShieldCheck, LogOut, Zap } from 'lucide-react';
+import { User, MessageCircle, Heart, ShieldCheck, LogOut, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth as useFirebaseAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/Logo';
 
 export function Navigation() {
   const pathname = usePathname();
@@ -56,10 +57,7 @@ export function Navigation() {
 
       <div className="hidden md:flex w-full justify-between items-center">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 truevibe-gradient rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-            <Sparkles className="text-white w-6 h-6" />
-          </div>
-          <span className="text-2xl font-black tracking-tighter truevibe-text-gradient">Truevibe</span>
+          <Logo size="sm" />
         </Link>
         <div className="flex items-center gap-10">
           {navItems.map((item) => {
