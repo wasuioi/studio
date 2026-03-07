@@ -26,7 +26,10 @@ service cloud.firestore {
 
     /** @description Checks if the authenticated user is a member of the participantIds array. */
     function isParticipant(data) {
-      return isSignedIn() && (request.auth.uid in data.participantIds);
+      return isSignedIn() && 
+             data != null && 
+             data.participantIds != null && 
+             data.participantIds.hasAny([request.auth.uid]);
     }
 
     // --- COLLECTION RULES ---
