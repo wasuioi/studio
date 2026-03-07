@@ -7,20 +7,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
-import { Sparkles, Send, Zap, Loader2, Star, Globe } from 'lucide-react';
+import { Sparkles, Send, Zap, Loader2, Star, Globe, RotateCcw, Trash2 } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
-import { doc, collection } from 'firebase/firestore';
+import { doc, collection, deleteField } from 'firebase/firestore';
 import { 
   useFirestore, 
   useDoc, 
   useMemoFirebase, 
   updateDocumentNonBlocking, 
   setDocumentNonBlocking,
-  addDocumentNonBlocking
+  addDocumentNonBlocking,
+  deleteDocumentNonBlocking
 } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function AIProfileBot() {
   const { user, loading } = useAuth();
@@ -46,7 +58,7 @@ export default function AIProfileBot() {
     if (personalityData?.chatHistory && personalityData.chatHistory.length > 0) {
       setSessionMessages(personalityData.chatHistory);
       // If history exists, we infer language isn't needed or already set
-      setSelectedLanguage(personalityData.preferredLanguage || 'en');
+      setSelectedLanguage(personalityData.preferredLanguage === 'Thai' ? 'th' : 'en');
     }
   }, [personalityData]);
 
@@ -85,6 +97,31 @@ export default function AIProfileBot() {
     }
   };
 
+  const handleResetConversation = () => {
+    if (!user || !personalityRef) return;
+
+    // 1. Delete the detailed personality doc
+    deleteDocumentNonBlocking(personalityRef);
+
+    // 2. Reset the user's profile status
+    const userRef = doc(db, 'users', user.uid);
+    updateDocumentNonBlocking(userRef, {
+      profileCompleted: false,
+      personalityProfile: null,
+      updatedAt: new Date().toISOString()
+    });
+
+    // 3. Clear local state
+    setSessionMessages([]);
+    setSelectedLanguage(null);
+    setInput('');
+
+    toast({
+      title: "Conversation Reset",
+      description: "You can now start a fresh interview with Vera.",
+    });
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isAiThinking || !user || !personalityRef || !selectedLanguage) return;
 
@@ -102,7 +139,8 @@ export default function AIProfileBot() {
     // Log to permanent history
     addDocumentNonBlocking(collection(db, 'bot_chats'), {
       userId: user.uid,
-      ...newUserMsg
+      ...newUserMsg,
+      timestamp: now
     });
 
     const updatedHistory = [...sessionMessages, newUserMsg];
@@ -130,7 +168,8 @@ export default function AIProfileBot() {
       // Log AI response to permanent history
       addDocumentNonBlocking(collection(db, 'bot_chats'), {
         userId: user.uid,
-        ...aiMsg
+        ...aiMsg,
+        timestamp: new Date().toISOString()
       });
 
       const finalHistory = [...updatedHistory, aiMsg];
@@ -192,6 +231,30 @@ export default function AIProfileBot() {
             </div>
           </div>
         </div>
+
+        {selectedLanguage && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-2xl hover:bg-destructive/10 hover:text-destructive transition-colors h-12 w-12 border border-border/50">
+                <RotateCcw className="w-5 h-5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-2xl font-black tracking-tight">Reset Conversation?</AlertDialogTitle>
+                <AlertDialogDescription className="font-medium">
+                  This will clear your current chat history and personality profile. Vera will need to get to know you again from the beginning.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleResetConversation} className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Yes, Reset
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       <div className="flex-1 bg-white rounded-[3rem] shadow-2xl shadow-primary/5 border border-border/50 overflow-hidden flex flex-col mb-24 md:mb-8">
