@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
@@ -8,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
-import { Sparkles, Send, Zap, Loader2, Star, Globe, RotateCcw, Trash2 } from 'lucide-react';
+import { Sparkles, Send, Zap, Loader2, Star, Globe, RotateCcw } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
-import { doc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs } from 'firebase/firestore';
 import { 
   useFirestore, 
   useDoc, 
@@ -75,7 +74,7 @@ export default function AIProfileBot() {
     setSelectedLanguage(lang);
     const initialMsg = lang === 'en' 
       ? "Hi! I'm Vera, your TrueVibe relationship companion. I'm here to understand your unique energy and help find your perfect match. Ready to vibe?" 
-      : "สวัสดีค่ะ! ฉันคือ Vera เพื่อนคู่คิดด้านความสัมพันธ์ของคุณ ฉันอยู่ที่นี่เพื่อทำความเข้าใจพลังงานที่เป็นเอกลักษณ์ของคุณและช่วยหาคู่ที่เหมาะสมที่สุดสำหรับคุณ พร้อมจะทำความรู้จักกันหรือยังคะ?";
+      : "สวัสดีค่ะ! ฉันคือ Vera เพื่อนคู่คิดด้านความสัมพันธ์ของคุณ ฉันอยู่ที่นี่เพื่อทำความรู้จักพลังงานที่เป็นเอกลักษณ์ของคุณและช่วยหาคู่ที่เหมาะสมที่สุดสำหรับคุณ พร้อมจะทำความรู้จักกันหรือยังคะ?";
     
     const firstMsg = { 
       role: 'model' as const, 
@@ -108,12 +107,11 @@ export default function AIProfileBot() {
       updateDocumentNonBlocking(userRef, {
         profileCompleted: false,
         personalityProfile: null,
-        topMatches: null, // Clear stored matches so UI resets
+        topMatches: null,
         updatedAt: new Date().toISOString()
       });
 
-      // 3. AGGRESSIVE CLEANUP: Delete all chat requests and conversations
-      // We do this to ensure simulated profiles reset to the "Message" state.
+      // 3. AGGRESSIVE CLEANUP
       const requestsRef = collection(db, 'chat_requests');
       const qSender = query(requestsRef, where('senderId', '==', user.uid));
       const qReceiver = query(requestsRef, where('receiverId', '==', user.uid));
@@ -127,13 +125,9 @@ export default function AIProfileBot() {
         getDocs(qConvs)
       ]);
 
-      const batchCleanup = async () => {
-        snap1.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
-        snap2.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
-        snap3.forEach(d => deleteDocumentNonBlocking(doc(db, 'conversations', d.id)));
-      };
-      
-      await batchCleanup();
+      snap1.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
+      snap2.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
+      snap3.forEach(d => deleteDocumentNonBlocking(doc(db, 'conversations', d.id)));
 
       // 4. Clear local state
       setSessionMessages([]);
@@ -146,11 +140,6 @@ export default function AIProfileBot() {
       });
     } catch (e) {
       console.error("Reset failed", e);
-      toast({
-        variant: "destructive",
-        title: "Reset Error",
-        description: "Could not fully clear connections. Some data may persist.",
-      });
     }
   };
 
@@ -247,16 +236,16 @@ export default function AIProfileBot() {
     <div className="max-w-2xl mx-auto h-screen flex flex-col p-4 md:pt-28 relative">
       <Navigation />
       
-      <div className="flex items-center justify-between mb-8 px-2">
-        <div className="flex items-center gap-4">
-          <div className="truevibe-gradient p-3 rounded-2xl shadow-lg">
-            <Zap className="text-white w-6 h-6 fill-current" />
+      <div className="flex items-center justify-between mb-4 md:mb-8 px-2">
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="truevibe-gradient p-2 md:p-3 rounded-xl md:rounded-2xl shadow-lg">
+            <Zap className="text-white w-5 h-5 md:w-6 md:h-6 fill-current" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-foreground tracking-tight">Vera AI</h1>
+            <h1 className="text-xl md:text-2xl font-black text-foreground tracking-tight">Vera AI</h1>
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 bg-verified rounded-full animate-pulse" />
-              <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Active Analysis</p>
+              <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-verified rounded-full animate-pulse" />
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Active Analysis</p>
             </div>
           </div>
         </div>
@@ -264,18 +253,18 @@ export default function AIProfileBot() {
         {selectedLanguage && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-2xl hover:bg-destructive/10 hover:text-destructive transition-colors h-12 w-12 border border-border/50">
-                <RotateCcw className="w-5 h-5" />
+              <Button variant="ghost" size="icon" className="rounded-xl md:rounded-2xl hover:bg-destructive/10 hover:text-destructive h-10 w-10 md:h-12 md:w-12 border border-border/50">
+                <RotateCcw className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+            <AlertDialogContent className="rounded-[2rem] md:rounded-[2.5rem] border-none shadow-2xl mx-4">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-2xl font-black tracking-tight">Reset Everything?</AlertDialogTitle>
-                <AlertDialogDescription className="font-medium">
+                <AlertDialogTitle className="text-xl md:text-2xl font-black tracking-tight">Reset Everything?</AlertDialogTitle>
+                <AlertDialogDescription className="font-medium text-sm md:text-base">
                   This will clear your current chat history, personality profile, AND all existing chat requests or matches. Vera will need to start from scratch.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
+              <AlertDialogFooter className="gap-2">
                 <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleResetConversation} className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90">
                   Yes, Reset All
@@ -286,26 +275,26 @@ export default function AIProfileBot() {
         )}
       </div>
 
-      <div className="flex-1 bg-white rounded-[3rem] shadow-2xl shadow-primary/5 border border-border/50 overflow-hidden flex flex-col mb-24 md:mb-8">
+      <div className="flex-1 bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl shadow-primary/5 border border-border/50 overflow-hidden flex flex-col mb-20 md:mb-8">
         {!selectedLanguage && sessionMessages.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-10 text-center space-y-8">
-            <div className="bg-primary/10 p-6 rounded-full">
-              <Globe className="w-12 h-12 text-primary" />
+          <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-10 text-center space-y-6 md:space-y-8">
+            <div className="bg-primary/10 p-4 md:p-6 rounded-full">
+              <Globe className="w-10 h-10 md:w-12 md:h-12 text-primary" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-black tracking-tight">Choose Your Language</h2>
-              <p className="text-muted-foreground font-medium">Please select your preferred language to start chatting with Vera.</p>
+              <h2 className="text-xl md:text-2xl font-black tracking-tight">Choose Your Language</h2>
+              <p className="text-muted-foreground font-medium text-sm md:text-base">Please select your preferred language to start chatting with Vera.</p>
             </div>
-            <div className="grid grid-cols-2 gap-4 w-full max-sm:grid-cols-1 max-w-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 w-full max-w-sm">
               <Button 
                 onClick={() => handleLanguageSelect('en')}
-                className="h-20 rounded-3xl text-lg font-black bg-white border-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-md"
+                className="h-16 md:h-20 rounded-2xl md:rounded-3xl text-base md:text-lg font-black bg-white border-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-md"
               >
                 🇺🇸 English
               </Button>
               <Button 
                 onClick={() => handleLanguageSelect('th')}
-                className="h-20 rounded-3xl text-lg font-black bg-white border-2 border-secondary/20 text-secondary hover:bg-secondary hover:text-white transition-all shadow-md"
+                className="h-16 md:h-20 rounded-2xl md:rounded-3xl text-base md:text-lg font-black bg-white border-2 border-secondary/20 text-secondary hover:bg-secondary hover:text-white transition-all shadow-md"
               >
                 🇹🇭 ภาษาไทย
               </Button>
@@ -313,15 +302,15 @@ export default function AIProfileBot() {
           </div>
         ) : (
           <>
-            <ScrollArea className="flex-1 p-6" ref={scrollRef}>
-              <div className="space-y-6">
+            <ScrollArea className="flex-1 p-4 md:p-6" ref={scrollRef}>
+              <div className="space-y-4 md:space-y-6">
                 {sessionMessages.map((m, i) => (
                   <div key={i} className={cn(
-                    "flex flex-col max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-500",
+                    "flex flex-col max-w-[85%] md:max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-500",
                     m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
                   )}>
                     <div className={cn(
-                      "p-5 rounded-[2rem] text-sm leading-relaxed font-medium",
+                      "p-4 md:p-5 rounded-2xl md:rounded-[2rem] text-sm md:text-base leading-relaxed font-medium",
                       m.role === 'user' 
                         ? "truevibe-gradient text-white rounded-tr-none shadow-md" 
                         : "bg-muted/50 text-foreground rounded-tl-none border border-border/50"
@@ -331,30 +320,30 @@ export default function AIProfileBot() {
                   </div>
                 ))}
                 {isAiThinking && (
-                  <div className="flex items-center gap-2 text-primary text-xs animate-pulse font-black uppercase tracking-widest ml-4">
+                  <div className="flex items-center gap-2 text-primary text-[10px] md:text-xs animate-pulse font-black uppercase tracking-widest ml-2">
                     <Star className="w-3 h-3 fill-current" /> {selectedLanguage === 'th' ? 'Vera กำลังประมวลผล...' : 'Vera is sensing...'}
                   </div>
                 )}
               </div>
             </ScrollArea>
 
-            <div className="p-6 border-t bg-background/30 backdrop-blur-sm">
-              <div className="relative flex items-center gap-3">
+            <div className="p-4 md:p-6 border-t bg-background/30 backdrop-blur-sm">
+              <div className="relative flex items-center gap-2 md:gap-3">
                 <Input 
                   placeholder={selectedLanguage === 'th' ? "คุยกับ Vera เกี่ยวกับตัวคุณ..." : "Tell Vera about yourself..."}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  className="rounded-2xl h-14 bg-white border-none shadow-inner px-6 text-base focus-visible:ring-primary/20"
+                  className="rounded-xl md:rounded-2xl h-12 md:h-14 bg-white border-none shadow-inner px-4 md:px-6 text-sm md:text-base focus-visible:ring-primary/20"
                   disabled={isAiThinking}
                 />
                 <Button 
                   size="icon" 
-                  className="shrink-0 w-14 h-14 rounded-2xl truevibe-gradient hover:scale-105 transition-all duration-300 active:scale-95 shadow-lg border-none"
+                  className="shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl truevibe-gradient hover:scale-105 transition-all duration-300 active:scale-95 shadow-lg border-none"
                   onClick={handleSend}
                   disabled={isAiThinking || !input.trim()}
                 >
-                  <Send className="w-5 h-5" />
+                  <Send className="w-4 h-4 md:w-5 md:h-5" />
                 </Button>
               </div>
             </div>

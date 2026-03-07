@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -39,6 +38,7 @@ export function Navigation() {
   const authPaths = ['/', '/auth/login', '/auth/signup', '/auth/verify'];
   const isAuthPage = authPaths.includes(pathname);
 
+  // If on landing page and not logged in, show a simplified header instead of full nav
   if (isAuthPage && !user) return null;
 
   const navItems = [
@@ -51,42 +51,46 @@ export function Navigation() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-border z-50 md:top-0 md:bottom-auto md:h-20 flex items-center justify-around px-4 md:px-20 shadow-lg md:shadow-sm">
-      {/* Mobile Nav */}
-      <div className="flex md:hidden w-full justify-between items-center py-3">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
-          return (
-            <Link 
-              key={item.href} 
-              href={item.href}
-              className={cn(
-                "flex flex-col items-center gap-1 transition-all duration-300 relative",
-                isActive ? "text-primary scale-110" : "text-muted-foreground hover:text-primary"
-              )}
-            >
-              <Icon className={cn("w-6 h-6", isActive && "fill-current")} />
-              {item.showBadge && pendingCount > 0 && (
-                <span className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-primary text-[10px] text-white font-black items-center justify-center">
-                    {pendingCount}
+    <>
+      {/* Mobile Bottom Navigation - Sticky at bottom */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-border z-[100] safe-area-bottom pb-2">
+        <div className="flex w-full justify-around items-center h-16 px-2">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            return (
+              <Link 
+                key={item.href} 
+                href={item.href}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1 transition-all duration-300 relative min-w-[50px]",
+                  isActive ? "text-primary" : "text-muted-foreground hover:text-primary"
+                )}
+              >
+                <div className={cn("p-1 rounded-xl transition-colors", isActive && "bg-primary/10")}>
+                  <Icon className={cn("w-6 h-6", isActive && "fill-current")} />
+                </div>
+                {item.showBadge && pendingCount > 0 && (
+                  <span className="absolute top-0.5 right-1.5 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-primary text-[10px] text-white font-black items-center justify-center border border-white">
+                      {pendingCount}
+                    </span>
                   </span>
-                </span>
-              )}
-              <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
-            </Link>
-          );
-        })}
-      </div>
+                )}
+                <span className="text-[9px] font-bold uppercase tracking-wider">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
 
-      {/* Desktop Nav */}
-      <div className="hidden md:flex w-full justify-between items-center">
+      {/* Desktop Top Navigation */}
+      <nav className="hidden md:flex fixed top-0 left-0 right-0 h-20 bg-white/80 backdrop-blur-md border-b border-border z-[100] items-center justify-between px-8 lg:px-20 shadow-sm">
         <Link href="/" className="flex items-center gap-2 group">
           <Logo size="sm" />
         </Link>
-        <div className="flex items-center gap-10">
+        <div className="flex items-center gap-2 lg:gap-6">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -102,7 +106,7 @@ export function Navigation() {
                 )}
               >
                 <Icon className={cn("w-4 h-4", isActive && "fill-current")} />
-                {item.label}
+                <span className="hidden lg:inline">{item.label}</span>
                 {item.showBadge && pendingCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-5 w-5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -115,12 +119,12 @@ export function Navigation() {
             );
           })}
           {user && (
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="rounded-full hover:bg-destructive/10 hover:text-destructive ml-4">
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="rounded-full hover:bg-destructive/10 hover:text-destructive ml-2">
               <LogOut className="w-5 h-5" />
             </Button>
           )}
         </div>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 }

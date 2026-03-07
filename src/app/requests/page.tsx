@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useAuth } from '@/hooks/use-auth';
@@ -27,7 +26,6 @@ export default function RequestsPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Fetch pending incoming requests
   const requestsQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -43,11 +41,8 @@ export default function RequestsPage() {
     if (!user) return;
     
     const convId = `conv_${request.senderId}_${user.uid}`;
-    
-    // Update request status
     updateDocumentNonBlocking(doc(db, 'chat_requests', request.id), { status: 'accepted' });
     
-    // Create or update conversation room
     setDocumentNonBlocking(doc(db, 'conversations', convId), {
       id: convId,
       participantIds: [request.senderId, user.uid],
@@ -67,29 +62,29 @@ export default function RequestsPage() {
 
   if (loading || isLoading) return (
     <div className="flex h-screen items-center justify-center">
-      <Loader2 className="w-12 h-12 animate-spin text-primary" />
+      <Loader2 className="w-10 h-10 animate-spin text-primary" />
     </div>
   );
 
   return (
-    <div className="max-w-4xl mx-auto p-4 pt-8 md:pt-24 mb-20 min-h-screen">
+    <div className="max-w-4xl mx-auto p-4 pt-8 md:pt-28 mb-24 min-h-screen">
       <Navigation />
       
-      <header className="mb-10 space-y-2">
-        <h1 className="text-4xl font-black tracking-tight flex items-center gap-3">
-          Vibe Requests <UserPlus className="text-primary w-8 h-8" />
+      <header className="mb-8 md:mb-10 space-y-2 px-2">
+        <h1 className="text-3xl md:text-5xl font-black tracking-tight flex items-center gap-3">
+          Vibe Requests <UserPlus className="text-primary w-6 h-6 md:w-10 md:h-10" />
         </h1>
-        <p className="text-muted-foreground font-medium max-w-lg">
+        <p className="text-muted-foreground font-medium max-w-lg text-sm md:text-base">
           Manage your incoming chat requests and decide who you want to vibe with.
         </p>
       </header>
 
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6 px-2">
         {incomingRequests && incomingRequests.length > 0 ? (
           incomingRequests.map((req) => (
-            <Card key={req.id} className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden animate-in slide-in-from-bottom-4">
-              <div className="flex flex-col md:flex-row p-8 gap-6 items-center">
-                <Avatar className="w-24 h-24 rounded-3xl shadow-lg border-4 border-accent">
+            <Card key={req.id} className="rounded-[2rem] md:rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden animate-in slide-in-from-bottom-4">
+              <div className="flex flex-col md:flex-row p-6 md:p-8 gap-4 md:gap-6 items-center">
+                <Avatar className="w-20 h-20 md:w-24 md:h-24 rounded-2xl md:rounded-3xl shadow-lg border-4 border-accent flex-shrink-0">
                   <AvatarImage src={req.senderPhotoURL} className="object-cover" />
                   <AvatarFallback className="text-xl font-black bg-primary/10 text-primary">
                     {req.senderName[0]}
@@ -97,44 +92,44 @@ export default function RequestsPage() {
                 </Avatar>
                 
                 <div className="flex-1 text-center md:text-left space-y-2">
-                  <div className="flex items-center justify-center md:justify-start gap-3">
-                    <h4 className="text-2xl font-black">{req.senderName}</h4>
-                    <Badge className="bg-primary/10 text-primary border-none px-3 py-1 text-xs font-black">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                    <h4 className="text-xl md:text-2xl font-black">{req.senderName}</h4>
+                    <Badge className="bg-primary/10 text-primary border-none px-2 py-0.5 text-[10px] md:text-xs font-black">
                       {req.matchScore}% Match
                     </Badge>
                   </div>
-                  <p className="text-foreground/80 font-medium leading-relaxed italic">
+                  <p className="text-sm md:text-base text-foreground/80 font-medium leading-relaxed italic line-clamp-3">
                     "{req.reason}"
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full md:w-auto mt-4 md:mt-0">
                   <Button 
                     variant="ghost" 
-                    className="rounded-2xl h-14 px-6 gap-2 text-destructive hover:bg-destructive/10 font-black uppercase text-xs tracking-widest" 
+                    className="flex-1 sm:flex-none rounded-xl md:rounded-2xl h-12 md:h-14 px-4 md:px-6 gap-2 text-destructive hover:bg-destructive/10 font-black uppercase text-[10px] tracking-widest" 
                     onClick={() => handleDeclineRequest(req)}
                   >
-                    <XCircle className="w-5 h-5" /> Decline
+                    <XCircle className="w-4 h-4 md:w-5 md:h-5" /> Decline
                   </Button>
                   <Button 
-                    className="rounded-2xl h-14 px-8 gap-2 bg-verified hover:bg-verified/90 text-white font-black shadow-lg shadow-verified/20" 
+                    className="flex-1 sm:flex-none rounded-xl md:rounded-2xl h-12 md:h-14 px-6 md:px-8 gap-2 bg-verified hover:bg-verified/90 text-white font-black shadow-lg shadow-verified/20" 
                     onClick={() => handleAcceptRequest(req)}
                   >
-                    <CheckCircle className="w-5 h-5" /> Accept Vibe
+                    <CheckCircle className="w-4 h-4 md:w-5 md:h-5" /> Accept Vibe
                   </Button>
                 </div>
               </div>
             </Card>
           ))
         ) : (
-          <Card className="p-16 text-center rounded-[3rem] border-none shadow-2xl bg-white/50 backdrop-blur-sm animate-in zoom-in-95">
-            <Inbox className="w-20 h-20 mx-auto mb-6 text-muted-foreground/20" />
-            <h3 className="text-2xl font-black mb-2">No Requests Yet</h3>
-            <p className="text-muted-foreground font-medium mb-8 max-w-sm mx-auto">
+          <Card className="p-10 md:p-20 text-center rounded-[2.5rem] md:rounded-[4rem] border-none shadow-2xl bg-white/50 backdrop-blur-sm animate-in zoom-in-95">
+            <Inbox className="w-16 h-16 md:w-24 md:h-24 mx-auto mb-6 text-muted-foreground/20" />
+            <h3 className="text-xl md:text-3xl font-black mb-2">No Requests Yet</h3>
+            <p className="text-muted-foreground font-medium mb-8 max-w-sm mx-auto text-sm md:text-base">
               When someone sees your profile and wants to connect, their request will appear here.
             </p>
             <Link href="/matches">
-              <Button className="rounded-2xl h-14 px-8 font-black truevibe-gradient border-none shadow-xl shadow-primary/20">
+              <Button className="w-full sm:w-auto rounded-xl md:rounded-2xl h-14 px-8 font-black truevibe-gradient border-none shadow-xl shadow-primary/20">
                 Explore Matches <Heart className="ml-2 w-4 h-4 fill-current" />
               </Button>
             </Link>
