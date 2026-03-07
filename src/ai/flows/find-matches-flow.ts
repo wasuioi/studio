@@ -11,13 +11,13 @@ const ProfileSchema = z.object({
   id: z.string(),
   name: z.string(),
   traits: z.object({
-    communicationStyle: z.string(),
-    introversionLevel: z.number(),
-    emotionalExpression: z.number(),
-    lifestyle: z.string(),
-    relationshipIntent: z.string(),
-    values: z.array(z.string()),
-  }),
+    communicationStyle: z.string().optional(),
+    introversionLevel: z.number().optional(),
+    emotionalExpression: z.number().optional(),
+    lifestyle: z.string().optional(),
+    relationshipIntent: z.string().optional(),
+    values: z.array(z.string()).optional(),
+  }).optional(),
   summary: z.string(),
 });
 
@@ -30,7 +30,7 @@ export type FindMatchesInput = z.infer<typeof FindMatchesInputSchema>;
 const MatchResultSchema = z.object({
   targetUserId: z.string(),
   score: z.number().min(0).max(100),
-  reason: z.string(),
+  reason: z.string().describe('A short, 1-2 sentence explanation of the compatibility.'),
 });
 
 const FindMatchesOutputSchema = z.object({
@@ -46,18 +46,16 @@ const prompt = ai.definePrompt({
   name: 'findMatchesPrompt',
   input: { schema: FindMatchesInputSchema },
   output: { schema: FindMatchesOutputSchema },
-  prompt: `You are a high-end matchmaking AI. Your task is to calculate compatibility scores (0-100) between a User and a list of Potential Matches.
+  prompt: `You are a high-end matchmaking AI specialist. Your task is to calculate compatibility scores (0-100) between a User and a list of Potential Matches based on their detailed personality summaries and traits.
 
 Compatibility should be based on:
-1. Values Alignment: Do their core values overlap or complement each other?
-2. Communication Style: Will they understand each other or clash?
-3. Lifestyle Compatibility: Social vs. Homebody, Career vs. Leisure.
-4. Emotional Expression: Can they support each other's emotional needs?
+1. Values Alignment: Do their core values, cultural backgrounds, and long-term goals (marriage, children) overlap?
+2. Communication Style: Will their communication styles (direct vs. reflective, intellectual vs. emotional) complement each other?
+3. Lifestyle Compatibility: Social vs. Homebody, Career-focused vs. Adventure-seeking, Independence vs. Togetherness needs.
+4. Emotional Intelligence: Can they support each other's emotional needs and conflict resolution styles?
 
 User Profile:
 Name: {{{currentUser.name}}}
-Traits: Communication: {{{currentUser.traits.communicationStyle}}}, Introversion: {{{currentUser.traits.introversionLevel}}}, Emotional: {{{currentUser.traits.emotionalExpression}}}, Lifestyle: {{{currentUser.traits.lifestyle}}}, Intent: {{{currentUser.traits.relationshipIntent}}}
-Values: {{#each currentUser.traits.values}}{{{this}}}, {{/each}}
 Summary: {{{currentUser.summary}}}
 
 Potential Matches:
@@ -65,12 +63,12 @@ Potential Matches:
 ---
 ID: {{{this.id}}}
 Name: {{{this.name}}}
-Traits: Communication: {{{this.traits.communicationStyle}}}, Introversion: {{{this.traits.introversionLevel}}}, Emotional: {{{this.traits.emotionalExpression}}}, Lifestyle: {{{this.traits.lifestyle}}}, Intent: {{{this.traits.relationshipIntent}}}
-Values: {{#each this.traits.values}}{{{this}}}, {{/each}}
 Summary: {{{this.summary}}}
 {{/each}}
 
-Return a list of matches with scores and reasons. Only include matches where the score is 60 or higher.`,
+Analyze the detailed summaries carefully. Some profiles have specific deal-breakers (e.g., tattoos, religion, smoking). If the user summary mentions these, factor them heavily into the score.
+
+Return a ranked list of all matches with scores and concise reasons (max 2 sentences).`,
 });
 
 const findMatchesFlow = ai.defineFlow(
