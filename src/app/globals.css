@@ -58,6 +58,7 @@
   body {
     @apply bg-background text-foreground font-body;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
   }
 }
 
@@ -83,4 +84,12 @@
 
 .startup-button {
   @apply rounded-2xl font-black transition-all active:scale-95 disabled:opacity-50;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
