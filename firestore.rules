@@ -2,42 +2,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
     function isSignedIn() {
       return request.auth != null;
     }
-
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-
-    function isVerified() {
-      return isSignedIn() && get(/databases/$(database)/documents/user_profiles/$(request.auth.uid)).data.isVerified == true;
-    }
-
+    
     match /user_profiles/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
-
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
+      
       match /posts/{postId} {
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
-        allow create: if isOwner(userId);
-        allow update: if isOwner(userId);
-        allow delete: if isOwner(userId);
+        allow read: if isSignedIn();
+        allow write: if isOwner(userId);
+      }
+      
+      match /personality/personality_data {
+        allow read, write: if isOwner(userId);
       }
 
-      match /personality/personality_data {
-        allow get: if isOwner(userId);
-        allow create, update, delete: if isOwner(userId);
+      match /verification_requests/{requestId} {
+        allow read, write: if isOwner(userId);
       }
     }
-
-    match /matches/{matchId} {
-      allow read, write: if isSignedIn() && (request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id || request.auth.uid == request.resource.data.user1Id || request.auth.uid == request.resource.data.user2Id);
+    
+    match /conversations/{conversationId} {
+      allow read, write: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if isSignedIn();
+      
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+        allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+      }
     }
   }
 }

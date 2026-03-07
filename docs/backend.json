@@ -7,68 +7,24 @@
       "type": "object",
       "description": "Represents a user's public profile and core information within the HarmonyAI dating application.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the UserProfile entity. This is typically the Firebase Authentication UID."
-        },
-        "name": {
-          "type": "string",
-          "description": "The user's display name."
-        },
-        "profilePhotoUrl": {
-          "type": "string",
-          "description": "URL to the user's profile photo.",
-          "format": "uri"
-        },
-        "bio": {
-          "type": "string",
-          "description": "A short biographical description provided by the user."
-        },
-        "gender": {
-          "type": "string",
-          "description": "The user's gender identity."
-        },
-        "dateOfBirth": {
-          "type": "string",
-          "description": "The user's date of birth.",
-          "format": "date"
-        },
-        "location": {
-          "type": "string",
-          "description": "The user's general location."
-        },
-        "isVerified": {
-          "type": "boolean",
-          "description": "Indicates if the user's identity has been successfully verified."
-        },
-        "verificationStatus": {
-          "type": "string",
-          "description": "The current status of the user's identity verification process."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "profilePhotoUrl": { "type": "string", "format": "uri" },
+        "bio": { "type": "string" },
+        "gender": { "type": "string" },
+        "dateOfBirth": { "type": "string", "format": "date" },
+        "location": { "type": "string" },
+        "isVerified": { "type": "boolean" },
+        "verificationStatus": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "name",
-        "profilePhotoUrl",
-        "isVerified",
-        "verificationStatus",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "name", "isVerified", "createdAt", "updatedAt"]
     },
     "Post": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Post",
       "type": "object",
-      "description": "A social post shared by a user on their profile.",
       "properties": {
         "id": { "type": "string" },
         "userId": { "type": "string" },
@@ -78,35 +34,6 @@
       },
       "required": ["id", "userId", "content", "createdAt"]
     },
-    "UserPersonality": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "UserPersonality",
-      "type": "object",
-      "description": "Stores the personality and communication style analysis results for a user.",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "personalityType": { "type": "string" },
-        "summary": { "type": "string" },
-        "lastAnalysisDate": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "userId", "lastAnalysisDate"]
-    },
-    "Match": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Match",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "user1Id": { "type": "string" },
-        "user2Id": { "type": "string" },
-        "matchScore": { "type": "number" },
-        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "blocked"] },
-        "isMutual": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "user1Id", "user2Id", "matchScore", "status", "isMutual", "createdAt"]
-    },
     "Conversation": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Conversation",
@@ -114,50 +41,48 @@
       "properties": {
         "id": { "type": "string" },
         "participantIds": { "type": "array", "items": { "type": "string" } },
-        "createdAt": { "type": "string", "format": "date-time" },
+        "lastMessage": { "type": "string" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "participantIds", "createdAt", "updatedAt"]
+      "required": ["id", "participantIds", "updatedAt"]
+    },
+    "Message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "senderId", "text", "createdAt"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
     "structure": [
       {
         "path": "/user_profiles/{userId}",
         "definition": {
-          "entityName": "UserProfile",
           "schema": { "$ref": "#/backend/entities/UserProfile" },
-          "description": "Stores core user profile data."
+          "description": "User profiles."
         }
       },
       {
-        "path": "/user_profiles/{userId}/posts/{postId}",
+        "path": "/conversations/{conversationId}",
         "definition": {
-          "entityName": "Post",
-          "schema": { "$ref": "#/backend/entities/Post" },
-          "description": "Social posts by the user."
+          "schema": { "$ref": "#/backend/entities/Conversation" },
+          "description": "Chat conversations."
         }
       },
       {
-        "path": "/user_profiles/{userId}/personality/personality_data",
+        "path": "/conversations/{conversationId}/messages/{messageId}",
         "definition": {
-          "entityName": "UserPersonality",
-          "schema": { "$ref": "#/backend/entities/UserPersonality" },
-          "description": "Stores AI personality analysis."
-        }
-      },
-      {
-        "path": "/matches/{matchId}",
-        "definition": {
-          "entityName": "Match",
-          "schema": { "$ref": "#/backend/entities/Match" },
-          "description": "Represents a potential or confirmed match."
+          "schema": { "$ref": "#/backend/entities/Message" },
+          "description": "Messages within a conversation."
         }
       }
     ]
