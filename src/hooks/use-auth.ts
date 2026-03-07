@@ -23,7 +23,6 @@ export function useAuth() {
     if (!user) {
       setProfile(null);
       setLoading(false);
-      // Protected routes logic
       const publicPaths = ['/', '/auth/login', '/auth/signup', '/auth/verify'];
       if (!publicPaths.includes(pathname)) {
         router.push('/auth/login');
@@ -31,7 +30,6 @@ export function useAuth() {
       return;
     }
 
-    // Check email verification
     if (!user.emailVerified && pathname !== '/auth/verify') {
       router.push('/auth/verify');
     }
@@ -59,6 +57,7 @@ export function useAuth() {
           identityVerified: false,
           verificationStatus: 'not_verified',
           profileCompleted: false,
+          tier: 'free',
           lastLogin: now,
           createdAt: now,
           updatedAt: now,

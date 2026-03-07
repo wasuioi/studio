@@ -18,6 +18,7 @@ export interface UserProfile {
   lastLogin: string;
   createdAt: string;
   updatedAt: string;
+  tier: 'free' | 'lite' | 'premium';
   personalityProfile?: {
     traits: any;
     summary: string;
@@ -38,4 +39,12 @@ export interface Match {
   score: number;
   status: 'pending' | 'accepted' | 'rejected';
   createdAt: string;
+}
+
+export interface BotChatMessage {
+  id: string;
+  userId: string;
+  message: string;
+  role: 'user' | 'model';
+  timestamp: string;
 }

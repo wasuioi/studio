@@ -8,13 +8,12 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-    function isEmailVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
+    function isPremium() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tier == 'premium';
     }
 
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isOwner(userId);
       
       match /posts/{postId} {
@@ -31,6 +30,11 @@ service cloud.firestore {
       }
     }
 
+    match /bot_chats/{chatId} {
+      allow read, write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
     match /matches/{matchId} {
       allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
       allow create: if isSignedIn();
@@ -39,12 +43,12 @@ service cloud.firestore {
 
     match /conversations/{conversationId} {
       allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
-      allow create: if isSignedIn() && request.auth.uid in request.resource.data.participantIds;
+      allow create: if isSignedIn() && isPremium();
       allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
 
       match /messages/{messageId} {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
-        allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+        allow create: if isSignedIn() && isPremium() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
       }
     }
   }

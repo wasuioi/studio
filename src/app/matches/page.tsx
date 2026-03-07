@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, Sparkles, BrainCircuit, Check, Lock, MessageCircle, Loader2, X } from 'lucide-react';
+import { Heart, Sparkles, BrainCircuit, Check, Lock, MessageCircle, Loader2, X, Info, Crown, Zap } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { 
@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { findMatches } from '@/ai/flows/find-matches-flow';
 import { useToast } from '@/hooks/use-toast';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 export default function MatchesPage() {
   const { profile, user, loading } = useAuth();
@@ -28,6 +29,8 @@ export default function MatchesPage() {
   const { toast } = useToast();
   const [isScanning, setIsScanning] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [lockedFeature, setLockedFeature] = useState('');
 
   const matchesQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -103,6 +106,26 @@ export default function MatchesPage() {
     }
   };
 
+  const handleFeatureClick = (feature: string) => {
+    if (!profile) return;
+    
+    if (feature === 'messaging' && profile.tier !== 'premium') {
+      setLockedFeature('Messaging');
+      setShowUpgradeModal(true);
+      return;
+    }
+    
+    if (feature === 'analysis' && (profile.tier === 'free')) {
+      setLockedFeature('AI Analysis');
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    if (feature === 'messaging') {
+      router.push('/messages');
+    }
+  };
+
   if (loading || matchesLoading) return (
     <div className="flex h-screen items-center justify-center">
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -110,6 +133,8 @@ export default function MatchesPage() {
   );
 
   const currentMatch = matchProfiles[currentIndex];
+  const isFree = profile?.tier === 'free';
+  const isPremium = profile?.tier === 'premium';
 
   return (
     <div className="max-w-4xl mx-auto p-4 pt-8 md:pt-24 mb-20 min-h-screen">
@@ -117,11 +142,18 @@ export default function MatchesPage() {
       
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-black flex items-center gap-2">Matches <Sparkles className="text-primary" /></h1>
-        {profile?.personalityProfile && (
-          <Button variant="ghost" size="icon" onClick={handleScanForMatches} disabled={isScanning} className="rounded-full bg-accent">
-            {isScanning ? <Loader2 className="animate-spin" /> : <BrainCircuit />}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {profile?.tier === 'free' && (
+            <Button variant="outline" size="sm" className="rounded-full border-primary/20 bg-primary/5 text-primary text-[10px] font-bold" onClick={() => { setLockedFeature('All Features'); setShowUpgradeModal(true); }}>
+              <Crown className="w-3 h-3 mr-1" /> UPGRADE
+            </Button>
+          )}
+          {profile?.personalityProfile && (
+            <Button variant="ghost" size="icon" onClick={handleScanForMatches} disabled={isScanning} className="rounded-full bg-accent">
+              {isScanning ? <Loader2 className="animate-spin" /> : <BrainCircuit />}
+            </Button>
+          )}
+        </div>
       </header>
 
       {!profile?.personalityProfile ? (
@@ -142,14 +174,15 @@ export default function MatchesPage() {
               src={currentMatch.photoURL} 
               alt={currentMatch.name} 
               fill 
-              className={cn("object-cover", !profile.identityVerified && "blur-xl")}
+              className={cn("object-cover transition-all duration-500", isFree && "blur-2xl scale-110")}
             />
             
-            {!profile.identityVerified && (
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-center p-8 text-white z-20">
-                <Lock className="w-12 h-12 mb-4" />
-                <h4 className="text-xl font-bold mb-2">Verified Members Only</h4>
-                <Link href="/verification"><Button className="bg-white text-primary rounded-xl">Verify Identity</Button></Link>
+            {isFree && (
+              <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-center p-8 text-white z-20">
+                <Crown className="w-12 h-12 mb-4 text-primary" />
+                <h4 className="text-xl font-bold mb-2">Member Content</h4>
+                <p className="text-xs opacity-70 mb-6">Upgrade to Premium to reveal photos and chat.</p>
+                <Button className="bg-primary hover:bg-primary/90 rounded-xl" onClick={() => { setLockedFeature('Full Access'); setShowUpgradeModal(true); }}>See Who This Is</Button>
               </div>
             )}
 
@@ -157,18 +190,36 @@ export default function MatchesPage() {
             
             <div className="absolute bottom-0 p-8 text-white w-full">
               <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-2xl font-black">{currentMatch.name}</h3>
+                <h3 className="text-2xl font-black">{isFree ? 'Harmony Member' : currentMatch.name}</h3>
                 {currentMatch.identityVerified && <Check className="w-4 h-4 bg-verified rounded-full p-0.5" />}
               </div>
-              <p className="text-white/80 text-sm line-clamp-2 mb-4">{currentMatch.bio}</p>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="bg-primary px-3 py-1 rounded-full text-[10px] font-black">{currentMatch.matchData?.score}% MATCH</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20" onClick={() => handleFeatureClick('analysis')}>
+                  <Info className="w-3 h-3" />
+                </Button>
+              </div>
+              
+              {!isFree && <p className="text-white/80 text-sm line-clamp-2 mb-4">{currentMatch.bio}</p>}
               
               <div className="flex gap-4">
-                <Button variant="outline" size="icon" onClick={() => setCurrentIndex(prev => prev + 1)} className="rounded-full bg-white/10 border-white/20"><X /></Button>
-                <Button className="flex-1 rounded-2xl bg-primary">Like</Button>
+                <Button variant="outline" size="icon" onClick={() => setCurrentIndex(prev => prev + 1)} className="rounded-full bg-white/10 border-white/20 hover:bg-white/20"><X /></Button>
+                <Button className="flex-1 rounded-2xl bg-primary" onClick={() => handleFeatureClick('messaging')}>
+                  <MessageCircle className="w-4 h-4 mr-2" /> Message
+                </Button>
               </div>
             </div>
           </Card>
         </div>
+      )}
+
+      {profile && (
+        <UpgradeModal 
+          isOpen={showUpgradeModal} 
+          onClose={() => setShowUpgradeModal(false)} 
+          userId={profile.uid}
+          featureName={lockedFeature}
+        />
       )}
     </div>
   );

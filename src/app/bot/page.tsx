@@ -7,23 +7,24 @@ import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BrainCircuit, Send, Sparkles, RefreshCw, Loader2 } from 'lucide-react';
+import { BrainCircuit, Send, Sparkles, RefreshCw, Loader2, History } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
-import { doc } from 'firebase/firestore';
+import { doc, collection } from 'firebase/firestore';
 import { 
   useFirestore, 
   useDoc, 
   useMemoFirebase, 
   updateDocumentNonBlocking, 
-  deleteDocumentNonBlocking,
-  setDocumentNonBlocking
+  setDocumentNonBlocking,
+  addDocumentNonBlocking
 } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 export default function AIProfileBot() {
-  const { user, profile, loading } = useAuth();
+  const { user, loading } = useAuth();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -38,14 +39,18 @@ export default function AIProfileBot() {
 
   const { data: personalityData } = useDoc<any>(personalityRef);
 
-  const messages = useMemo(() => {
-    if (!personalityData?.chatHistory || personalityData.chatHistory.length === 0) {
-      return [{ 
+  // Local state for the current session UI
+  const [sessionMessages, setSessionMessages] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (personalityData?.chatHistory) {
+      setSessionMessages(personalityData.chatHistory);
+    } else {
+      setSessionMessages([{ 
         role: 'model' as const, 
         message: "Hi! I'm HarmonyAI. I'll help you discover your dating personality. Ready to start?" 
-      }];
+      }]);
     }
-    return personalityData.chatHistory;
   }, [personalityData]);
 
   useEffect(() => {
@@ -55,39 +60,59 @@ export default function AIProfileBot() {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
     }
-  }, [messages, isAiThinking]);
+  }, [sessionMessages, isAiThinking]);
 
   const handleSend = async () => {
     if (!input.trim() || isAiThinking || !user || !personalityRef) return;
 
     const currentMsg = input;
+    const now = new Date().toISOString();
     setInput('');
     setIsAiThinking(true);
 
-    const updatedHistory = [...messages, { 
+    const newUserMsg = { 
       role: 'user' as const, 
       message: currentMsg, 
-      timestamp: new Date().toISOString() 
-    }];
+      timestamp: now 
+    };
 
+    // Log to permanent history
+    addDocumentNonBlocking(collection(db, 'bot_chats'), {
+      userId: user.uid,
+      ...newUserMsg
+    });
+
+    const updatedHistory = [...sessionMessages, newUserMsg];
+    setSessionMessages(updatedHistory);
+
+    // Update active session doc
     setDocumentNonBlocking(personalityRef, {
       id: 'personality_data',
       userId: user.uid,
       chatHistory: updatedHistory,
-      lastAnalysisDate: new Date().toISOString()
+      lastAnalysisDate: now
     }, { merge: true });
 
     try {
       const response = await aiPersonalityInterview({
-        chatHistory: messages.map(m => ({ role: m.role, message: m.message })),
+        chatHistory: sessionMessages.map(m => ({ role: m.role, message: m.message })),
         currentMessage: currentMsg
       });
 
-      const finalHistory = [...updatedHistory, { 
+      const aiMsg = { 
         role: 'model' as const, 
         message: response.response, 
         timestamp: new Date().toISOString() 
-      }];
+      };
+
+      // Log AI response to permanent history
+      addDocumentNonBlocking(collection(db, 'bot_chats'), {
+        userId: user.uid,
+        ...aiMsg
+      });
+
+      const finalHistory = [...updatedHistory, aiMsg];
+      setSessionMessages(finalHistory);
 
       const updatePayload: any = {
         chatHistory: finalHistory,
@@ -123,15 +148,20 @@ export default function AIProfileBot() {
   };
 
   const handleReset = () => {
-    if (!user || !personalityRef) return;
-    deleteDocumentNonBlocking(personalityRef);
-    const userRef = doc(db, 'users', user.uid);
-    updateDocumentNonBlocking(userRef, {
-      personalityProfile: null,
-      profileCompleted: false,
-      updatedAt: new Date().toISOString()
-    });
-    toast({ title: "Interview Reset" });
+    // Only reset the ACTIVE UI session. DO NOT DELETE History.
+    setSessionMessages([{ 
+      role: 'model' as const, 
+      message: "Session reset! Let's start fresh. How can I help you today?" 
+    }]);
+    
+    if (personalityRef) {
+      setDocumentNonBlocking(personalityRef, {
+        chatHistory: [],
+        lastAnalysisDate: new Date().toISOString()
+      }, { merge: true });
+    }
+    
+    toast({ title: "Session Reset" });
   };
 
   if (loading) return (
@@ -154,21 +184,29 @@ export default function AIProfileBot() {
             <p className="text-xs text-muted-foreground">Discovering the real you</p>
           </div>
         </div>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="rounded-xl text-muted-foreground hover:text-destructive gap-2 hover:bg-destructive/10 transition-colors"
-          onClick={handleReset}
-        >
-          <RefreshCw className="w-4 h-4" />
-          <span className="hidden sm:inline font-medium">Reset</span>
-        </Button>
+        <div className="flex gap-2">
+          <Link href="/bot/history">
+            <Button variant="ghost" size="sm" className="rounded-xl gap-2 text-muted-foreground hover:text-primary">
+              <History className="w-4 h-4" />
+              <span className="hidden sm:inline">History</span>
+            </Button>
+          </Link>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="rounded-xl text-muted-foreground hover:text-destructive gap-2 hover:bg-destructive/10 transition-colors"
+            onClick={handleReset}
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span className="hidden sm:inline font-medium">Reset</span>
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 bg-white rounded-3xl shadow-sm border border-border overflow-hidden flex flex-col mb-24 md:mb-6">
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>
           <div className="space-y-4">
-            {messages.map((m, i) => (
+            {sessionMessages.map((m, i) => (
               <div key={i} className={cn(
                 "flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300",
                 m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"

@@ -8,8 +8,8 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Lock, Send, ShieldAlert, CheckCircle2, MessageCircle, ArrowLeft, Loader2 } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Lock, Send, ShieldAlert, CheckCircle2, MessageCircle, ArrowLeft, Loader2, Crown } from 'lucide-react';
 import Link from 'next/link';
 import { 
   useFirestore, 
@@ -21,6 +21,7 @@ import {
 } from '@/firebase';
 import { collection, query, where, orderBy, doc, limit } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 function ConversationListItem({ conversation, currentUserId, isActive, onClick }: { 
   conversation: any, 
@@ -52,21 +53,23 @@ export default function MessagesPage() {
   const db = useFirestore();
   const [activeConversation, setActiveConversation] = useState<any>(null);
   const [messageText, setMessageText] = useState('');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const isVerified = profile?.identityVerified;
+  const isPremium = profile?.tier === 'premium';
 
   const convQuery = useMemoFirebase(() => {
-    if (!user?.uid || !isVerified) return null;
+    if (!user?.uid || !isVerified || !isPremium) return null;
     return query(collection(db, 'conversations'), where('participantIds', 'array-contains', user.uid), orderBy('updatedAt', 'desc'));
-  }, [db, user?.uid, isVerified]);
+  }, [db, user?.uid, isVerified, isPremium]);
 
   const { data: conversations, isLoading: convLoading } = useCollection(convQuery);
 
   const messagesQuery = useMemoFirebase(() => {
-    if (!activeConversation?.id || !isVerified) return null;
+    if (!activeConversation?.id || !isVerified || !isPremium) return null;
     return query(collection(db, 'conversations', activeConversation.id, 'messages'), orderBy('createdAt', 'asc'), limit(50));
-  }, [db, activeConversation?.id, isVerified]);
+  }, [db, activeConversation?.id, isVerified, isPremium]);
 
   const { data: messages } = useCollection(messagesQuery);
 
@@ -81,7 +84,7 @@ export default function MessagesPage() {
   }, [messages]);
 
   const handleSendMessage = () => {
-    if (!messageText.trim() || !user || !activeConversation || !isVerified) return;
+    if (!messageText.trim() || !user || !activeConversation || !isVerified || !isPremium) return;
     const msgData = { senderId: user.uid, text: messageText, createdAt: new Date().toISOString() };
     addDocumentNonBlocking(collection(db, 'conversations', activeConversation.id, 'messages'), msgData);
     updateDocumentNonBlocking(doc(db, 'conversations', activeConversation.id), { lastMessage: messageText, updatedAt: new Date().toISOString() });
@@ -104,6 +107,21 @@ export default function MessagesPage() {
     );
   }
 
+  if (profile && !isPremium) {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center p-6 text-center">
+        <Navigation />
+        <Card className="p-10 rounded-[3.5rem] shadow-2xl border-none space-y-8 bg-white max-w-sm">
+          <div className="bg-primary/10 p-6 rounded-full inline-block"><Crown className="w-12 h-12 text-primary" /></div>
+          <h1 className="text-3xl font-black">Go Premium</h1>
+          <p className="text-muted-foreground text-sm">Upgrade to start conversations with your matches.</p>
+          <Button className="w-full h-14 rounded-2xl" onClick={() => setShowUpgradeModal(true)}>Upgrade Now</Button>
+        </Card>
+        <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} userId={user?.uid || ''} featureName="Messaging" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen max-w-7xl mx-auto bg-background md:pt-16 pb-20 md:pb-0 overflow-hidden relative">
       <Navigation />
@@ -114,6 +132,11 @@ export default function MessagesPage() {
         <ScrollArea className="flex-1">
           <div className="px-4 space-y-1">
             {conversations?.map(conv => <ConversationListItem key={conv.id} conversation={conv} currentUserId={user?.uid || ''} isActive={activeConversation?.id === conv.id} onClick={() => setActiveConversation(conv)} />)}
+            {conversations?.length === 0 && (
+              <div className="text-center py-20 px-6">
+                <p className="text-xs text-muted-foreground">Find some matches to start chatting!</p>
+              </div>
+            )}
           </div>
         </ScrollArea>
       </div>
