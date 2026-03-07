@@ -103,7 +103,7 @@ export default function MessagesPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const isVerified = profile?.identityVerified;
-  const isSubscriber = profile?.tier === 'premium' || profile?.tier === 'lite';
+  const isPremium = profile?.tier === 'premium';
 
   // Fetch all conversations for the user
   const convQuery = useMemoFirebase(() => {
@@ -153,7 +153,7 @@ export default function MessagesPage() {
   }, [messages]);
 
   const handleSendMessage = () => {
-    if (!messageText.trim() || !user || !activeConversation || !isVerified || !isSubscriber) return;
+    if (!messageText.trim() || !user || !activeConversation || !isVerified || !isPremium) return;
     
     const msgData = { 
       senderId: user.uid, 
@@ -333,7 +333,7 @@ export default function MessagesPage() {
             </ScrollArea>
 
             {/* Input Area / Upgrade Gate */}
-            {!isSubscriber ? (
+            {!isPremium ? (
               <div className="p-8 border-t bg-accent/50 text-center space-y-4">
                 <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
                   <Crown className="w-3 h-3 fill-current" /> Premium Feature

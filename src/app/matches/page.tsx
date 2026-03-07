@@ -96,7 +96,6 @@ export default function MatchesPage() {
   const [requestConfirmation, setRequestConfirmation] = useState<any>(null);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
 
-  // Real-time outgoing requests to prevent duplicates
   const outgoingQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -162,14 +161,15 @@ export default function MatchesPage() {
   const handleMessageClick = (match: any) => {
     if (!profile) return;
     
+    // Check for Premium for messaging
     if (profile.tier !== 'premium') {
       setLockedFeature('Unlimited Messaging');
       setShowUpgradeModal(true);
       return;
     }
 
-    const existingConv = outgoingRequests?.find(r => r.receiverId === match.id && r.status === 'accepted');
-    if (existingConv) {
+    const isAccepted = outgoingRequests?.some(r => r.receiverId === match.id && r.status === 'accepted');
+    if (isAccepted) {
       router.push('/messages');
       return;
     }
@@ -181,6 +181,19 @@ export default function MatchesPage() {
     }
 
     setRequestConfirmation(match);
+  };
+
+  const handleAnalysisClick = (match: any) => {
+    if (!profile) return;
+    
+    // Lite or Premium can see analysis
+    if (profile.tier === 'free') {
+      setLockedFeature('Detailed Vibe Analysis');
+      setShowUpgradeModal(true);
+      return;
+    }
+    
+    setSelectedAnalysis(match);
   };
 
   const sendChatRequest = () => {
@@ -309,14 +322,14 @@ export default function MatchesPage() {
                     </div>
                   )}
 
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none" />
                   
-                  <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-4 py-2 rounded-2xl flex items-center gap-2 border border-white/30">
+                  <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-4 py-2 rounded-2xl flex items-center gap-2 border border-white/30 z-10">
                     <span className="text-white font-black text-lg">{match.score}%</span>
                     <div className="w-2 h-2 rounded-full bg-verified animate-pulse" />
                   </div>
 
-                  <div className="absolute bottom-0 p-8 text-white w-full">
+                  <div className="absolute bottom-0 p-8 text-white w-full z-30">
                     <div className="flex items-center gap-2 mb-2">
                       <h3 className="text-3xl font-black">{profile.tier === 'free' ? 'TrueVibe User' : match.name}</h3>
                       <Check className="w-5 h-5 bg-verified rounded-full p-1" />
@@ -332,7 +345,10 @@ export default function MatchesPage() {
                           "flex-1 rounded-2xl h-14 font-black text-sm transition-all",
                           isAccepted ? "bg-verified text-white" : "bg-white text-black hover:bg-white/90"
                         )}
-                        onClick={() => handleMessageClick(match)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMessageClick(match);
+                        }}
                         disabled={hasSentRequest}
                       >
                         {isAccepted ? (
@@ -347,7 +363,10 @@ export default function MatchesPage() {
                         variant="ghost" 
                         size="icon" 
                         className="h-14 w-14 rounded-2xl bg-white/10 border-white/20 hover:bg-white/20 text-white"
-                        onClick={() => setSelectedAnalysis(match)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAnalysisClick(match);
+                        }}
                       >
                         <Info className="w-6 h-6" />
                       </Button>
