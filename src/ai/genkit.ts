@@ -1,5 +1,5 @@
-import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
+import { genkit } from 'genkit';
+import { googleAI, gemini15Flash } from '@genkit-ai/google-genai';
 
 export const ai = genkit({
   plugins: [
@@ -7,5 +7,6 @@ export const ai = genkit({
       apiKey: 'AIzaSyAAmmDPjXdM3rGKbD2qa0NBbEyf7p-z-VQ',
     }),
   ],
-  model: 'gemini-1.5-flash',
+  // Using the imported model object is the most reliable way to reference it in Genkit 1.x
+  model: gemini15Flash, 
 });
