@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth as useFirebaseAuth, useFirestore } from '@/firebase';
 import { 
   createUserWithEmailAndPassword, 
@@ -13,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldCheck, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/Logo';
@@ -24,6 +25,7 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showResetLink, setShowResetLink] = useState(false);
   
   const auth = useFirebaseAuth();
   const db = useFirestore();
@@ -31,7 +33,6 @@ export default function SignupPage() {
   const { toast } = useToast();
 
   const validatePassword = (pass: string) => {
-    // Min 8 chars, at least one letter and one number
     const regex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
     return regex.test(pass);
   };
@@ -39,6 +40,7 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setShowResetLink(false);
     
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -52,14 +54,11 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      // 1. Create account
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Send verification
       await sendEmailVerification(user);
 
-      // 3. Initialize Firestore profile
       const userRef = doc(db, 'users', user.uid);
       await setDoc(userRef, {
         id: user.uid,
@@ -83,20 +82,9 @@ export default function SignupPage() {
       
       router.push('/auth/verify');
     } catch (err: any) {
-      // 4. Auto-recover if email exists
       if (err.code === 'auth/email-already-in-use') {
-        try {
-          const loginCred = await signInWithEmailAndPassword(auth, email, password);
-          if (!loginCred.user.emailVerified) {
-            await sendEmailVerification(loginCred.user);
-            router.push('/auth/verify');
-          } else {
-            router.push('/bot');
-          }
-          return;
-        } catch (loginErr: any) {
-          setError("This email is already registered. Please log in with your correct password.");
-        }
+        setShowResetLink(true);
+        setError("This email is already registered.");
       } else {
         setError(err.message || "Could not create account.");
       }
@@ -125,6 +113,11 @@ export default function SignupPage() {
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm font-bold p-4 rounded-2xl border border-destructive/20 animate-in fade-in slide-in-from-top-1">
                 {error}
+                {showResetLink && process.env.NODE_ENV === 'development' && (
+                  <Link href="/admin/reset-user" className="block mt-2 text-primary hover:underline flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Reset this account (Dev Only)
+                  </Link>
+                )}
               </div>
             )}
             <div className="space-y-2">
