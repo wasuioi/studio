@@ -5,7 +5,15 @@ import { useAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, BrainCircuit, Check, Crown, MessageCircle, Loader2, Info, Zap, Heart, RefreshCw } from 'lucide-react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { Sparkles, BrainCircuit, Check, Crown, MessageCircle, Loader2, Info, Zap, Heart, RefreshCw, Star } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { 
@@ -17,6 +25,7 @@ import { findMatches } from '@/ai/flows/find-matches-flow';
 import { useToast } from '@/hooks/use-toast';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { doc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 const SIMULATED_PROFILES = [
   {
@@ -73,10 +82,12 @@ export default function MatchesPage() {
   const { profile, user, loading } = useAuth();
   const db = useFirestore();
   const { toast } = useToast();
+  const router = useRouter();
   const [isScanning, setIsScanning] = useState(false);
   const [matches, setMatches] = useState<any[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [lockedFeature, setLockedFeature] = useState('');
+  const [selectedAnalysis, setSelectedAnalysis] = useState<any>(null);
 
   // Synchronize local matches state with persisted profile matches
   useEffect(() => {
@@ -134,12 +145,25 @@ export default function MatchesPage() {
     }
   };
 
-  const handleFeatureClick = (feature: string) => {
-    if (profile?.tier === 'free') {
-      setLockedFeature(feature === 'messaging' ? 'Unlimited Messaging' : 'Vibe Analysis');
+  const handleMessageClick = () => {
+    if (!profile) return;
+    
+    if (profile.tier !== 'premium') {
+      setLockedFeature('Unlimited Messaging');
       setShowUpgradeModal(true);
     } else {
-      toast({ title: "Feature coming soon!", description: "Messaging with matches will be available in the next update." });
+      router.push('/messages');
+    }
+  };
+
+  const handleAnalysisClick = (match: any) => {
+    if (!profile) return;
+
+    if (profile.tier === 'free') {
+      setLockedFeature('Detailed Vibe Analysis');
+      setShowUpgradeModal(true);
+    } else {
+      setSelectedAnalysis(match);
     }
   };
 
@@ -250,7 +274,7 @@ export default function MatchesPage() {
                   <div className="flex gap-3">
                     <Button 
                       className="flex-1 rounded-2xl h-14 bg-white text-black hover:bg-white/90 font-black text-sm"
-                      onClick={() => handleFeatureClick('messaging')}
+                      onClick={handleMessageClick}
                     >
                       <MessageCircle className="w-4 h-4 mr-2 fill-current" /> Message
                     </Button>
@@ -258,7 +282,7 @@ export default function MatchesPage() {
                       variant="ghost" 
                       size="icon" 
                       className="h-14 w-14 rounded-2xl bg-white/10 border-white/20 hover:bg-white/20 text-white"
-                      onClick={() => handleFeatureClick('analysis')}
+                      onClick={() => handleAnalysisClick(match)}
                     >
                       <Info className="w-6 h-6" />
                     </Button>
@@ -269,6 +293,51 @@ export default function MatchesPage() {
           ))}
         </div>
       )}
+
+      {/* Vibe Analysis Detail Dialog */}
+      <Dialog open={!!selectedAnalysis} onOpenChange={() => setSelectedAnalysis(null)}>
+        <DialogContent className="rounded-[2.5rem] border-none shadow-2xl max-w-lg bg-white p-10">
+          <DialogHeader className="items-center text-center space-y-4">
+            <div className="bg-primary/10 p-4 rounded-full">
+              <Star className="w-10 h-10 text-primary fill-current" />
+            </div>
+            <div>
+              <DialogTitle className="text-3xl font-black tracking-tight">Vibe Analysis</DialogTitle>
+              <DialogDescription className="font-medium text-base">
+                Why you and {selectedAnalysis?.name} are a high-energy match.
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+          
+          <div className="py-8 space-y-6">
+            <div className="bg-muted/30 p-8 rounded-[2rem] border-l-4 border-primary">
+              <p className="text-foreground leading-relaxed font-medium">
+                {selectedAnalysis?.reason}
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-accent/50 p-4 rounded-2xl text-center">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Match Score</p>
+                <p className="text-2xl font-black text-primary">{selectedAnalysis?.score}%</p>
+              </div>
+              <div className="bg-accent/50 p-4 rounded-2xl text-center">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Status</p>
+                <p className="text-2xl font-black text-verified">Optimal</p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              className="w-full h-14 rounded-2xl font-black truevibe-gradient border-none"
+              onClick={() => setSelectedAnalysis(null)}
+            >
+              Back to Matches
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {profile && (
         <UpgradeModal 
