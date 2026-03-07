@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/firebase';
@@ -8,9 +9,32 @@ import { Logo } from '@/components/Logo';
 import { Rocket, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
+interface StarProps {
+  top: string;
+  left: string;
+  width: string;
+  height: string;
+  delay: string;
+  opacity: number;
+}
+
 export default function LandingPage() {
   const { user } = useUser();
   const router = useRouter();
+  const [stars, setStars] = useState<StarProps[]>([]);
+
+  useEffect(() => {
+    // Generate star properties only on the client to avoid hydration mismatch
+    const generatedStars = [...Array(20)].map(() => ({
+      top: `${Math.random() * 100}%`,
+      left: `${Math.random() * 100}%`,
+      width: `${Math.random() * 3}px`,
+      height: `${Math.random() * 3}px`,
+      delay: `${Math.random() * 5}s`,
+      opacity: Math.random() * 0.5
+    }));
+    setStars(generatedStars);
+  }, []);
 
   const handleStart = () => {
     if (user) {
@@ -82,17 +106,17 @@ export default function LandingPage() {
 
       {/* Decorative Stars */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(20)].map((_, i) => (
+        {stars.map((star, i) => (
           <div 
             key={i}
             className="absolute bg-white rounded-full animate-pulse"
             style={{
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              width: `${Math.random() * 3}px`,
-              height: `${Math.random() * 3}px`,
-              animationDelay: `${Math.random() * 5}s`,
-              opacity: Math.random() * 0.5
+              top: star.top,
+              left: star.left,
+              width: star.width,
+              height: star.height,
+              animationDelay: star.delay,
+              opacity: star.opacity
             }}
           />
         ))}
