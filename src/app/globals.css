@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: 270 33% 99%;
-    --foreground: 270 10% 10%;
+    --background: 252 100% 98%;
+    --foreground: 256 71% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 270 10% 15%;
+    --card-foreground: 256 71% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 270 10% 15%;
-    --primary: 326 100% 60%;
+    --popover-foreground: 256 71% 15%;
+    --primary: 255 100% 62%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 264 80% 62%;
+    --secondary: 256 71% 53%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 270 15% 96%;
-    --muted-foreground: 270 5% 45%;
-    --accent: 326 100% 97%;
-    --accent-foreground: 326 100% 40%;
+    --muted: 252 100% 95%;
+    --muted-foreground: 256 10% 45%;
+    --accent: 0 100% 71%;
+    --accent-foreground: 0 100% 40%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 270 15% 92%;
-    --input: 270 15% 92%;
-    --ring: 326 100% 60%;
+    --border: 252 20% 90%;
+    --input: 252 20% 90%;
+    --ring: 255 100% 62%;
     --radius: 1.5rem;
     
     /* Verification Status Colors */
@@ -31,23 +31,23 @@
   }
 
   .dark {
-    --background: 270 20% 5%;
-    --foreground: 270 10% 95%;
-    --card: 270 20% 8%;
-    --card-foreground: 270 10% 95%;
-    --popover: 270 20% 8%;
-    --popover-foreground: 270 10% 95%;
-    --primary: 326 100% 65%;
-    --primary-foreground: 270 20% 5%;
-    --secondary: 264 80% 70%;
-    --secondary-foreground: 270 10% 95%;
-    --muted: 270 10% 15%;
-    --muted-foreground: 270 5% 65%;
-    --accent: 326 100% 15%;
-    --accent-foreground: 326 100% 95%;
-    --border: 270 10% 20%;
-    --input: 270 10% 20%;
-    --ring: 326 100% 65%;
+    --background: 256 40% 5%;
+    --foreground: 256 10% 95%;
+    --card: 256 40% 8%;
+    --card-foreground: 256 10% 95%;
+    --popover: 256 40% 8%;
+    --popover-foreground: 256 10% 95%;
+    --primary: 255 100% 65%;
+    --primary-foreground: 256 40% 5%;
+    --secondary: 256 71% 60%;
+    --secondary-foreground: 256 10% 95%;
+    --muted: 256 10% 15%;
+    --muted-foreground: 256 5% 65%;
+    --accent: 0 100% 75%;
+    --accent-foreground: 0 100% 95%;
+    --border: 256 10% 20%;
+    --input: 256 10% 20%;
+    --ring: 255 100% 65%;
   }
 }
 
@@ -67,13 +67,13 @@
 .bg-unverified { background-color: hsl(var(--unverified)); }
 .text-unverified { color: hsl(var(--unverified)); }
 
-/* TrueVibe Gradient */
+/* TrueVibe Gradient - Primary Purple to Coral to Warm Orange */
 .truevibe-gradient {
-  background: linear-gradient(135deg, hsl(264, 80%, 62%) 0%, hsl(326, 100%, 60%) 50%, hsl(14, 100%, 65%) 100%);
+  background: linear-gradient(135deg, hsl(255, 100%, 62%) 0%, hsl(0, 100%, 71%) 50%, hsl(17, 100%, 68%) 100%);
 }
 
 .truevibe-text-gradient {
-  background: linear-gradient(135deg, hsl(264, 80%, 62%) 0%, hsl(326, 100%, 60%) 100%);
+  background: linear-gradient(135deg, hsl(255, 100%, 62%) 0%, hsl(0, 100%, 71%) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
