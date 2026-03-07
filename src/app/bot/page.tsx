@@ -1,13 +1,12 @@
-
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BrainCircuit, Send, Sparkles, RefreshCw, Loader2, History } from 'lucide-react';
+import { BrainCircuit, Send, Sparkles, Loader2 } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
 import { doc, collection } from 'firebase/firestore';
 import { 
@@ -21,7 +20,6 @@ import {
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
 
 export default function AIProfileBot() {
   const { user, loading } = useAuth();
@@ -147,23 +145,6 @@ export default function AIProfileBot() {
     }
   };
 
-  const handleReset = () => {
-    // Only reset the ACTIVE UI session. DO NOT DELETE History.
-    setSessionMessages([{ 
-      role: 'model' as const, 
-      message: "Session reset! Let's start fresh. How can I help you today?" 
-    }]);
-    
-    if (personalityRef) {
-      setDocumentNonBlocking(personalityRef, {
-        chatHistory: [],
-        lastAnalysisDate: new Date().toISOString()
-      }, { merge: true });
-    }
-    
-    toast({ title: "Session Reset" });
-  };
-
   if (loading) return (
     <div className="flex h-screen items-center justify-center">
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -183,23 +164,6 @@ export default function AIProfileBot() {
             <h1 className="text-xl font-bold text-foreground">HarmonyAI Interview</h1>
             <p className="text-xs text-muted-foreground">Discovering the real you</p>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/bot/history">
-            <Button variant="ghost" size="sm" className="rounded-xl gap-2 text-muted-foreground hover:text-primary">
-              <History className="w-4 h-4" />
-              <span className="hidden sm:inline">History</span>
-            </Button>
-          </Link>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="rounded-xl text-muted-foreground hover:text-destructive gap-2 hover:bg-destructive/10 transition-colors"
-            onClick={handleReset}
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span className="hidden sm:inline font-medium">Reset</span>
-          </Button>
         </div>
       </div>
 
