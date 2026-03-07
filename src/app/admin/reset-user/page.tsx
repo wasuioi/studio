@@ -10,17 +10,19 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Navigation } from '@/components/Navigation';
-import { Loader2, Trash2, AlertTriangle, ShieldAlert, ArrowLeft, RefreshCw, Sparkles } from 'lucide-react';
+import { Loader2, Trash2, AlertTriangle, ShieldAlert, ArrowLeft, RefreshCw, Search, UserMinus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 export default function ResetUserPage() {
-  const { user, isUserLoading } = useUser();
+  const { user: currentUser, isUserLoading } = useUser();
   const db = useFirestore();
   const auth = useFirebaseAuth();
   const { toast } = useToast();
-  const [emailInput, setEmailInput] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
+  
+  const [targetEmail, setTargetEmail] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
   const [isDev, setIsDev] = useState(false);
 
   useEffect(() => {
@@ -29,79 +31,79 @@ export default function ResetUserPage() {
     }
   }, []);
 
-  const handleTotalWipe = async () => {
-    if (!user) {
-      toast({
-        variant: "destructive",
-        title: "Not Authenticated",
-        description: "Please log in with the test account you wish to reset.",
-      });
+  const handleResetByEmail = async () => {
+    if (!targetEmail.trim()) {
+      toast({ variant: "destructive", title: "Error", description: "Please enter an email address." });
       return;
     }
 
-    if (emailInput.toLowerCase() !== user.email?.toLowerCase()) {
-      toast({
-        variant: "destructive",
-        title: "Email Mismatch",
-        description: `Please enter ${user.email} to confirm the wipe.`,
-      });
-      return;
-    }
-
-    setIsDeleting(true);
+    setIsProcessing(true);
 
     try {
+      // 1. Find user in Firestore by email
+      const usersQuery = query(collection(db, 'users'), where('email', '==', targetEmail.toLowerCase()));
+      const userSnap = await getDocs(usersQuery);
+
+      if (userSnap.empty) {
+        toast({
+          variant: "destructive",
+          title: "User Not Found",
+          description: `No Firestore record found for ${targetEmail}. Note: This tool cannot search the Auth database directly.`,
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      const targetUserDoc = userSnap.docs[0];
+      const targetUid = targetUserDoc.id;
       const batch = writeBatch(db);
 
-      // 1. Target User Document
-      const userRef = doc(db, 'users', user.uid);
-      batch.delete(userRef);
+      // 2. Queue Firestore Deletions
+      // User Profile
+      batch.delete(doc(db, 'users', targetUid));
+      
+      // Personality Data
+      batch.delete(doc(db, 'users', targetUid, 'personality', 'personality_data'));
 
-      // 2. Target Personality Data
-      const personalityRef = doc(db, 'users', user.uid, 'personality', 'personality_data');
-      batch.delete(personalityRef);
-
-      // 3. Clear all Bot Chats for this user
-      const chatsQuery = query(collection(db, 'bot_chats'), where('userId', '==', user.uid));
+      // Bot Chats
+      const chatsQuery = query(collection(db, 'bot_chats'), where('userId', '==', targetUid));
       const chatsSnap = await getDocs(chatsQuery);
       chatsSnap.forEach((doc) => batch.delete(doc.ref));
 
-      // 4. Clear all Posts for this user
-      const postsQuery = query(collection(db, 'users', user.uid, 'posts'));
+      // User Posts
+      const postsQuery = query(collection(db, 'users', targetUid, 'posts'));
       const postsSnap = await getDocs(postsQuery);
       postsSnap.forEach((doc) => batch.delete(doc.ref));
 
-      // Commit all Firestore deletions
       await batch.commit();
 
-      // 5. Delete Auth User Record (Allows re-registration)
-      await deleteUser(user);
+      // 3. Handle Auth Deletion (Client Side limitation)
+      let authMessage = "";
+      if (currentUser && currentUser.email?.toLowerCase() === targetEmail.toLowerCase()) {
+        await deleteUser(currentUser);
+        authMessage = "Auth record also deleted.";
+      } else {
+        authMessage = "IMPORTANT: You must manually delete this user from the Firebase Authentication Console to allow them to re-register.";
+      }
 
       toast({
-        title: "Data Purged Successfully",
-        description: "Everything wiped. You can now register again with this email.",
+        title: "Data Reset Complete",
+        description: `Firestore data for ${targetEmail} has been wiped. ${authMessage}`,
       });
 
-      setTimeout(() => {
-        window.location.href = '/auth/signup';
-      }, 1500);
+      setTargetEmail('');
+      if (currentUser?.email?.toLowerCase() === targetEmail.toLowerCase()) {
+        setTimeout(() => window.location.href = '/auth/signup', 2000);
+      }
 
     } catch (error: any) {
-      if (error.code === 'auth/requires-recent-login') {
-        toast({
-          variant: "destructive",
-          title: "Re-authentication Required",
-          description: "For security, please log out and back in to verify it's you.",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Reset Failed",
-          description: error.message,
-        });
-      }
+      toast({
+        variant: "destructive",
+        title: "Reset Failed",
+        description: error.message,
+      });
     } finally {
-      setIsDeleting(false);
+      setIsProcessing(false);
     }
   };
 
@@ -128,12 +130,12 @@ export default function ResetUserPage() {
         <div className="truevibe-gradient h-2" />
         <CardHeader className="space-y-4 text-center pt-8">
           <div className="mx-auto bg-primary/10 w-20 h-20 rounded-[1.5rem] flex items-center justify-center">
-            <RefreshCw className="w-10 h-10 text-primary" />
+            <UserMinus className="w-10 h-10 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-3xl font-black tracking-tighter">Account Total Wipe</CardTitle>
+            <CardTitle className="text-3xl font-black tracking-tighter uppercase">Admin Reset Tool</CardTitle>
             <CardDescription className="font-medium">
-              Delete all personality data, chats, and auth records to start the process from zero.
+              Wipe Firestore data for specific test accounts.
             </CardDescription>
           </div>
         </CardHeader>
@@ -142,33 +144,45 @@ export default function ResetUserPage() {
           <div className="bg-muted/50 p-6 rounded-3xl border border-border/50 space-y-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-              <p className="text-xs font-medium text-muted-foreground leading-relaxed">
-                This will delete your <strong>Profile</strong>, <strong>AI Chat History</strong>, and <strong>Login Credentials</strong>. 
+              <p className="text-[10px] font-bold text-muted-foreground leading-relaxed uppercase tracking-wider">
+                This wipes Firestore data (Profile, Chats, Personality). 
+                To allow re-registration, you must ALSO delete the user in the Firebase Auth Console.
               </p>
             </div>
             
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email-confirm" className="text-[10px] font-black uppercase tracking-widest ml-1">Confirm Email to Purge</Label>
-                <Input 
-                  id="email-confirm"
-                  placeholder={user?.email || "email@example.com"}
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  className="rounded-2xl h-12 bg-white border-none shadow-inner"
-                />
+                <Label htmlFor="target-email" className="text-[10px] font-black uppercase tracking-widest ml-1">Email Address to Reset</Label>
+                <div className="relative">
+                  <Input 
+                    id="target-email"
+                    placeholder="e.g. uiuinag@gmail.com"
+                    value={targetEmail}
+                    onChange={(e) => setTargetEmail(e.target.value)}
+                    className="rounded-2xl h-14 bg-white border-none shadow-inner pl-12"
+                  />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                </div>
               </div>
             </div>
           </div>
 
-          <Button 
-            variant="destructive"
-            className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-destructive/20 border-none transition-all active:scale-95"
-            onClick={handleTotalWipe}
-            disabled={isDeleting || !user || emailInput.toLowerCase() !== user.email?.toLowerCase()}
-          >
-            {isDeleting ? <Loader2 className="w-6 h-6 animate-spin" /> : "Purge All Data & Reset"}
-          </Button>
+          <div className="space-y-3">
+            <Button 
+              variant="destructive"
+              className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-destructive/20 border-none transition-all active:scale-95"
+              onClick={handleResetByEmail}
+              disabled={isProcessing || !targetEmail.trim()}
+            >
+              {isProcessing ? <Loader2 className="w-6 h-6 animate-spin" /> : "Reset Firestore Data"}
+            </Button>
+            
+            {currentUser && (
+              <p className="text-[9px] text-center text-muted-foreground font-bold uppercase tracking-widest px-4">
+                Note: Deleting your OWN account ({currentUser.email}) will also remove your Auth record.
+              </p>
+            )}
+          </div>
         </CardContent>
 
         <CardFooter className="pb-10 flex flex-col gap-4 items-center">
