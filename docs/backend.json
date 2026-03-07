@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -29,6 +30,20 @@
         }
       },
       "required": ["id", "email", "emailVerified", "identityVerified", "createdAt"]
+    },
+    "ChatRequest": {
+      "title": "ChatRequest",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "matchScore": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "expired"] },
+        "reason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      }
     },
     "Match": {
       "title": "Match",
@@ -76,17 +91,10 @@
         }
       },
       {
-        "path": "/users/{userId}/posts/{postId}",
+        "path": "/chat_requests/{requestId}",
         "definition": {
-          "entityName": "Post",
-          "description": "User's social updates."
-        }
-      },
-      {
-        "path": "/matches/{matchId}",
-        "definition": {
-          "entityName": "Match",
-          "description": "Matches between users."
+          "entityName": "ChatRequest",
+          "description": "Requests to start a conversation."
         }
       },
       {

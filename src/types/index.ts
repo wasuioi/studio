@@ -1,3 +1,4 @@
+
 export interface UserProfile {
   id: string;
   uid: string;
@@ -46,6 +47,19 @@ export interface UserProfile {
     };
     readiness_score: number;
   };
+}
+
+export interface ChatRequest {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderPhotoURL: string;
+  receiverId: string;
+  matchScore: number;
+  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  reason: string;
+  createdAt: string;
+  expiresAt: string;
 }
 
 export interface Post {
