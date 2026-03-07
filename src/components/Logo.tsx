@@ -24,19 +24,21 @@ export function Logo({ className, size = "md", showText = true }: LogoProps) {
   return (
     <div className={cn("flex flex-col items-center justify-center gap-2", className)}>
       <div className={cn("relative", iconSizes[size])}>
-        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-xl">
-          {/* Left Petal - Heart/V Shape Component */}
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-2xl">
+          {/* Left Petal */}
           <path 
             d="M50 85C50 85 45 60 20 40C5 25 10 10 25 10C40 10 50 25 50 45" 
             fill="url(#purple_petal)" 
           />
-          {/* Right Petal - Heart/V Shape Component */}
+          {/* Right Petal */}
           <path 
             d="M50 85C50 85 55 60 80 40C95 25 90 10 75 10C60 10 50 25 50 45" 
             fill="url(#pink_petal)" 
           />
-          {/* Central Glow for V-Shape interaction */}
-          <circle cx="50" cy="45" r="8" fill="white" className="opacity-20 blur-sm" />
+          
+          {/* Central Highlight Detail (+) */}
+          <circle cx="50" cy="45" r="4" fill="#FF6B6B" className="opacity-80" />
+          <path d="M50 42V48M47 45H53" stroke="#FF6B6B" strokeWidth="1.5" strokeLinecap="round" />
           
           <defs>
             <linearGradient id="purple_petal" x1="25" y1="10" x2="50" y2="85" gradientUnits="userSpaceOnUse">
@@ -52,8 +54,8 @@ export function Logo({ className, size = "md", showText = true }: LogoProps) {
       </div>
       {showText && (
         <span className={cn("font-black tracking-tight", textSizes[size])}>
-          <span className="text-[#6C3BFF]">True</span>
-          <span className="text-[#FF6B6B]">vibe</span>
+          <span className="text-white">True</span>
+          <span className="text-white opacity-80">vibe</span>
         </span>
       )}
     </div>
