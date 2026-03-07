@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -26,7 +25,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      if (!userCredential.user.emailVerified) {
+      const user = userCredential.user;
+      
+      if (!user.emailVerified) {
+        toast({
+          title: "Verification Required",
+          description: "Please verify your email before accessing the platform.",
+        });
         router.push('/auth/verify');
       } else {
         router.push('/bot');

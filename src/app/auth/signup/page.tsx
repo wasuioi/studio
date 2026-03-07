@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useState } from 'react';
 import { useAuth as useFirebaseAuth, useFirestore } from '@/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -19,6 +18,8 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
   const auth = useFirebaseAuth();
   const db = useFirestore();
   const router = useRouter();
@@ -30,18 +31,15 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     if (password !== confirmPassword) {
-      toast({ variant: "destructive", title: "Match Error", description: "Passwords do not match." });
+      setError("Passwords do not match.");
       return;
     }
 
     if (!validatePassword(password)) {
-      toast({ 
-        variant: "destructive", 
-        title: "Weak Password", 
-        description: "Must be at least 8 characters and include both letters and numbers." 
-      });
+      setError("Password must be at least 8 characters and include both letters and numbers.");
       return;
     }
 
@@ -50,43 +48,38 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Generate a verification code
-      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      // Store verification code in a private subcollection
-      const verificationRef = doc(db, 'users', user.uid, 'private', 'verification');
-      await setDoc(verificationRef, {
-        code: verificationCode,
+      // Send native Firebase verification email
+      await sendEmailVerification(user);
+
+      // Create initial Firestore profile
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, {
+        id: user.uid,
+        uid: user.uid,
+        email: user.email,
+        displayName: 'TrueVibe User',
+        name: 'TrueVibe User',
+        photoURL: `https://picsum.photos/seed/${user.uid}/400/400`,
+        emailVerified: false,
+        identityVerified: false,
+        profileCompleted: false,
+        tier: 'free',
         createdAt: new Date().toISOString(),
-      });
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
 
-      // Send verification email via professional service (API Route)
-      const emailResponse = await fetch('/api/auth/send-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: user.email,
-          code: verificationCode,
-          displayName: user.displayName || 'TrueVibe User',
-        }),
-      });
-
-      if (!emailResponse.ok) {
-        throw new Error('Failed to send verification email');
-      }
-      
       toast({
         title: "Account Created!",
-        description: "A professional verification link has been sent to your email.",
+        description: "A verification email has been sent to your inbox.",
       });
       
       router.push('/auth/verify');
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Signup Failed",
-        description: error.message || "Could not create account.",
-      });
+      if (error.code === 'auth/email-already-in-use') {
+        setError("This email is already registered.");
+      } else {
+        setError(error.message || "Could not create account.");
+      }
     } finally {
       setLoading(false);
     }
@@ -111,6 +104,18 @@ export default function SignupPage() {
         </CardHeader>
         <CardContent className="px-8">
           <form onSubmit={handleSignup} className="space-y-4">
+            {error && (
+              <div className="bg-destructive/10 text-destructive text-sm font-bold p-4 rounded-2xl border border-destructive/20 animate-in fade-in slide-in-from-top-1">
+                {error}
+                {error === "This email is already registered." && (
+                  <div className="mt-2 flex gap-2">
+                    <Link href="/auth/login" className="underline hover:opacity-80">Log in</Link>
+                    <span>or</span>
+                    <Link href="/auth/verify" className="underline hover:opacity-80">Verify Email</Link>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email" className="font-bold text-xs uppercase tracking-widest ml-1">Email</Label>
               <Input 
@@ -164,7 +169,7 @@ export default function SignupPage() {
           </p>
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground bg-accent/50 px-6 py-3 rounded-2xl font-bold uppercase tracking-wider">
             <ShieldCheck className="w-4 h-4 text-primary fill-current" />
-            Secure Professional Verification
+            Native Firebase Security
           </div>
         </CardFooter>
       </Card>

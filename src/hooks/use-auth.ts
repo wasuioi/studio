@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { useUser, useFirestore } from '@/firebase';
 import { UserProfile } from '@/types';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -26,9 +25,16 @@ export function useAuth() {
     if (!user) {
       setProfile(null);
       setLoading(false);
-      if (!isPublicPath) {
+      if (!isPublicPath && pathname !== '/auth/verify') {
         router.push('/auth/login');
       }
+      return;
+    }
+
+    // Check email verification status from native Firebase user
+    if (!user.emailVerified && !isPublicPath && pathname !== '/auth/verify') {
+      router.push('/auth/verify');
+      setLoading(false);
       return;
     }
 
@@ -39,21 +45,19 @@ export function useAuth() {
       if (docSnap.exists()) {
         const data = docSnap.data() as UserProfile;
         
-        // Custom Email Verification Protection (Checking Firestore status)
-        if (!data.emailVerified && pathname !== '/auth/verify' && !isPublicPath) {
-          router.push('/auth/verify');
-          setLoading(false);
-          return;
+        // Sync Firestore emailVerified with native Auth state if they differ
+        if (data.emailVerified !== user.emailVerified) {
+          updateDoc(userRef, { emailVerified: user.emailVerified });
         }
 
-        // If verified and trying to access verify page, move to dashboard
-        if (data.emailVerified && pathname === '/auth/verify') {
+        // Redirect away from verify page if already verified
+        if (user.emailVerified && pathname === '/auth/verify') {
           router.push('/bot');
           setLoading(false);
           return;
         }
 
-        setProfile(data);
+        setProfile({ ...data, emailVerified: user.emailVerified });
         setLoading(false);
       } else {
         // Initialize profile
@@ -67,7 +71,7 @@ export function useAuth() {
           photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/400/400`,
           profilePhotoUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/400/400`,
           bio: "Just joined TrueVibe! Looking for real vibes.",
-          emailVerified: false, // Default to false, verified via custom flow
+          emailVerified: user.emailVerified,
           identityVerified: false,
           verificationStatus: 'not_verified',
           profileCompleted: false,
@@ -81,7 +85,7 @@ export function useAuth() {
           .then(() => {
             setProfile(newProfile);
             setLoading(false);
-            if (pathname !== '/auth/verify') {
+            if (!user.emailVerified && pathname !== '/auth/verify') {
               router.push('/auth/verify');
             }
           })
@@ -96,7 +100,7 @@ export function useAuth() {
           });
       }
     }, (error) => {
-      if (!isPublicPath) {
+      if (!isPublicPath && pathname !== '/auth/verify') {
         const permissionError = new FirestorePermissionError({
           path: userRef.path,
           operation: 'get',
