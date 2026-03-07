@@ -96,7 +96,7 @@ export default function MatchesPage() {
   const [requestConfirmation, setRequestConfirmation] = useState<any>(null);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
 
-  // Track outgoing requests to see what is pending
+  // Track outgoing requests to see what is pending or accepted
   const outgoingQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -233,10 +233,13 @@ export default function MatchesPage() {
 
     setDocumentNonBlocking(doc(db, 'chat_requests', requestId), requestData, { merge: true });
     
+    // Logic for simulated acceptance (Fast-track for demo)
     if (requestConfirmation.id.startsWith('sim_')) {
       setTimeout(() => {
+        // Update request to accepted
         updateDocumentNonBlocking(doc(db, 'chat_requests', requestId), { status: 'accepted' });
         
+        // Create the conversation room
         const convId = `conv_${user.uid}_${requestConfirmation.id}`;
         setDocumentNonBlocking(doc(db, 'conversations', convId), {
           id: convId,
@@ -247,7 +250,7 @@ export default function MatchesPage() {
         }, { merge: true });
 
         toast({ title: "Request Accepted!", description: `${requestConfirmation.name} is ready to chat!` });
-      }, 2000);
+      }, 1500);
     }
 
     toast({ title: "Request Sent", description: `We've sent your vibe check to ${requestConfirmation.name}.` });
@@ -308,6 +311,7 @@ export default function MatchesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {matches.map((match) => {
             const hasSentRequest = outgoingRequests?.some(r => r.receiverId === match.id && r.status === 'pending');
+            const hasAcceptedRequest = outgoingRequests?.some(r => r.receiverId === match.id && r.status === 'accepted');
             const hasActiveConv = activeConversations?.some(conv => conv.participantIds.includes(match.id));
 
             return (
@@ -357,14 +361,15 @@ export default function MatchesPage() {
                       <Button 
                         className={cn(
                           "flex-1 rounded-2xl h-14 font-black text-sm transition-all",
-                          hasActiveConv ? "bg-verified text-white" : "bg-white text-black hover:bg-white/90"
+                          (hasActiveConv || hasAcceptedRequest) ? "bg-verified text-white" : "bg-white text-black hover:bg-white/90"
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleMessageClick(match);
                         }}
+                        disabled={isScanning}
                       >
-                        {hasActiveConv ? (
+                        {hasActiveConv || hasAcceptedRequest ? (
                           <><MessageCircle className="w-4 h-4 mr-2" /> Chat Now</>
                         ) : hasSentRequest ? (
                           <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Pending...</>
