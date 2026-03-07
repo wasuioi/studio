@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -6,10 +7,13 @@ import { useUser, useFirestore } from '@/firebase';
 import { UserProfile } from '@/types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useRouter, usePathname } from 'next/navigation';
 
 export function useAuth() {
   const { user, isUserLoading: authLoading } = useUser();
   const db = useFirestore();
+  const router = useRouter();
+  const pathname = usePathname();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -19,16 +23,25 @@ export function useAuth() {
     if (!user) {
       setProfile(null);
       setLoading(false);
+      // Protected routes logic
+      const publicPaths = ['/', '/auth/login', '/auth/signup', '/auth/verify'];
+      if (!publicPaths.includes(pathname)) {
+        router.push('/auth/login');
+      }
       return;
     }
 
+    // Check email verification
+    if (!user.emailVerified && pathname !== '/auth/verify') {
+      router.push('/auth/verify');
+    }
+
     setLoading(true);
-    const userRef = doc(db, 'user_profiles', user.uid);
+    const userRef = doc(db, 'users', user.uid);
     
     const unsubscribe = onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as UserProfile;
-        // Only update state if data actually changed to prevent unnecessary re-renders
         setProfile(data);
         setLoading(false);
       } else {
@@ -36,16 +49,17 @@ export function useAuth() {
         const newProfile: UserProfile = {
           id: user.uid,
           uid: user.uid,
-          displayName: user.displayName || 'Guest User',
-          name: user.displayName || 'Guest User',
+          email: user.email || '',
+          displayName: user.displayName || 'Harmony User',
+          name: user.displayName || 'Harmony User',
           photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/400/400`,
           profilePhotoUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/400/400`,
-          bio: "Searching for connection...",
-          gender: "prefer not to say",
-          dateOfBirth: "1990-01-01",
-          location: "Unknown",
-          isVerified: false,
+          bio: "Looking for connection...",
+          emailVerified: user.emailVerified,
+          identityVerified: false,
           verificationStatus: 'not_verified',
+          profileCompleted: false,
+          lastLogin: now,
           createdAt: now,
           updatedAt: now,
         };
@@ -75,7 +89,7 @@ export function useAuth() {
     });
 
     return () => unsubscribe();
-  }, [user, authLoading, db]);
+  }, [user, authLoading, db, pathname, router]);
 
   return { user, profile, loading: authLoading || loading };
 }

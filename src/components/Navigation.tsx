@@ -1,12 +1,30 @@
+
 "use client";
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { User, MessageCircle, Heart, BrainCircuit, ShieldCheck } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { User, MessageCircle, Heart, BrainCircuit, ShieldCheck, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth as useFirebaseAuth, useUser } from '@/firebase';
+import { signOut } from 'firebase/auth';
+import { Button } from '@/components/ui/button';
 
 export function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
+  const auth = useFirebaseAuth();
+  const { user } = useUser();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/auth/login');
+  };
+
+  // Hide nav on landing and auth pages
+  const authPaths = ['/', '/auth/login', '/auth/signup', '/auth/verify'];
+  const isAuthPage = authPaths.includes(pathname);
+
+  if (isAuthPage && !user) return null;
 
   const navItems = [
     { label: 'Profile', href: '/profile', icon: User },
@@ -43,7 +61,7 @@ export function Navigation() {
           <BrainCircuit className="w-8 h-8" />
           <span>HarmonyAI</span>
         </Link>
-        <div className="flex gap-8">
+        <div className="flex items-center gap-8">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -59,6 +77,11 @@ export function Navigation() {
               </Link>
             );
           })}
+          {user && (
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="rounded-full hover:bg-destructive/10 hover:text-destructive">
+              <LogOut className="w-5 h-5" />
+            </Button>
+          )}
         </div>
       </div>
     </nav>

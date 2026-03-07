@@ -5,20 +5,18 @@ import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BrainCircuit, Heart, ShieldCheck, Sparkles, ArrowRight } from 'lucide-react';
-import { useUser, initiateAnonymousSignIn, useAuth } from '@/firebase';
+import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 
 export default function LandingPage() {
   const { user } = useUser();
-  const auth = useAuth();
   const router = useRouter();
 
   const handleStart = () => {
     if (user) {
       router.push('/bot');
     } else {
-      initiateAnonymousSignIn(auth);
-      router.push('/bot');
+      router.push('/auth/login');
     }
   };
 
@@ -45,7 +43,7 @@ export default function LandingPage() {
               className="rounded-2xl h-16 px-12 text-xl font-bold shadow-2xl shadow-primary/30 hover:scale-105 transition-transform"
               onClick={handleStart}
             >
-              Start Your Journey
+              Get Started
               <ArrowRight className="ml-2 w-6 h-6" />
             </Button>
           </div>

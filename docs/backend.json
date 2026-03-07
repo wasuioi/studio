@@ -1,39 +1,31 @@
 
 {
   "entities": {
-    "UserProfile": {
-      "title": "UserProfile",
+    "User": {
+      "title": "User",
       "type": "object",
-      "description": "Represents a user's public profile and AI-derived personality traits.",
+      "description": "The primary user record containing authentication and profile state.",
       "properties": {
         "id": { "type": "string" },
-        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
         "displayName": { "type": "string" },
-        "bio": { "type": "string" },
         "photoURL": { "type": "string", "format": "uri" },
-        "isVerified": { "type": "boolean" },
-        "verificationStatus": { "type": "string" },
+        "bio": { "type": "string" },
+        "emailVerified": { "type": "boolean" },
+        "identityVerified": { "type": "boolean" },
+        "profileCompleted": { "type": "boolean" },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
         "personalityProfile": {
           "type": "object",
           "properties": {
-            "traits": {
-              "type": "object",
-              "properties": {
-                "communicationStyle": { "type": "string" },
-                "introversionLevel": { "type": "number" },
-                "emotionalExpression": { "type": "number" },
-                "lifestyle": { "type": "string" },
-                "relationshipIntent": { "type": "string" },
-                "values": { "type": "array", "items": { "type": "string" } }
-              }
-            },
+            "traits": { "type": "object" },
             "summary": { "type": "string" }
           }
-        },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        }
       },
-      "required": ["id", "name", "isVerified", "createdAt", "updatedAt"]
+      "required": ["id", "email", "emailVerified", "identityVerified", "createdAt"]
     },
     "Match": {
       "title": "Match",
@@ -66,45 +58,39 @@
         "text": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
-    },
-    "Notification": {
-      "title": "Notification",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "type": { "type": "string" },
-        "title": { "type": "string" },
-        "message": { "type": "string" },
-        "read": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
     }
   },
   "auth": {
-    "providers": ["password", "anonymous"]
+    "providers": ["password"]
   },
   "firestore": {
     "structure": [
       {
-        "path": "/user_profiles/{userId}",
+        "path": "/users/{userId}",
         "definition": {
-          "entityName": "UserProfile",
-          "description": "Primary user profiles."
+          "entityName": "User",
+          "description": "User profile and state."
+        }
+      },
+      {
+        "path": "/users/{userId}/posts/{postId}",
+        "definition": {
+          "entityName": "Post",
+          "description": "User's social updates."
         }
       },
       {
         "path": "/matches/{matchId}",
         "definition": {
           "entityName": "Match",
-          "description": "Compatibility matches between users."
+          "description": "Matches between users."
         }
       },
       {
         "path": "/conversations/{conversationId}",
         "definition": {
           "entityName": "Conversation",
-          "description": "Real-time chat conversations."
+          "description": "Chat metadata."
         }
       },
       {
@@ -112,13 +98,6 @@
         "definition": {
           "entityName": "Message",
           "description": "Individual chat messages."
-        }
-      },
-      {
-        "path": "/user_profiles/{userId}/notifications/{notifId}",
-        "definition": {
-          "entityName": "Notification",
-          "description": "User notifications."
         }
       }
     ]

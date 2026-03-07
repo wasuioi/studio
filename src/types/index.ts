@@ -2,22 +2,24 @@
 export interface UserProfile {
   id: string;
   uid: string;
+  email: string;
   displayName: string;
   name: string;
   photoURL: string;
   profilePhotoUrl: string;
   bio: string;
-  gender: string;
-  dateOfBirth: string;
-  location: string;
-  isVerified: boolean;
+  gender?: string;
+  dateOfBirth?: string;
+  location?: string;
+  emailVerified: boolean;
+  identityVerified: boolean;
   verificationStatus: 'not_verified' | 'pending' | 'verified' | 'rejected' | 'none';
+  profileCompleted: boolean;
+  lastLogin: string;
   createdAt: string;
   updatedAt: string;
   personalityProfile?: {
-    datingPreferences: string[];
-    values: string[];
-    communicationStyle: string;
+    traits: any;
     summary: string;
   };
 }
@@ -32,11 +34,8 @@ export interface Post {
 
 export interface Match {
   id: string;
-  user1Id: string;
-  user2Id: string;
-  matchScore: number;
-  status: 'pending' | 'accepted' | 'rejected' | 'blocked';
-  isMutual: boolean;
+  participantIds: string[];
+  score: number;
+  status: 'pending' | 'accepted' | 'rejected';
   createdAt: string;
-  user?: UserProfile;
 }

@@ -7,7 +7,7 @@ import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BrainCircuit, Send, Sparkles, RefreshCw } from 'lucide-react';
+import { BrainCircuit, Send, Sparkles, RefreshCw, Loader2 } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
 import { doc } from 'firebase/firestore';
 import { 
@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AIProfileBot() {
-  const { user, profile } = useAuth();
+  const { user, profile, loading } = useAuth();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -31,15 +31,13 @@ export default function AIProfileBot() {
   const [isAiThinking, setIsAiThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Memoize the personality data path
   const personalityRef = useMemoFirebase(() => {
     if (!user) return null;
-    return doc(db, 'user_profiles', user.uid, 'personality', 'personality_data');
+    return doc(db, 'users', user.uid, 'personality', 'personality_data');
   }, [db, user]);
 
   const { data: personalityData } = useDoc<any>(personalityRef);
 
-  // Derived messages from Firestore state
   const messages = useMemo(() => {
     if (!personalityData?.chatHistory || personalityData.chatHistory.length === 0) {
       return [{ 
@@ -66,15 +64,12 @@ export default function AIProfileBot() {
     setInput('');
     setIsAiThinking(true);
 
-    const chatHistoryForAI = messages.map(m => ({ role: m.role, message: m.message }));
-    
     const updatedHistory = [...messages, { 
       role: 'user' as const, 
       message: currentMsg, 
       timestamp: new Date().toISOString() 
     }];
 
-    // Save user message to Firestore immediately
     setDocumentNonBlocking(personalityRef, {
       id: 'personality_data',
       userId: user.uid,
@@ -84,7 +79,7 @@ export default function AIProfileBot() {
 
     try {
       const response = await aiPersonalityInterview({
-        chatHistory: chatHistoryForAI,
+        chatHistory: messages.map(m => ({ role: m.role, message: m.message })),
         currentMessage: currentMsg
       });
 
@@ -102,31 +97,24 @@ export default function AIProfileBot() {
       if (response.interviewComplete && response.personalityProfile) {
         updatePayload.personalityProfile = response.personalityProfile;
         
-        // Update main profile with the results
-        const userRef = doc(db, 'user_profiles', user.uid);
+        const userRef = doc(db, 'users', user.uid);
         updateDocumentNonBlocking(userRef, {
           personalityProfile: response.personalityProfile,
+          profileCompleted: true,
           updatedAt: new Date().toISOString()
         });
 
         toast({
           title: "Profile Complete!",
-          description: "HarmonyAI has analyzed your personality. Scanning for matches...",
+          description: "HarmonyAI has analyzed your personality.",
         });
       }
 
       updateDocumentNonBlocking(personalityRef, updatePayload);
-
-      if (response.interviewComplete) {
-        setTimeout(() => {
-          router.push('/matches');
-        }, 3000);
-      }
     } catch (error) {
-      console.error("AI Interview error", error);
       toast({
         variant: "destructive",
-        title: "AI Connection Error",
+        title: "AI Error",
         description: "Harmony encountered an issue. Please try again.",
       });
     } finally {
@@ -136,26 +124,21 @@ export default function AIProfileBot() {
 
   const handleReset = () => {
     if (!user || !personalityRef) return;
-    
-    // Clear Firestore personality data
     deleteDocumentNonBlocking(personalityRef);
-
-    // Clear personality profile in the main user doc
-    const userRef = doc(db, 'user_profiles', user.uid);
+    const userRef = doc(db, 'users', user.uid);
     updateDocumentNonBlocking(userRef, {
       personalityProfile: null,
+      profileCompleted: false,
       updatedAt: new Date().toISOString()
     });
-
-    // Reset local UI state
-    setIsAiThinking(false);
-    setInput('');
-
-    toast({
-      title: "Interview Reset",
-      description: "You can now start your interview from the beginning.",
-    });
+    toast({ title: "Interview Reset" });
   };
+
+  if (loading) return (
+    <div className="flex h-screen items-center justify-center">
+      <Loader2 className="w-10 h-10 animate-spin text-primary" />
+    </div>
+  );
 
   return (
     <div className="max-w-2xl mx-auto h-screen flex flex-col p-4 md:pt-24 relative">
@@ -178,7 +161,7 @@ export default function AIProfileBot() {
           onClick={handleReset}
         >
           <RefreshCw className="w-4 h-4" />
-          <span className="hidden sm:inline font-medium">Reset Interview</span>
+          <span className="hidden sm:inline font-medium">Reset</span>
         </Button>
       </div>
 

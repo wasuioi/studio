@@ -1,23 +1,19 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth as useProfileAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { CheckCircle2, AlertCircle, Edit3, ShieldAlert, ArrowRight, Heart, Sparkles, X, Save, Camera, Plus, Trash2, Image as ImageIcon } from 'lucide-react';
-import Link from 'next/link';
+import { Edit3, X, Save, Camera, Plus, Trash2, Image as ImageIcon, Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import { doc, collection, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { 
-  initiateAnonymousSignIn, 
-  useAuth as useFirebaseAuth, 
   useFirestore, 
   updateDocumentNonBlocking, 
   addDocumentNonBlocking,
@@ -25,12 +21,10 @@ import {
   useCollection,
   useMemoFirebase
 } from '@/firebase';
-import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function ProfilePage() {
   const { profile, user, loading } = useProfileAuth();
-  const auth = useFirebaseAuth();
   const db = useFirestore();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -39,10 +33,9 @@ export default function ProfilePage() {
   const [newPostContent, setNewPostContent] = useState('');
   const [showPhotoSelector, setShowPhotoSelector] = useState(false);
 
-  // Posts for the current user
   const postsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    return query(collection(db, 'user_profiles', user.uid, 'posts'), orderBy('createdAt', 'desc'));
+    return query(collection(db, 'users', user.uid, 'posts'), orderBy('createdAt', 'desc'));
   }, [db, user]);
 
   const { data: posts } = useCollection(postsQuery);
@@ -56,9 +49,8 @@ export default function ProfilePage() {
 
   const handleSaveProfile = () => {
     if (!user || !profile) return;
-    const userRef = doc(db, 'user_profiles', user.uid);
+    const userRef = doc(db, 'users', user.uid);
     updateDocumentNonBlocking(userRef, {
-      id: user.uid,
       name: editedName,
       displayName: editedName,
       bio: editedBio,
@@ -69,9 +61,8 @@ export default function ProfilePage() {
 
   const handleUpdatePhoto = (url: string) => {
     if (!user || !profile) return;
-    const userRef = doc(db, 'user_profiles', user.uid);
+    const userRef = doc(db, 'users', user.uid);
     updateDocumentNonBlocking(userRef, {
-      id: user.uid,
       photoURL: url,
       profilePhotoUrl: url,
       updatedAt: new Date().toISOString(),
@@ -81,7 +72,7 @@ export default function ProfilePage() {
 
   const handleCreatePost = () => {
     if (!user || !newPostContent.trim()) return;
-    const postsRef = collection(db, 'user_profiles', user.uid, 'posts');
+    const postsRef = collection(db, 'users', user.uid, 'posts');
     addDocumentNonBlocking(postsRef, {
       userId: user.uid,
       content: newPostContent,
@@ -90,25 +81,9 @@ export default function ProfilePage() {
     setNewPostContent('');
   };
 
-  const handleDeletePost = (postId: string) => {
-    if (!user) return;
-    const postRef = doc(db, 'user_profiles', user.uid, 'posts', postId);
-    deleteDocumentNonBlocking(postRef);
-  };
-
   if (loading) return (
-    <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background">
-      <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
-
-  if (!user) return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-      <Heart className="w-20 h-20 text-primary mb-4" />
-      <h1 className="text-4xl font-extrabold mb-4">HarmonyAI</h1>
-      <Button onClick={() => initiateAnonymousSignIn(auth)} size="lg" className="rounded-2xl h-14 px-10">
-        Get Started
-      </Button>
+    <div className="flex h-screen items-center justify-center">
+      <Loader2 className="w-10 h-10 animate-spin text-primary" />
     </div>
   );
 
@@ -118,7 +93,6 @@ export default function ProfilePage() {
     <div className="max-w-2xl mx-auto p-4 pt-8 md:pt-24 min-h-screen pb-32 space-y-8">
       <Navigation />
       
-      {/* Profile Header Card */}
       <Card className="overflow-hidden border-none shadow-xl rounded-[2.5rem] bg-white">
         <div className="relative h-64 w-full bg-primary/10 group">
           <Image 
@@ -150,10 +124,10 @@ export default function ProfilePage() {
                 <>
                   <div className="flex items-center gap-2 mb-2">
                     <h1 className="text-3xl font-bold">{profile.displayName}</h1>
-                    {profile.isVerified ? (
-                      <Badge className="bg-verified text-white rounded-full px-2 py-0.5 text-[10px]">VERIFIED</Badge>
+                    {profile.identityVerified ? (
+                      <Badge className="bg-verified text-white rounded-full">VERIFIED</Badge>
                     ) : (
-                      <Badge className="bg-unverified text-white rounded-full px-2 py-0.5 text-[10px]">UNVERIFIED</Badge>
+                      <Badge variant="outline" className="text-unverified border-unverified">UNVERIFIED</Badge>
                     )}
                   </div>
                   <p className="text-muted-foreground">{profile.bio}</p>
@@ -169,7 +143,6 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* Post Creation */}
       <Card className="border-none shadow-lg rounded-[2rem] bg-white">
         <CardContent className="p-6">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
@@ -200,7 +173,6 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* Posts Feed */}
       <div className="space-y-4">
         <h3 className="text-xl font-bold px-2">My Posts</h3>
         {posts?.map((post) => (
@@ -217,7 +189,7 @@ export default function ProfilePage() {
                     <p className="text-[10px] text-muted-foreground">{new Date(post.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => handleDeletePost(post.id)}>
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'users', user.uid, 'posts', post.id))}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -225,37 +197,23 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         ))}
-        {posts?.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground italic">No posts yet. Start sharing!</div>
-        )}
       </div>
 
-      {/* Photo Selector Modal */}
       {showPhotoSelector && (
         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden">
-            <CardHeader className="border-b bg-muted/20">
-              <div className="flex justify-between items-center">
-                <CardTitle>Choose Profile Photo</CardTitle>
-                <Button variant="ghost" size="icon" onClick={() => setShowPhotoSelector(false)}>
-                  <X className="w-5 h-5" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-2 gap-4">
-                {PlaceHolderImages.map((img) => (
-                  <button 
-                    key={img.id} 
-                    className="relative aspect-square rounded-2xl overflow-hidden hover:ring-4 ring-primary transition-all group"
-                    onClick={() => handleUpdatePhoto(img.imageUrl)}
-                  >
-                    <Image src={img.imageUrl} alt={img.description} fill className="object-cover group-hover:scale-110 transition-transform" />
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="bg-white rounded-[2.5rem] p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">Choose Profile Photo</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowPhotoSelector(false)}><X /></Button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {PlaceHolderImages.map((img) => (
+                <button key={img.id} className="relative aspect-square rounded-2xl overflow-hidden" onClick={() => handleUpdatePhoto(img.imageUrl)}>
+                  <Image src={img.imageUrl} alt={img.description} fill className="object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
