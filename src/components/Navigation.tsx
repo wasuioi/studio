@@ -49,9 +49,9 @@ export function Navigation() {
   ];
 
   return (
-    <>
-      {/* Mobile Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black/40 backdrop-blur-3xl border-t border-white/5 z-[100] safe-area-bottom pb-2">
+    <div className="w-full relative z-[100] bg-background/50">
+      {/* Mobile Nav - Now at the top and static */}
+      <nav className="md:hidden relative bg-black/40 backdrop-blur-3xl border-b border-white/5 pt-4 pb-2">
         <div className="flex w-full justify-around items-center h-16 px-2">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -82,8 +82,8 @@ export function Navigation() {
         </div>
       </nav>
 
-      {/* Desktop Nav */}
-      <nav className="hidden md:flex fixed top-0 left-0 right-0 h-20 bg-black/10 backdrop-blur-xl border-b border-white/5 z-[100] items-center justify-between px-8 lg:px-20">
+      {/* Desktop Nav - Now static */}
+      <nav className="hidden md:flex relative h-20 bg-black/10 backdrop-blur-xl border-b border-white/5 items-center justify-between px-8 lg:px-20">
         <Link href="/" className="flex items-center gap-2 group">
           <Logo size="sm" className="opacity-100" />
         </Link>
@@ -121,6 +121,6 @@ export function Navigation() {
           )}
         </div>
       </nav>
-    </>
+    </div>
   );
 }

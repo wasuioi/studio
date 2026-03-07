@@ -91,11 +91,11 @@ export default function ProfilePage() {
   if (!profile) return null;
 
   return (
-    <div className="max-w-3xl mx-auto p-4 pt-8 md:pt-28 min-h-screen pb-32 space-y-8">
+    <div className="max-w-3xl mx-auto p-4 min-h-screen pb-32 space-y-8">
       <Navigation />
       
       {/* Top Section: Cover & Avatar */}
-      <div className="relative animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="relative animate-in fade-in slide-in-from-bottom-4 duration-500 mt-8">
         <div className="relative h-40 md:h-60 w-full bg-gradient-to-r from-[#6A5CFF] to-[#FF4DA6] rounded-[2rem] overflow-hidden group">
           <Image 
             src={profile.photoURL} 
