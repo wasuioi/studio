@@ -6,14 +6,13 @@ import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Upload, Camera, CheckCircle, Clock, ShieldCheck, FileText, X } from 'lucide-react';
-import { doc, setDoc, updateDoc, collection } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { Upload, Camera, CheckCircle, Clock, ShieldCheck, FileText, X, Sparkles } from 'lucide-react';
+import { doc } from 'firebase/firestore';
+import { useFirestore, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
+import { verifyIdentity } from '@/ai/flows/verify-identity-flow';
 
 export default function VerificationPage() {
   const { profile } = useAuth();
@@ -21,12 +20,13 @@ export default function VerificationPage() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const [step, setStep] = useState(1); // 1: Info, 2: Upload, 3: Success
+  const [step, setStep] = useState(1); // 1: Info, 2: Upload, 3: Processing, 4: Result
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [idCardUrl, setIdCardUrl] = useState<string | null>(null);
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [aiResult, setAiResult] = useState<any>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -66,7 +66,6 @@ export default function VerificationPage() {
         const dataUrl = canvas.toDataURL('image/jpeg');
         setSelfieUrl(dataUrl);
         setIsCameraActive(false);
-        // Stop the stream
         const stream = video.srcObject as MediaStream;
         stream?.getTracks().forEach(track => track.stop());
       }
@@ -84,48 +83,59 @@ export default function VerificationPage() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!profile || !idCardUrl || !selfieUrl) return;
     setIsSubmitting(true);
+    setStep(3); // Show processing state
     
-    const requestId = crypto.randomUUID();
-    const requestPath = `user_profiles/${profile.uid}/verification_requests/${requestId}`;
-    const requestRef = doc(db, requestPath);
-    
-    const verificationData = {
-      id: requestId,
-      userId: profile.uid,
-      idCardFrontUrl: idCardUrl,
-      selfieUrl: selfieUrl,
-      status: 'pending',
-      submittedAt: new Date().toISOString(),
-    };
-
-    // 1. Create the verification request
-    setDoc(requestRef, verificationData)
-      .then(() => {
-        // 2. Update the user profile status
-        const userRef = doc(db, 'user_profiles', profile.uid);
-        updateDoc(userRef, {
-          verificationStatus: 'pending'
-        }).catch(err => console.error("Profile update failed", err));
-        
-        setStep(3);
-      })
-      .catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: requestRef.path,
-          operation: 'create',
-          requestResourceData: verificationData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => {
-        setIsSubmitting(false);
+    try {
+      // 1. Call AI Verification Flow
+      const result = await verifyIdentity({
+        idCardPhotoUri: idCardUrl,
+        selfiePhotoUri: selfieUrl,
       });
+
+      setAiResult(result);
+
+      // 2. Prepare Firestore updates
+      const requestId = crypto.randomUUID();
+      const requestRef = doc(db, 'user_profiles', profile.uid, 'verification_requests', requestId);
+      const userRef = doc(db, 'user_profiles', profile.uid);
+
+      const status = result.isMatch ? 'verified' : 'rejected';
+      
+      const verificationData = {
+        id: requestId,
+        userId: profile.uid,
+        status: status,
+        aiScore: result.confidenceScore,
+        aiReason: result.reason,
+        submittedAt: new Date().toISOString(),
+      };
+
+      // 3. Save result (non-blocking)
+      setDocumentNonBlocking(requestRef, verificationData, { merge: true });
+      updateDocumentNonBlocking(userRef, {
+        verificationStatus: status,
+        isVerified: result.isMatch,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setStep(4); // Show final result screen
+    } catch (error) {
+      console.error("AI Verification failed", error);
+      toast({
+        variant: 'destructive',
+        title: 'Verification Error',
+        description: 'The AI service encountered an error. Please try again later.',
+      });
+      setStep(2);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (profile?.verificationStatus === 'verified') {
+  if (profile?.verificationStatus === 'verified' && step !== 4) {
     return (
       <div className="max-w-md mx-auto p-4 pt-24 text-center">
         <Navigation />
@@ -134,22 +144,6 @@ export default function VerificationPage() {
           <h1 className="text-2xl font-bold mb-2">Verified!</h1>
           <p className="text-muted-foreground">Your account is fully verified. Enjoy secure matching.</p>
         </div>
-      </div>
-    );
-  }
-
-  if (profile?.verificationStatus === 'pending' || step === 3) {
-    return (
-      <div className="max-w-md mx-auto p-4 pt-24 text-center">
-        <Navigation />
-        <Card className="rounded-3xl p-8 border-none shadow-lg">
-          <Clock className="w-16 h-16 text-unverified mx-auto mb-4 animate-pulse" />
-          <h1 className="text-2xl font-bold mb-2">Verification Pending</h1>
-          <p className="text-muted-foreground mb-6">We're reviewing your documents. This usually takes 24-48 hours.</p>
-          <Button variant="outline" className="w-full rounded-2xl" onClick={() => router.push('/profile')}>
-            Back to Profile
-          </Button>
-        </Card>
       </div>
     );
   }
@@ -163,12 +157,12 @@ export default function VerificationPage() {
         <p className="text-muted-foreground">Protecting our community from bots and fake profiles.</p>
       </header>
 
-      {step === 1 ? (
+      {step === 1 && (
         <Card className="rounded-[2.5rem] border-none shadow-lg overflow-hidden">
           <CardHeader className="bg-primary/5 pb-8">
             <ShieldCheck className="w-12 h-12 text-primary mb-4" />
             <CardTitle className="text-2xl">Trust is Key</CardTitle>
-            <CardDescription>We need to verify that you are a real person before you can start messaging matches.</CardDescription>
+            <CardDescription>Our AI will instantly verify your identity by comparing your ID with a live selfie.</CardDescription>
           </CardHeader>
           <CardContent className="pt-8 space-y-6">
             <div className="flex gap-4 items-start">
@@ -191,7 +185,9 @@ export default function VerificationPage() {
             </Button>
           </CardContent>
         </Card>
-      ) : (
+      )}
+
+      {step === 2 && (
         <div className="space-y-6">
           <Card className="rounded-3xl p-6 border-none shadow-md">
             <h3 className="font-bold mb-4">Upload ID Card</h3>
@@ -235,12 +231,6 @@ export default function VerificationPage() {
               <div className="space-y-4">
                 <video ref={videoRef} className="w-full aspect-video rounded-2xl bg-black" autoPlay muted playsInline />
                 <canvas ref={canvasRef} className="hidden" />
-                {hasCameraPermission === false && (
-                  <Alert variant="destructive">
-                    <AlertTitle>Camera Access Required</AlertTitle>
-                    <AlertDescription>Please allow camera access to use this feature.</AlertDescription>
-                  </Alert>
-                )}
                 <div className="flex gap-2">
                   <Button className="flex-1 rounded-xl" onClick={handleCaptureSelfie} disabled={hasCameraPermission === false}>
                     Capture Photo
@@ -267,10 +257,63 @@ export default function VerificationPage() {
             onClick={handleSubmit}
             disabled={isSubmitting || !idCardUrl || !selfieUrl}
           >
-            {isSubmitting ? "Uploading..." : "Submit for Review"}
+            {isSubmitting ? "Submitting..." : "Submit for AI Review"}
           </Button>
         </div>
+      )}
+
+      {step === 3 && (
+        <Card className="rounded-3xl p-12 text-center border-none shadow-lg">
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            <Sparkles className="w-full h-full text-primary animate-pulse" />
+            <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">AI is Verifying</h2>
+          <p className="text-muted-foreground">Comparing your ID with your selfie. This usually takes a few seconds...</p>
+        </Card>
+      )}
+
+      {step === 4 && aiResult && (
+        <Card className="rounded-[2.5rem] border-none shadow-lg overflow-hidden">
+          <div className={cn(
+            "p-8 text-center",
+            aiResult.isMatch ? "bg-verified/10" : "bg-destructive/10"
+          )}>
+            {aiResult.isMatch ? (
+              <CheckCircle className="w-16 h-16 text-verified mx-auto mb-4" />
+            ) : (
+              <X className="w-16 h-16 text-destructive mx-auto mb-4" />
+            )}
+            <h2 className="text-2xl font-bold mb-2">
+              {aiResult.isMatch ? "Verification Successful!" : "Verification Failed"}
+            </h2>
+            <p className="text-sm text-muted-foreground">{aiResult.reason}</p>
+          </div>
+          <CardContent className="p-8">
+            <div className="space-y-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Confidence Score</span>
+                <span className="font-bold">{Math.round(aiResult.confidenceScore * 100)}%</span>
+              </div>
+              <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+                <div 
+                  className={cn("h-full", aiResult.isMatch ? "bg-verified" : "bg-destructive")} 
+                  style={{ width: `${aiResult.confidenceScore * 100}%` }}
+                />
+              </div>
+              
+              <Button 
+                className="w-full h-12 rounded-xl mt-4" 
+                onClick={() => aiResult.isMatch ? router.push('/profile') : setStep(2)}
+              >
+                {aiResult.isMatch ? "Go to Profile" : "Try Again"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
 }
+
+import { cn } from '@/lib/utils';
