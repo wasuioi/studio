@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    /* Cosmic Palette: Dark Violet Background #0F0819, Deep Purple #6A5CFF, Pink #FF4DA6, Coral #FF7A6B */
+    /* Romantic Luminous Palette: Deep Purple #2A004F, Purple #5A0FBF, Pink #FF4DA6, Soft Coral #FF8A8A */
     --background: 265 60% 4%;
     --foreground: 0 0% 98%;
     --card: 265 40% 8%;
@@ -24,7 +24,7 @@
     --border: 265 30% 15%;
     --input: 265 30% 15%;
     --ring: 255 100% 68%;
-    --radius: 1.5rem;
+    --radius: 1.25rem;
     
     --verified: 142 71% 45%;
     --unverified: 38 92% 50%;
@@ -37,30 +37,59 @@
   }
   body {
     @apply bg-background text-foreground font-body antialiased;
-    background-image: 
-      radial-gradient(circle at 10% 10%, rgba(106, 92, 255, 0.1) 0%, transparent 40%),
-      radial-gradient(circle at 90% 90%, rgba(255, 77, 166, 0.1) 0%, transparent 40%);
+    background: linear-gradient(135deg, #0F0819 0%, #2A004F 25%, #5A0FBF 50%, #FF4DA6 85%, #FF8A8A 100%);
     background-attachment: fixed;
+    position: relative;
+    overflow-x: hidden;
+  }
+  /* Soft background blobs for luminosity */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 10%;
+    left: 10%;
+    width: 40vw;
+    height: 40vw;
+    background: radial-gradient(circle, rgba(106, 92, 255, 0.15) 0%, transparent 70%);
+    z-index: -1;
+    pointer-events: none;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: 5%;
+    right: 5%;
+    width: 30vw;
+    height: 30vw;
+    background: radial-gradient(circle, rgba(255, 77, 166, 0.1) 0%, transparent 70%);
+    z-index: -1;
+    pointer-events: none;
   }
 }
 
 /* Glassmorphism utility */
 .glass-card {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl;
+  @apply bg-white/10 backdrop-blur-xl border border-white/10 shadow-xl;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
 .glass-card-hover {
-  @apply hover:bg-white/10 hover:border-white/20 transition-all duration-300;
+  @apply hover:bg-white/15 hover:border-white/20 hover:-translate-y-1 transition-all duration-300;
+}
+
+/* TrueVibe Pill Button */
+.truevibe-pill-button {
+  @apply h-10 rounded-full font-bold px-6 transition-all duration-300 active:scale-95;
+  background: linear-gradient(90deg, #7B4DFF 0%, #FF4DA6 100%);
+  border: none;
+}
+.truevibe-pill-button:hover {
+  box-shadow: 0 0 20px rgba(255, 77, 166, 0.4);
 }
 
 /* TrueVibe Cosmic Gradient */
 .truevibe-gradient {
   background: linear-gradient(135deg, #6A5CFF 0%, #B14BFF 33%, #FF4DA6 66%, #FF7A6B 100%);
-}
-
-.truevibe-button-gradient {
-  background: linear-gradient(90deg, #7B4DFF 0%, #FF4DA6 100%);
-  @apply hover:shadow-[0_0_20px_rgba(255,77,166,0.4)] transition-all duration-300;
 }
 
 .truevibe-text-gradient {

@@ -72,8 +72,8 @@ export default function AIProfileBot() {
   const handleLanguageSelect = (lang: 'en' | 'th') => {
     setSelectedLanguage(lang);
     const initialMsg = lang === 'en' 
-      ? "Hi! I'm Vera, your TrueVibe relationship companion. I'm here to understand your unique energy and help find your perfect match. Ready to vibe?" 
-      : "สวัสดีค่ะ! ฉันคือ Vera เพื่อนคู่คิดด้านความสัมพันธ์ของคุณ ฉันอยู่ที่นี่เพื่อทำความรู้จักพลังงานที่เป็นเอกลักษณ์ของคุณและช่วยหาคู่ที่เหมาะสมที่สุดสำหรับคุณ พร้อมจะทำความรู้จักกันหรือยังคะ?";
+      ? "Hi! I'm Vera, your TrueVibe companion. I'm here to understand your unique energy. Ready to begin our vibe check?" 
+      : "สวัสดีค่ะ! ฉันคือ Vera เพื่อนคู่คิดของคุณ ฉันอยู่ที่นี่เพื่อทำความรู้จักพลังงานของคุณ พร้อมจะเริ่มกันหรือยังคะ?";
     
     const firstMsg = { 
       role: 'model' as const, 
@@ -129,7 +129,7 @@ export default function AIProfileBot() {
 
       toast({
         title: "Profile Reset",
-        description: "Your vibes and connections have been cleared.",
+        description: "Your vibes have been cleared.",
       });
     } catch (e) {
       console.error("Reset failed", e);
@@ -228,16 +228,16 @@ export default function AIProfileBot() {
     <div className="max-w-2xl mx-auto h-screen flex flex-col p-4 md:pt-28 relative">
       <Navigation />
       
-      <div className="flex items-center justify-between mb-4 md:mb-8 px-2">
-        <div className="flex items-center gap-3 md:gap-4">
-          <div className="truevibe-button-gradient p-2 md:p-3 rounded-2xl shadow-xl">
-            <Zap className="text-white w-5 h-5 md:w-6 md:h-6 fill-current" />
+      <div className="flex items-center justify-between mb-6 px-2">
+        <div className="flex items-center gap-3">
+          <div className="truevibe-gradient p-2.5 rounded-2xl shadow-xl">
+            <Zap className="text-white w-5 h-5 fill-current" />
           </div>
           <div>
             <h1 className="text-xl md:text-2xl font-black text-white tracking-tight">Vera AI</h1>
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-verified rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-              <p className="text-[10px] text-white/60 font-bold uppercase tracking-wider">Dream State Active</p>
+              <span className="w-1.5 h-1.5 bg-verified rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+              <p className="text-[9px] text-white/50 font-black uppercase tracking-widest">Sensing Frequency</p>
             </div>
           </div>
         </div>
@@ -245,20 +245,20 @@ export default function AIProfileBot() {
         {selectedLanguage && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-2xl text-white/60 hover:text-white hover:bg-white/10 h-10 w-10 md:h-12 md:w-12 border border-white/10">
-                <RotateCcw className="w-4 h-4 md:w-5 md:h-5" />
+              <Button variant="ghost" size="icon" className="rounded-full text-white/40 hover:text-white hover:bg-white/5 h-10 w-10 border border-white/5">
+                <RotateCcw className="w-4 h-4" />
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="glass-card rounded-[2.5rem] border-white/10 mx-4">
+            <AlertDialogContent className="glass-card rounded-[2rem] border-white/10 mx-4">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-xl md:text-2xl font-black tracking-tight text-white">Reset Vibe Check?</AlertDialogTitle>
+                <AlertDialogTitle className="text-xl font-black text-white">Reset Vibe Check?</AlertDialogTitle>
                 <AlertDialogDescription className="text-white/60">
                   This will clear your interview progress and previous connections. Start a new cosmic journey with Vera.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter className="gap-2">
-                <AlertDialogCancel className="rounded-xl font-bold bg-white/5 border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleResetConversation} className="rounded-xl font-bold bg-destructive text-white hover:bg-destructive/90">
+                <AlertDialogCancel className="rounded-full font-bold bg-white/5 border-white/10 text-white">Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleResetConversation} className="rounded-full font-bold bg-destructive text-white">
                   Reset All
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -267,26 +267,26 @@ export default function AIProfileBot() {
         )}
       </div>
 
-      <div className="flex-1 glass-card rounded-[2.5rem] md:rounded-[3rem] overflow-hidden flex flex-col mb-20 md:mb-8 relative">
-        {!selectedLanguage && sessionMessages.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-10 text-center space-y-8">
-            <div className="bg-primary/20 p-6 md:p-8 rounded-full shadow-[0_0_30px_rgba(106,92,255,0.2)]">
-              <Globe className="w-12 h-12 md:w-16 md:h-16 text-primary" />
+      <div className="flex-1 glass-card rounded-[2.5rem] overflow-hidden flex flex-col mb-20 md:mb-8 relative">
+        {!selectedLanguage ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-10 text-center space-y-8 animate-in fade-in zoom-in-95">
+            <div className="bg-primary/10 p-8 rounded-full shadow-[0_0_40px_rgba(106,92,255,0.1)]">
+              <Globe className="w-12 h-12 text-primary" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white">Connect with Vera</h2>
-              <p className="text-white/60 font-medium text-sm md:text-base">Choose your language to begin the vibe check.</p>
+              <h2 className="text-2xl font-black tracking-tight text-white">Connect with Vera</h2>
+              <p className="text-white/60 font-medium text-sm">Choose your language to begin the vibe check.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-sm">
               <Button 
                 onClick={() => handleLanguageSelect('en')}
-                className="h-16 md:h-20 rounded-3xl text-lg font-black bg-white/5 border border-white/10 text-white hover:bg-primary/20 hover:border-primary/50 transition-all"
+                className="h-16 rounded-3xl text-lg font-black bg-white/5 border border-white/10 text-white hover:bg-primary/20 transition-all"
               >
                 🇺🇸 English
               </Button>
               <Button 
                 onClick={() => handleLanguageSelect('th')}
-                className="h-16 md:h-20 rounded-3xl text-lg font-black bg-white/5 border border-white/10 text-white hover:bg-secondary/20 hover:border-secondary/50 transition-all"
+                className="h-16 rounded-3xl text-lg font-black bg-white/5 border border-white/10 text-white hover:bg-secondary/20 transition-all"
               >
                 🇹🇭 ภาษาไทย
               </Button>
@@ -294,17 +294,17 @@ export default function AIProfileBot() {
           </div>
         ) : (
           <>
-            <ScrollArea className="flex-1 p-4 md:p-6" ref={scrollRef}>
-              <div className="space-y-6">
+            <ScrollArea className="flex-1 p-6" ref={scrollRef}>
+              <div className="space-y-6 max-w-xl mx-auto pb-10">
                 {sessionMessages.map((m, i) => (
                   <div key={i} className={cn(
-                    "flex flex-col max-w-[85%] md:max-w-[80%] animate-in fade-in slide-in-from-bottom-4 duration-500",
+                    "flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-4 duration-500",
                     m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
                   )}>
                     <div className={cn(
-                      "p-4 md:p-5 rounded-3xl text-sm md:text-base leading-relaxed font-medium",
+                      "p-4 md:p-5 rounded-[1.75rem] text-sm md:text-base leading-relaxed font-medium shadow-lg",
                       m.role === 'user' 
-                        ? "truevibe-button-gradient text-white rounded-tr-none shadow-lg" 
+                        ? "truevibe-gradient text-white rounded-tr-none" 
                         : "bg-white/10 text-white rounded-tl-none border border-white/10 backdrop-blur-md"
                     )}>
                       {m.message}
@@ -312,30 +312,30 @@ export default function AIProfileBot() {
                   </div>
                 ))}
                 {isAiThinking && (
-                  <div className="flex items-center gap-2 text-primary text-xs animate-pulse font-black uppercase tracking-widest ml-2">
-                    <Star className="w-3 h-3 fill-current" /> {selectedLanguage === 'th' ? 'Vera กำลังสัมผัสความรู้สึก...' : 'Vera is sensing your vibes...'}
+                  <div className="flex items-center gap-2 text-primary text-[10px] animate-pulse font-black uppercase tracking-widest ml-2">
+                    <Star className="w-3 h-3 fill-current" /> Vera is sensing...
                   </div>
                 )}
               </div>
             </ScrollArea>
 
-            <div className="p-4 md:p-6 bg-black/20 border-t border-white/10 backdrop-blur-2xl">
-              <div className="relative flex items-center gap-2 md:gap-3 max-w-3xl mx-auto">
+            <div className="p-4 md:p-6 bg-black/20 border-t border-white/10">
+              <div className="relative flex items-center gap-3 max-w-xl mx-auto">
                 <Input 
-                  placeholder={selectedLanguage === 'th' ? "คุยกับ Vera..." : "Message Vera..."}
+                  placeholder="Message Vera..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  className="rounded-2xl h-12 md:h-14 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-primary/40 px-6"
+                  className="rounded-full h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-primary/40 px-6"
                   disabled={isAiThinking}
                 />
                 <Button 
                   size="icon" 
-                  className="shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-2xl truevibe-button-gradient border-none"
+                  className="shrink-0 w-12 h-12 rounded-full truevibe-pill-button px-0"
                   onClick={handleSend}
                   disabled={isAiThinking || !input.trim()}
                 >
-                  <Send className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                  <Send className="w-4 h-4 text-white" />
                 </Button>
               </div>
             </div>

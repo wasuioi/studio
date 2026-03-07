@@ -251,16 +251,16 @@ export default function MatchesPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto p-4 pt-8 md:pt-28 mb-24 min-h-screen">
+    <div className="max-w-6xl mx-auto p-4 pt-8 md:pt-28 mb-24 min-h-screen">
       <Navigation />
       
-      <header className="mb-12 flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-2">
-        <div className="space-y-2">
-          <h1 className="text-4xl md:text-6xl font-black tracking-tight flex items-center gap-3">
-            Your Vibe <Sparkles className="text-accent fill-current w-8 h-8 md:w-12 md:h-12" />
+      <header className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-2">
+        <div className="space-y-1">
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight flex items-center gap-3">
+            Your Vibe <Sparkles className="text-accent fill-current w-6 h-6 md:w-10 md:h-10" />
           </h1>
-          <p className="text-white/60 font-medium max-w-lg text-sm md:text-lg">
-            Vera has synced with your frequency to find your most compatible connections.
+          <p className="text-white/60 font-medium max-w-lg text-sm md:text-base">
+            Vera has synced with your frequency.
           </p>
         </div>
         
@@ -268,57 +268,58 @@ export default function MatchesPage() {
           <Button 
             onClick={handleScanForMatches} 
             disabled={isScanning} 
-            className="w-full sm:w-auto rounded-2xl h-14 px-8 font-black truevibe-button-gradient border-none text-white shadow-xl"
+            className="truevibe-pill-button sm:w-auto"
           >
             {isScanning ? (
-              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Analyzing Universe...</>
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analyzing...</>
             ) : (
-              <>{matches.length > 0 ? <RefreshCw className="mr-2 h-5 w-5" /> : <Zap className="mr-2 h-5 w-5 fill-current" />} {matches.length > 0 ? 'Sync Frequency' : 'Find Matches'}</>
+              <>{matches.length > 0 ? <RefreshCw className="mr-2 h-4 w-4" /> : <Zap className="mr-2 h-4 w-4 fill-current" />} {matches.length > 0 ? 'Sync Frequency' : 'Find Matches'}</>
             )}
           </Button>
         )}
       </header>
 
       {!profile?.personalityProfile ? (
-        <Card className="glass-card p-12 md:p-24 text-center rounded-[3rem] md:rounded-[4rem] animate-in zoom-in-95">
-          <BrainCircuit className="w-16 h-16 md:w-24 md:h-24 mx-auto mb-8 text-primary/40" />
-          <h3 className="text-3xl md:text-5xl font-black mb-4 text-white">Vibe Profile Hidden</h3>
-          <p className="text-white/60 font-medium mb-10 max-w-sm mx-auto text-base md:text-xl">Vera needs to know your energy before she can match you.</p>
+        <Card className="glass-card p-10 md:p-20 text-center rounded-[2.5rem] animate-in zoom-in-95">
+          <BrainCircuit className="w-12 h-12 md:w-20 md:h-20 mx-auto mb-6 text-primary/40" />
+          <h3 className="text-2xl md:text-4xl font-black mb-4 text-white">Vibe Profile Hidden</h3>
+          <p className="text-white/60 font-medium mb-8 max-w-xs mx-auto text-sm md:text-lg">Vera needs to know your energy before she can match you.</p>
           <Link href="/bot">
-            <Button className="w-full sm:w-auto rounded-2xl h-16 px-12 text-lg md:text-xl font-black truevibe-button-gradient border-none">Initiate Vibe Check</Button>
+            <Button className="truevibe-pill-button h-12 px-10">Initiate Vibe Check</Button>
           </Link>
         </Card>
       ) : matches.length === 0 ? (
-        <div className="text-center py-32 glass-card rounded-[3rem] border-dashed border-white/10 mx-2">
-          <Heart className="w-12 h-12 md:w-20 md:h-20 mx-auto mb-4 text-white/10" />
-          <p className="text-xl md:text-3xl font-bold text-white/40 italic">Waiting for the stars to align. Click sync above.</p>
+        <div className="text-center py-24 glass-card rounded-[2.5rem] border-dashed border-white/10 mx-2">
+          <Heart className="w-10 h-10 md:w-16 md:h-16 mx-auto mb-4 text-white/10" />
+          <p className="text-lg md:text-2xl font-bold text-white/40 italic">Waiting for the stars to align. Click sync above.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12 px-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-2">
           {matches.map((match) => {
             const hasSentRequest = outgoingRequests?.some(r => r.receiverId === match.id && r.status === 'pending');
             const hasAcceptedRequest = outgoingRequests?.some(r => r.receiverId === match.id && r.status === 'accepted');
             const hasActiveConv = activeConversations?.some(conv => conv.participantIds.includes(match.id));
 
             return (
-              <Card key={match.id} className="glass-card group relative rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden transition-all duration-500 hover:translate-y-[-10px] hover:shadow-primary/20">
+              <Card key={match.id} className="glass-card glass-card-hover group relative rounded-[2rem] overflow-hidden flex flex-col h-full shadow-lg">
                 <div className="relative aspect-[4/5] w-full">
                   <Image 
                     src={match.photoURL} 
                     alt={match.name} 
                     fill 
                     className={cn(
-                      "object-cover transition-all duration-700 group-hover:scale-110",
-                      profile.tier === 'free' && "blur-3xl opacity-50"
+                      "object-cover transition-all duration-700 group-hover:scale-105",
+                      profile.tier === 'free' && "blur-2xl opacity-40"
                     )}
                   />
                   
                   {profile.tier === 'free' && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8 z-20 backdrop-blur-md bg-black/40">
-                      <Crown className="w-12 h-12 mb-4 text-accent fill-current animate-pulse" />
-                      <h4 className="text-2xl md:text-3xl font-black mb-4 text-white">Mystery Match</h4>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-20 backdrop-blur-sm bg-black/40">
+                      <Crown className="w-10 h-10 mb-3 text-accent fill-current animate-pulse" />
+                      <h4 className="text-xl md:text-2xl font-black mb-3 text-white">Mystery Match</h4>
                       <Button 
-                        className="bg-white text-primary rounded-2xl h-12 px-8 font-black text-sm hover:bg-white/90"
+                        size="sm"
+                        className="bg-white text-primary rounded-full font-bold text-xs"
                         onClick={() => { setLockedFeature('Identity Reveal'); setShowUpgradeModal(true); }}
                       >
                         Reveal Energy
@@ -326,27 +327,28 @@ export default function MatchesPage() {
                     </div>
                   )}
 
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
                   
-                  <div className="absolute top-6 right-6 truevibe-button-gradient px-4 py-2 rounded-2xl flex items-center gap-2 shadow-lg border border-white/20 z-10">
-                    <span className="text-white font-black text-lg">{match.score}% Match</span>
-                    <Star className="w-4 h-4 text-white fill-current animate-pulse" />
+                  <div className="absolute top-4 right-4 bg-gradient-to-r from-[#FF4DA6] to-[#FF8A8A] px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg z-10">
+                    <span className="text-white font-black text-xs">{match.score}% Match</span>
+                    <Star className="w-3 h-3 text-white fill-current" />
                   </div>
 
-                  <div className="absolute bottom-0 p-8 md:p-10 text-white w-full z-30">
-                    <div className="flex items-center gap-2 mb-3">
-                      <h3 className="text-3xl md:text-4xl font-black tracking-tight">{profile.tier === 'free' ? 'Hidden Vibe' : match.name}</h3>
-                      <Check className="w-5 h-5 bg-verified text-white rounded-full p-1 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                  <div className="absolute bottom-0 p-6 text-white w-full z-30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="text-2xl font-black tracking-tight">{profile.tier === 'free' ? 'Hidden Vibe' : match.name}</h3>
+                      <Check className="w-4 h-4 bg-verified text-white rounded-full p-1" />
                     </div>
                     
-                    <p className="text-white/70 text-sm md:text-base font-medium leading-relaxed mb-8 line-clamp-2 md:line-clamp-3 italic">
+                    <p className="text-white/70 text-xs md:text-sm font-medium leading-relaxed mb-4 line-clamp-2 italic">
                       "{match.reason}"
                     </p>
                     
-                    <div className="flex gap-3">
+                    <div className="flex gap-2">
                       <Button 
+                        size="sm"
                         className={cn(
-                          "flex-1 rounded-2xl h-14 font-black text-sm transition-all",
+                          "flex-1 rounded-full h-10 font-black text-xs transition-all",
                           (hasActiveConv || hasAcceptedRequest) ? "bg-verified text-white" : "bg-white text-black hover:bg-white/90"
                         )}
                         onClick={(e) => {
@@ -356,23 +358,23 @@ export default function MatchesPage() {
                         disabled={isScanning}
                       >
                         {hasActiveConv || hasAcceptedRequest ? (
-                          <><MessageCircle className="w-5 h-5 mr-2" /> Chat Now</>
+                          <><MessageCircle className="w-4 h-4 mr-1.5" /> Chat</>
                         ) : hasSentRequest ? (
-                          <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Syncing...</>
+                          <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Sync...</>
                         ) : (
-                          <><UserPlus className="w-5 h-5 mr-2" /> Connect</>
+                          <><UserPlus className="w-4 h-4 mr-1.5" /> Connect</>
                         )}
                       </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-14 w-14 rounded-2xl glass-card bg-white/10 hover:bg-white/20 text-white border-white/10"
+                        className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white border-white/10"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAnalysisClick(match);
                         }}
                       >
-                        <Info className="w-6 h-6" />
+                        <Info className="w-5 h-5" />
                       </Button>
                     </div>
                   </div>
@@ -384,48 +386,48 @@ export default function MatchesPage() {
       )}
 
       <Dialog open={!!requestConfirmation} onOpenChange={() => setRequestConfirmation(null)}>
-        <DialogContent className="glass-card rounded-[2.5rem] md:rounded-[3rem] border-white/10 max-w-sm p-8 md:p-12 text-center">
-          <DialogHeader className="items-center space-y-6">
-            <div className="truevibe-button-gradient p-5 rounded-3xl shadow-2xl">
-              <Sparkles className="w-10 h-10 text-white fill-current" />
+        <DialogContent className="glass-card rounded-[2rem] border-white/10 max-w-sm p-8 text-center">
+          <DialogHeader className="items-center space-y-4">
+            <div className="truevibe-pill-button p-4 rounded-full shadow-lg">
+              <Sparkles className="w-8 h-8 text-white fill-current" />
             </div>
             <div>
-              <DialogTitle className="text-2xl md:text-3xl font-black text-white">Send Vibe Check?</DialogTitle>
-              <DialogDescription className="text-white/60 font-medium text-base">
-                Your souls are vibrating at <strong>{requestConfirmation?.score}%</strong> harmony. Initiate connection?
+              <DialogTitle className="text-xl md:text-2xl font-black text-white">Send Vibe Check?</DialogTitle>
+              <DialogDescription className="text-white/60 font-medium text-sm">
+                Your souls are vibrating at <strong>{requestConfirmation?.score}%</strong> harmony.
               </DialogDescription>
             </div>
           </DialogHeader>
-          <DialogFooter className="flex flex-col gap-3 mt-8">
+          <DialogFooter className="flex flex-col gap-2 mt-6">
             <Button 
-              className="w-full h-14 rounded-2xl font-black truevibe-button-gradient border-none"
+              className="truevibe-pill-button w-full"
               onClick={sendChatRequest}
               disabled={isSendingRequest}
             >
               {isSendingRequest ? <Loader2 className="animate-spin" /> : "Initiate Connection"}
             </Button>
-            <Button variant="ghost" onClick={() => setRequestConfirmation(null)} className="text-white/60 hover:text-white font-bold h-12">Maybe Later</Button>
+            <Button variant="ghost" onClick={() => setRequestConfirmation(null)} className="text-white/60 hover:text-white font-bold h-10">Maybe Later</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!selectedAnalysis} onOpenChange={() => setSelectedAnalysis(null)}>
-        <DialogContent className="glass-card rounded-[2.5rem] md:rounded-[3rem] border-white/10 max-w-lg p-8 md:p-12">
-          <DialogHeader className="items-center text-center space-y-6">
-            <div className="bg-primary/20 p-5 rounded-full shadow-2xl">
-              <Star className="w-10 h-10 text-primary fill-current" />
+        <DialogContent className="glass-card rounded-[2.5rem] border-white/10 max-w-md p-8">
+          <DialogHeader className="items-center text-center space-y-4">
+            <div className="bg-primary/20 p-4 rounded-full">
+              <Star className="w-8 h-8 text-primary fill-current" />
             </div>
             <div>
-              <DialogTitle className="text-3xl md:text-4xl font-black tracking-tight text-white">Soul Insight</DialogTitle>
-              <DialogDescription className="text-white/60 text-lg">
-                Vera's detailed explanation of your connection with {selectedAnalysis?.name}.
+              <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight text-white">Soul Insight</DialogTitle>
+              <DialogDescription className="text-white/60 text-sm">
+                Vera's detailed frequency check for {selectedAnalysis?.name}.
               </DialogDescription>
             </div>
           </DialogHeader>
           
-          <div className="py-8 space-y-6">
-            <div className="bg-white/5 p-8 rounded-[2rem] border-l-4 border-accent italic">
-              <p className="text-base md:text-lg text-white/90 leading-relaxed font-medium">
+          <div className="py-6">
+            <div className="bg-white/5 p-6 rounded-2xl border-l-4 border-accent italic">
+              <p className="text-sm md:text-base text-white/90 leading-relaxed font-medium">
                 "{selectedAnalysis?.reason}"
               </p>
             </div>
@@ -433,7 +435,7 @@ export default function MatchesPage() {
 
           <DialogFooter>
             <Button 
-              className="w-full h-14 rounded-2xl font-black truevibe-button-gradient border-none"
+              className="truevibe-pill-button w-full"
               onClick={() => setSelectedAnalysis(null)}
             >
               Close Insight

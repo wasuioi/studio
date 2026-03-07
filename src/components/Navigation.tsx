@@ -43,14 +43,15 @@ export function Navigation() {
     { label: 'Profile', href: '/profile', icon: User },
     { label: 'Vera AI', href: '/bot', icon: Zap },
     { label: 'Matches', href: '/matches', icon: Heart },
-    { label: 'Requests', href: '/requests', icon: Inbox, showBadge: true },
+    { label: 'Inbox', href: '/requests', icon: Inbox, showBadge: true },
     { label: 'Chat', href: '/messages', icon: MessageCircle },
     { label: 'Verify', href: '/verification', icon: ShieldCheck },
   ];
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black/40 backdrop-blur-2xl border-t border-white/10 z-[100] safe-area-bottom pb-2">
+      {/* Mobile Nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black/40 backdrop-blur-3xl border-t border-white/5 z-[100] safe-area-bottom pb-2">
         <div className="flex w-full justify-around items-center h-16 px-2">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -61,32 +62,32 @@ export function Navigation() {
                 href={item.href}
                 className={cn(
                   "flex flex-col items-center justify-center gap-1 transition-all duration-300 relative min-w-[50px]",
-                  isActive ? "text-primary" : "text-white/60 hover:text-white"
+                  isActive ? "text-primary" : "text-white/50 hover:text-white"
                 )}
               >
-                <div className={cn("p-1.5 rounded-xl transition-colors", isActive && "bg-primary/20 shadow-[0_0_15px_rgba(106,92,255,0.3)]")}>
-                  <Icon className={cn("w-5 h-5", isActive && "fill-current")} />
+                <div className={cn("p-2 rounded-xl transition-colors", isActive && "bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.1)]")}>
+                  <Icon className={cn("w-[18px] h-[18px]", isActive && "fill-current")} />
                 </div>
                 {item.showBadge && pendingCount > 0 && (
-                  <span className="absolute top-0 right-1.5 flex h-4 w-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-accent text-[9px] text-white font-black items-center justify-center border border-black">
+                  <span className="absolute top-1 right-2 flex h-4 w-4">
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-accent text-[8px] text-white font-black items-center justify-center border border-black">
                       {pendingCount}
                     </span>
                   </span>
                 )}
-                <span className="text-[8px] font-bold uppercase tracking-wider">{item.label}</span>
+                <span className="text-[7px] font-black uppercase tracking-widest">{item.label}</span>
               </Link>
             );
           })}
         </div>
       </nav>
 
-      <nav className="hidden md:flex fixed top-0 left-0 right-0 h-20 bg-black/20 backdrop-blur-xl border-b border-white/10 z-[100] items-center justify-between px-8 lg:px-20">
+      {/* Desktop Nav */}
+      <nav className="hidden md:flex fixed top-0 left-0 right-0 h-20 bg-black/10 backdrop-blur-xl border-b border-white/5 z-[100] items-center justify-between px-8 lg:px-20">
         <Link href="/" className="flex items-center gap-2 group">
           <Logo size="sm" className="opacity-100" />
         </Link>
-        <div className="flex items-center gap-2 lg:gap-6">
+        <div className="flex items-center gap-4 lg:gap-8">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -95,18 +96,17 @@ export function Navigation() {
                 key={item.href} 
                 href={item.href}
                 className={cn(
-                  "text-sm font-bold transition-all duration-300 flex items-center gap-2 px-4 py-2 rounded-xl relative",
+                  "text-xs font-black transition-all duration-300 flex items-center gap-2 px-5 py-2.5 rounded-full relative uppercase tracking-widest",
                   isActive 
-                    ? "bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.05)]" 
-                    : "text-white/60 hover:text-white hover:bg-white/5"
+                    ? "bg-white/10 text-white shadow-xl" 
+                    : "text-white/40 hover:text-white hover:bg-white/5"
                 )}
               >
-                <Icon className={cn("w-4 h-4", isActive && "fill-current")} />
+                <Icon className={cn("w-[18px] h-[18px]", isActive && "fill-current")} />
                 <span className="hidden lg:inline">{item.label}</span>
                 {item.showBadge && pendingCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-5 w-5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-5 w-5 bg-accent text-[10px] text-white font-black items-center justify-center border-2 border-background">
+                    <span className="relative inline-flex rounded-full h-5 w-5 bg-accent text-[9px] text-white font-black items-center justify-center border-2 border-background">
                       {pendingCount}
                     </span>
                   </span>
@@ -115,8 +115,8 @@ export function Navigation() {
             );
           })}
           {user && (
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="rounded-full text-white/60 hover:text-white hover:bg-white/10 ml-2">
-              <LogOut className="w-5 h-5" />
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="rounded-full text-white/30 hover:text-white hover:bg-white/5 ml-2">
+              <LogOut className="w-4 h-4" />
             </Button>
           )}
         </div>

@@ -67,22 +67,17 @@ function ConversationListItem({ conversation, currentUserId, isActive, onClick }
     <button 
       onClick={onClick} 
       className={cn(
-        "w-full flex items-center gap-4 p-5 rounded-[2rem] transition-all duration-300", 
-        isActive ? "bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.05)] text-white" : "text-white/60 hover:bg-white/5"
+        "w-full flex items-center gap-4 p-4 rounded-[1.5rem] transition-all duration-300", 
+        isActive ? "bg-white/10 text-white" : "text-white/40 hover:bg-white/5"
       )}
     >
-      <Avatar className="w-14 h-14 rounded-2xl border-2 border-white/10 shadow-lg">
+      <Avatar className="w-12 h-12 rounded-full border border-white/10">
         <AvatarImage src={photoURL} className="object-cover" />
         <AvatarFallback className="bg-primary/20 text-primary font-black">{displayName[0]}</AvatarFallback>
       </Avatar>
       <div className="flex-1 text-left overflow-hidden">
-        <div className="flex justify-between items-center mb-1">
-          <p className="font-black text-sm md:text-base truncate">{displayName}</p>
-          {otherParticipantId?.startsWith('sim_') && (
-            <Sparkles className="w-3 h-3 text-accent animate-pulse" />
-          )}
-        </div>
-        <p className="text-xs truncate text-white/40 font-medium">{conversation.lastMessage || "Awaiting frequency..."}</p>
+        <p className="font-black text-sm truncate">{displayName}</p>
+        <p className="text-[10px] truncate text-white/30 font-medium">{conversation.lastMessage || "Syncing frequency..."}</p>
       </div>
     </button>
   );
@@ -171,7 +166,7 @@ export default function MessagesPage() {
     }
     deleteDocumentNonBlocking(doc(db, 'conversations', activeConversation.id));
     setActiveConversation(null);
-    toast({ title: "Frequency Severed", description: "Chat removed from history." });
+    toast({ title: "Frequency Severed", description: "Chat removed." });
   };
 
   if (loading || convLoading) return (
@@ -184,16 +179,16 @@ export default function MessagesPage() {
     return (
       <div className="flex flex-col h-screen items-center justify-center p-6 text-center">
         <Navigation />
-        <Card className="glass-card p-12 md:p-16 rounded-[3.5rem] space-y-8 max-w-md animate-in zoom-in-95 mx-4">
-          <div className="bg-unverified/10 p-8 rounded-full inline-block animate-bounce shadow-[0_0_30px_rgba(234,179,8,0.2)]">
-            <Lock className="w-12 h-12 md:w-16 md:h-16 text-unverified" />
+        <Card className="glass-card p-12 rounded-[3rem] space-y-8 max-w-md mx-4">
+          <div className="bg-unverified/10 p-8 rounded-full inline-block animate-bounce shadow-[0_0_30px_rgba(234,179,8,0.1)]">
+            <Lock className="w-12 h-12 text-unverified" />
           </div>
           <div className="space-y-4">
-            <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white">Trust Only</h1>
-            <p className="text-white/60 font-medium text-base">To maintain cosmic harmony, verify your soul identity before connecting with others.</p>
+            <h1 className="text-3xl font-black tracking-tight text-white">Trust Only</h1>
+            <p className="text-white/60 font-medium">Verify your soul identity before connecting with others.</p>
           </div>
           <Link href="/verification" className="block w-full">
-            <Button className="w-full h-16 rounded-[1.5rem] text-xl font-black truevibe-button-gradient border-none">Verify My Soul</Button>
+            <Button className="truevibe-pill-button h-14 w-full">Verify My Soul</Button>
           </Link>
         </Card>
       </div>
@@ -205,15 +200,15 @@ export default function MessagesPage() {
       <Navigation />
       
       <div className={cn(
-        "w-full md:w-[380px] lg:w-[450px] border-r border-white/10 flex flex-col bg-black/20 backdrop-blur-2xl transition-all duration-300", 
+        "w-full md:w-[320px] lg:w-[400px] border-r border-white/5 flex flex-col bg-black/10 backdrop-blur-2xl transition-all duration-300", 
         activeConversation && "hidden md:flex"
       )}>
-        <div className="p-8 pb-4">
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">Vibes</h1>
-          <p className="text-xs font-bold text-white/40 uppercase tracking-widest mt-2">Active Frequencies</p>
+        <div className="p-6 pb-4">
+          <h1 className="text-3xl font-black text-white">Vibes</h1>
+          <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mt-1">Active Syncs</p>
         </div>
         <ScrollArea className="flex-1 px-4">
-          <div className="space-y-3 pb-10 mt-4">
+          <div className="space-y-2 pb-10 mt-2">
             {conversations?.map(conv => (
               <ConversationListItem 
                 key={conv.id} 
@@ -224,11 +219,9 @@ export default function MessagesPage() {
               />
             ))}
             {conversations?.length === 0 && (
-              <div className="text-center py-32 px-10 space-y-6">
-                <div className="bg-white/5 p-8 rounded-full inline-block">
-                  <MessageCircle className="w-12 h-12 text-white/10" />
-                </div>
-                <p className="text-base font-bold text-white/40 leading-relaxed italic">No active connections. <br/><Link href="/matches" className="text-primary hover:underline">Find your vibe!</Link></p>
+              <div className="text-center py-20 px-8">
+                <MessageCircle className="w-10 h-10 text-white/10 mx-auto mb-4" />
+                <p className="text-sm font-bold text-white/30 italic">Find your vibe!</p>
               </div>
             )}
           </div>
@@ -236,54 +229,54 @@ export default function MessagesPage() {
       </div>
 
       <div className={cn(
-        "flex-1 flex flex-col bg-black/10 backdrop-blur-3xl h-full relative", 
+        "flex-1 flex flex-col bg-black/5 backdrop-blur-3xl h-full relative", 
         !activeConversation && "hidden md:flex items-center justify-center text-center"
       )}>
         {!activeConversation ? (
-          <div className="p-16 animate-in fade-in duration-1000">
-            <div className="truevibe-button-gradient p-8 rounded-[3rem] inline-block shadow-[0_0_50px_rgba(123,77,255,0.2)] mb-8">
-              <MessageCircle className="w-20 h-20 text-white" />
+          <div className="p-12 animate-in fade-in duration-700">
+            <div className="truevibe-gradient p-8 rounded-full inline-block shadow-2xl mb-6">
+              <MessageCircle className="w-16 h-16 text-white" />
             </div>
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-white">Select a Soul</h2>
-            <p className="text-white/40 font-medium mt-3 text-lg">Pick a frequency to start vibing.</p>
+            <h2 className="text-2xl font-black text-white">Select a Soul</h2>
+            <p className="text-white/30 font-medium mt-2">Pick a frequency to start vibing.</p>
           </div>
         ) : (
           <>
-            <div className="p-4 md:p-6 border-b border-white/10 flex items-center justify-between bg-black/40 backdrop-blur-3xl sticky top-0 z-20">
+            <div className="p-4 md:p-5 border-b border-white/5 flex items-center justify-between bg-black/20 backdrop-blur-3xl sticky top-0 z-20">
               <div className="flex items-center gap-4 overflow-hidden">
-                <Button variant="ghost" size="icon" onClick={() => setActiveConversation(null)} className="md:hidden text-white/60">
-                  <ArrowLeft className="w-6 h-6" />
+                <Button variant="ghost" size="icon" onClick={() => setActiveConversation(null)} className="md:hidden text-white/40">
+                  <ArrowLeft className="w-5 h-5" />
                 </Button>
-                <Avatar className="w-12 h-12 md:w-16 md:h-16 rounded-2xl shadow-xl border-2 border-white/10 flex-shrink-0">
+                <Avatar className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/10">
                   <AvatarImage src={activePhotoURL} className="object-cover" />
                   <AvatarFallback className="font-black bg-primary/20">{activeDisplayName[0]}</AvatarFallback>
                 </Avatar>
                 <div className="truncate">
-                  <p className="font-black text-lg md:text-2xl text-white tracking-tight truncate">{activeDisplayName}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="w-2 h-2 bg-verified rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40">In Harmony</span>
+                  <p className="font-black text-lg text-white truncate leading-tight">{activeDisplayName}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="w-1.5 h-1.5 bg-verified rounded-full shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-white/30">In Harmony</span>
                   </div>
                 </div>
               </div>
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-2xl hover:bg-destructive/10 text-white/40 hover:text-destructive h-12 w-12">
-                    <Trash2 className="w-6 h-6" />
+                  <Button variant="ghost" size="icon" className="rounded-full hover:bg-destructive/10 text-white/20 hover:text-destructive h-10 w-10">
+                    <Trash2 className="w-5 h-5" />
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="glass-card rounded-[3rem] border-white/10 max-w-lg">
+                <AlertDialogContent className="glass-card rounded-[2rem] border-white/10 max-w-sm">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-2xl font-black text-white">Sever Connection?</AlertDialogTitle>
-                    <AlertDialogDescription className="text-white/60 text-base">
-                      This will permanently delete your chat history with {activeDisplayName}. You will need a new vibe check to reconnect.
+                    <AlertDialogTitle className="text-xl font-black text-white">Sever Connection?</AlertDialogTitle>
+                    <AlertDialogDescription className="text-white/60">
+                      Delete your chat with {activeDisplayName}. This cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogFooter className="gap-3">
-                    <AlertDialogCancel className="rounded-xl font-bold bg-white/5 border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteConversation} className="rounded-xl font-bold bg-destructive text-white hover:bg-destructive/90">
-                      Delete Forever
+                  <AlertDialogFooter className="gap-2">
+                    <AlertDialogCancel className="rounded-full font-bold bg-white/5 border-white/10 text-white">Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteConversation} className="rounded-full font-bold bg-destructive text-white">
+                      Delete
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -291,26 +284,26 @@ export default function MessagesPage() {
             </div>
 
             <ScrollArea className="flex-1 p-6" ref={scrollRef}>
-              <div className="space-y-6 max-w-3xl mx-auto pb-10">
+              <div className="space-y-6 max-w-2xl mx-auto pb-10">
                 {messages?.map((m, idx) => {
                   const isMe = m.senderId === user?.uid;
                   return (
                     <div 
                       key={m.id || idx} 
                       className={cn(
-                        "flex flex-col max-w-[85%] md:max-w-[80%] animate-in slide-in-from-bottom-2 duration-300", 
+                        "flex flex-col max-w-[85%] animate-in slide-in-from-bottom-2 duration-300", 
                         isMe ? "ml-auto items-end" : "mr-auto items-start"
                       )}
                     >
                       <div className={cn(
-                        "p-4 md:p-5 px-6 rounded-[2rem] text-sm md:text-base font-medium shadow-xl", 
+                        "p-4 px-5 rounded-[1.75rem] text-sm font-medium shadow-md", 
                         isMe 
-                          ? "truevibe-button-gradient text-white rounded-tr-none" 
-                          : "bg-white/10 text-white rounded-tl-none border border-white/10 backdrop-blur-md"
+                          ? "truevibe-gradient text-white rounded-tr-none" 
+                          : "bg-white/10 text-white rounded-tl-none border border-white/5 backdrop-blur-md"
                       )}>
                         {m.text}
                       </div>
-                      <span className="text-[9px] font-black text-white/20 uppercase tracking-widest mt-2 px-3">
+                      <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-1.5 px-2">
                         {m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
                       </span>
                     </div>
@@ -320,36 +313,36 @@ export default function MessagesPage() {
             </ScrollArea>
 
             {!isPremium ? (
-              <div className="p-10 border-t border-white/10 bg-accent/10 backdrop-blur-3xl text-center space-y-6">
-                <div className="inline-flex items-center gap-2 bg-accent/20 text-accent px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-[0_0_15px_rgba(255,122,107,0.2)]">
-                  <Crown className="w-4 h-4 fill-current" /> Premium Dimension Required
+              <div className="p-8 border-t border-white/5 bg-accent/5 backdrop-blur-3xl text-center space-y-4">
+                <div className="inline-flex items-center gap-1.5 bg-accent/20 text-accent px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
+                  <Crown className="w-3 h-3 fill-current" /> Premium Required
                 </div>
-                <h3 className="text-2xl md:text-3xl font-black text-white">Deepen the Connection</h3>
-                <p className="text-sm md:text-base text-white/60 max-w-sm mx-auto font-medium">Upgrade to Premium to send unlimited messages and unblur your vibe future.</p>
+                <h3 className="text-xl font-black text-white">Deepen the Connection</h3>
+                <p className="text-xs text-white/50 max-w-xs mx-auto font-medium">Upgrade to send unlimited messages and unblur your vibe future.</p>
                 <Button 
                   onClick={() => setShowUpgradeModal(true)} 
-                  className="w-full sm:w-auto rounded-2xl h-16 px-12 text-lg font-black truevibe-button-gradient border-none"
+                  className="truevibe-pill-button h-10 px-10 text-xs"
                 >
-                  Unlock Unlimited Viber
+                  Unlock Viber
                 </Button>
               </div>
             ) : (
-              <div className="p-4 md:p-8 bg-black/40 border-t border-white/10">
-                <div className="max-w-4xl mx-auto relative flex items-center gap-3">
+              <div className="p-4 md:p-6 bg-black/20 border-t border-white/5">
+                <div className="max-w-2xl mx-auto relative flex items-center gap-3">
                   <Input 
-                    placeholder="Share your thoughts..." 
+                    placeholder="Share your frequency..." 
                     value={messageText} 
                     onChange={e => setMessageText(e.target.value)} 
                     onKeyDown={e => e.key === 'Enter' && handleSendMessage()} 
-                    className="rounded-2xl h-14 md:h-16 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-primary/40 px-6 text-base" 
+                    className="rounded-full h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-primary/40 px-6" 
                   />
                   <Button 
                     size="icon" 
                     onClick={handleSendMessage} 
                     disabled={!messageText.trim()}
-                    className="shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-2xl truevibe-button-gradient shadow-2xl"
+                    className="shrink-0 w-12 h-12 rounded-full truevibe-pill-button px-0 shadow-lg"
                   >
-                    <Send className="w-6 h-6 text-white" />
+                    <Send className="w-4 h-4 text-white" />
                   </Button>
                 </div>
               </div>

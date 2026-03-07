@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Edit3, X, Save, Camera, Plus, Trash2, Image as ImageIcon, Loader2, ShieldCheck } from 'lucide-react';
+import { Edit3, X, Save, Camera, Plus, Trash2, Image as ImageIcon, Loader2, ShieldCheck, Heart, User } from 'lucide-react';
 import Image from 'next/image';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { 
@@ -91,146 +91,180 @@ export default function ProfilePage() {
   if (!profile) return null;
 
   return (
-    <div className="max-w-2xl mx-auto p-4 pt-8 md:pt-28 min-h-screen pb-32 space-y-6 md:space-y-8">
+    <div className="max-w-3xl mx-auto p-4 pt-8 md:pt-28 min-h-screen pb-32 space-y-8">
       <Navigation />
       
-      <Card className="overflow-hidden border-none shadow-xl rounded-[2rem] md:rounded-[3rem] bg-white animate-in fade-in slide-in-from-bottom-4">
-        <div className="relative h-48 md:h-64 w-full bg-primary/10 group">
+      {/* Top Section: Cover & Avatar */}
+      <div className="relative animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="relative h-40 md:h-60 w-full bg-gradient-to-r from-[#6A5CFF] to-[#FF4DA6] rounded-[2rem] overflow-hidden group">
           <Image 
             src={profile.photoURL} 
-            alt={profile.displayName} 
+            alt="Cover" 
             fill 
-            className="object-cover"
+            className="object-cover opacity-30 blur-sm"
           />
-          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <Button variant="secondary" className="rounded-full font-bold h-10 md:h-12" onClick={() => setShowPhotoSelector(true)}>
-              <Camera className="w-4 h-4 mr-2" /> Change Photo
-            </Button>
-          </div>
+          <div className="absolute inset-0 bg-black/20" />
         </div>
         
-        <CardContent className="pt-6">
-          <div className="flex justify-between items-start">
-            <div className="flex-1 pr-4">
-              {isEditing ? (
-                <div className="space-y-3">
-                  <Input value={editedName} onChange={(e) => setEditedName(e.target.value)} className="font-black text-lg md:text-xl h-12 md:h-14 rounded-xl md:rounded-2xl border-none shadow-inner bg-muted/30" />
-                  <Textarea value={editedBio} onChange={(e) => setEditedBio(e.target.value)} className="rounded-xl md:rounded-2xl border-none shadow-inner bg-muted/30 min-h-[80px] md:min-h-[100px]" />
-                  <div className="flex gap-2">
-                    <Button onClick={handleSaveProfile} className="rounded-xl flex-1 h-10 md:h-12 font-bold"><Save className="w-4 h-4 mr-2" /> Save</Button>
-                    <Button variant="ghost" onClick={() => setIsEditing(false)} className="rounded-xl h-10 md:h-12"><X className="w-4 h-4" /></Button>
-                  </div>
-                </div>
+        <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center">
+          <div className="relative group">
+            <Avatar className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-background shadow-2xl">
+              <AvatarImage src={profile.photoURL} className="object-cover" />
+              <AvatarFallback className="font-black bg-primary/20">{profile.displayName[0]}</AvatarFallback>
+            </Avatar>
+            <button 
+              onClick={() => setShowPhotoSelector(true)}
+              className="absolute bottom-1 right-1 bg-white p-2 rounded-full shadow-lg text-primary hover:scale-110 transition-transform"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-12 text-center space-y-2">
+        {isEditing ? (
+          <div className="max-w-md mx-auto space-y-4">
+            <Input value={editedName} onChange={(e) => setEditedName(e.target.value)} className="text-center font-black text-xl md:text-2xl h-12 rounded-xl bg-white/10 border-none shadow-inner" />
+            <Textarea value={editedBio} onChange={(e) => setEditedBio(e.target.value)} className="text-center rounded-xl bg-white/10 border-none shadow-inner min-h-[80px]" />
+            <div className="flex gap-2 justify-center">
+              <Button onClick={handleSaveProfile} size="sm" className="truevibe-pill-button px-8"><Save className="w-4 h-4 mr-2" /> Save</Button>
+              <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} className="rounded-full h-10 w-10 p-0 text-white/60"><X className="w-4 h-4" /></Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-center gap-2">
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">{profile.displayName}</h1>
+              {profile.identityVerified ? (
+                <Badge className="bg-verified text-white rounded-full font-black px-3 py-0.5 text-[10px] uppercase tracking-widest">VERIFIED</Badge>
               ) : (
-                <>
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <h1 className="text-2xl md:text-3xl font-black tracking-tight">{profile.displayName}</h1>
-                    {profile.identityVerified ? (
-                      <Badge className="bg-verified text-white rounded-full font-black px-2 md:px-3 py-1 text-[9px] md:text-[10px] uppercase tracking-widest border-none">VERIFIED</Badge>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="outline" className="text-unverified border-unverified rounded-full font-black px-2 md:px-3 py-1 text-[9px] md:text-[10px] uppercase tracking-widest">UNVERIFIED</Badge>
-                        <Button variant="ghost" size="sm" className="h-6 text-[8px] md:text-[9px] font-black uppercase text-primary hover:text-primary hover:bg-primary/10 px-2 rounded-full border border-primary/20" onClick={() => router.push('/verification')}>
-                          <ShieldCheck className="w-3 h-3 mr-1" /> Verify Now
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-sm md:text-base text-muted-foreground font-medium leading-relaxed">{profile.bio}</p>
-                </>
+                <button onClick={() => router.push('/verification')} className="text-[10px] font-black uppercase text-accent hover:underline">Verify Soul</button>
               )}
             </div>
-            {!isEditing && (
-              <Button size="icon" variant="ghost" onClick={() => setIsEditing(true)} className="rounded-full hover:bg-primary/10 flex-shrink-0">
-                <Edit3 className="w-5 h-5 text-primary" />
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            <p className="text-sm md:text-base text-white/60 max-w-md mx-auto font-medium">{profile.bio || "Just joined TrueVibe! Looking for real vibes."}</p>
+            <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} className="rounded-full text-white/40 hover:text-white mt-2">
+              <Edit3 className="w-4 h-4 mr-2" /> Edit Profile
+            </Button>
+          </>
+        )}
+      </div>
 
-      <Card className="border-none shadow-lg rounded-[2rem] bg-white">
-        <CardContent className="p-4 md:p-6">
-          <h3 className="text-base md:text-lg font-black mb-4 flex items-center gap-2 uppercase tracking-tight">
-            <Plus className="w-4 h-4 md:w-5 md:h-5 text-primary" /> Share your vibe
+      {/* Info Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="glass-card rounded-[2rem] p-6 space-y-3">
+          <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
+            <User className="w-4 h-4" /> About Me
           </h3>
-          <div className="flex gap-3 md:gap-4">
-            <Avatar className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl shadow-md flex-shrink-0">
+          <div className="space-y-4">
+            <div>
+              <p className="text-[10px] font-black text-white/40 uppercase mb-1">Looking For</p>
+              <p className="text-sm font-medium text-white/90">Long-term connection & shared vibes</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-white/40 uppercase mb-1">Vibe Tags</p>
+              <div className="flex flex-wrap gap-2">
+                {profile.personalityProfile?.user_persona.tags.map(tag => (
+                  <Badge key={tag} variant="outline" className="rounded-full border-white/10 text-white/70">{tag}</Badge>
+                )) || <p className="text-xs text-white/30 italic">Complete Vibe Check to unlock tags</p>}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="glass-card rounded-[2rem] p-6 space-y-3">
+          <h3 className="text-xs font-black uppercase tracking-widest text-accent flex items-center gap-2">
+            <Heart className="w-4 h-4" /> Ideal Frequency
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <p className="text-[10px] font-black text-white/40 uppercase mb-1">Partner Vision</p>
+              <p className="text-sm font-medium text-white/90 line-clamp-3">
+                {profile.personalityProfile?.ideal_partner.summary || "Awaiting AI analysis..."}
+              </p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Feed Section */}
+      <div className="space-y-6">
+        <Card className="glass-card rounded-[2rem] p-6">
+          <div className="flex gap-4">
+            <Avatar className="w-10 h-10 rounded-full border border-white/10">
               <AvatarImage src={profile.photoURL} />
               <AvatarFallback className="font-black">{profile.displayName[0]}</AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-4">
               <Textarea 
-                placeholder="What's happening today?" 
+                placeholder="Share your current vibe..." 
                 value={newPostContent}
                 onChange={(e) => setNewPostContent(e.target.value)}
-                className="min-h-[100px] md:min-h-[120px] border-none bg-muted/30 rounded-xl md:rounded-[1.5rem] resize-none focus-visible:ring-primary/20 p-4 text-sm md:text-base font-medium shadow-inner"
+                className="min-h-[100px] border-none bg-white/5 rounded-2xl resize-none focus-visible:ring-primary/20 p-4 text-sm font-medium"
               />
               <div className="flex justify-between items-center">
-                <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground font-bold hover:bg-muted text-[10px] md:text-xs">
+                <Button variant="ghost" size="sm" className="rounded-full text-white/40 font-bold hover:bg-white/5">
                   <ImageIcon className="w-4 h-4 mr-2" /> Media
                 </Button>
-                <Button onClick={handleCreatePost} disabled={!newPostContent.trim()} className="rounded-full px-6 md:px-8 h-10 md:h-12 font-black text-xs md:text-sm truevibe-gradient border-none shadow-lg">
+                <Button onClick={handleCreatePost} disabled={!newPostContent.trim()} size="sm" className="truevibe-pill-button">
                   Post Update
                 </Button>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </Card>
 
-      <div className="space-y-4 md:space-y-6">
-        <h3 className="text-lg md:text-xl font-black px-2 uppercase tracking-tight">Recent Vibes</h3>
-        {posts?.length === 0 ? (
-          <div className="text-center py-16 md:py-20 bg-muted/20 rounded-[2rem] md:rounded-[3rem] border-2 border-dashed border-muted/50">
-            <p className="text-muted-foreground font-bold italic text-sm md:text-base px-4">No posts yet. Start the vibe!</p>
-          </div>
-        ) : (
-          posts?.map((post) => (
-            <Card key={post.id} className="border-none shadow-md rounded-[2rem] md:rounded-[2.5rem] bg-white overflow-hidden animate-in fade-in slide-in-from-bottom-6 duration-500">
-              <CardContent className="p-6 md:p-8">
-                <div className="flex justify-between items-start mb-4 md:mb-6">
-                  <div className="flex items-center gap-3 md:gap-4">
-                    <Avatar className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl border shadow-sm flex-shrink-0">
-                      <AvatarImage src={profile.photoURL} />
-                      <AvatarFallback className="font-black">{profile.displayName[0]}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-black text-xs md:text-sm uppercase tracking-tight">{profile.displayName}</p>
-                      <p className="text-[9px] md:text-[10px] text-muted-foreground font-black uppercase tracking-widest">{new Date(post.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+        <div className="space-y-4">
+          <h3 className="text-sm font-black text-white/40 uppercase tracking-widest px-2">Cosmic Updates</h3>
+          {posts?.length === 0 ? (
+            <div className="text-center py-16 glass-card rounded-[2.5rem] border-dashed border-white/10">
+              <p className="text-white/30 font-bold italic text-sm">No updates yet. Start the vibe!</p>
+            </div>
+          ) : (
+            posts?.map((post) => (
+              <Card key={post.id} className="glass-card rounded-[2rem] overflow-hidden animate-in fade-in slide-in-from-bottom-6 duration-500">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-10 h-10 rounded-full border border-white/10">
+                        <AvatarImage src={profile.photoURL} />
+                        <AvatarFallback className="font-black">{profile.displayName[0]}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-black text-xs uppercase text-white/90">{profile.displayName}</p>
+                        <p className="text-[9px] text-white/40 font-black uppercase tracking-widest">{new Date(post.createdAt).toLocaleDateString()}</p>
+                      </div>
                     </div>
+                    <Button variant="ghost" size="icon" className="text-white/20 hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8" onClick={() => deleteDocumentNonBlocking(doc(db, 'users', user.uid, 'posts', post.id))}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full h-8 w-8" onClick={() => deleteDocumentNonBlocking(doc(db, 'users', user.uid, 'posts', post.id))}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-                <p className="text-sm md:text-base leading-relaxed text-foreground/90 font-medium">{post.content}</p>
-              </CardContent>
-            </Card>
-          ))
-        )}
+                  <p className="text-sm leading-relaxed text-white/80 font-medium">{post.content}</p>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </div>
 
       {showPhotoSelector && (
-        <div className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 md:p-6 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-8 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="glass-card rounded-[2.5rem] p-8 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 max-h-[80vh] flex flex-col">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl md:text-2xl font-black tracking-tight">Choose Portrait</h3>
-              <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setShowPhotoSelector(false)}><X className="w-5 h-5 md:w-6 md:h-6" /></Button>
+              <h3 className="text-xl font-black text-white">Choose Avatar</h3>
+              <Button variant="ghost" size="icon" className="rounded-full text-white/40" onClick={() => setShowPhotoSelector(false)}><X className="w-6 h-6" /></Button>
             </div>
-            <div className="grid grid-cols-2 gap-4 md:gap-6 overflow-y-auto pr-2 flex-1 scrollbar-hide py-2">
+            <div className="grid grid-cols-2 gap-4 overflow-y-auto scrollbar-hide py-2">
               {PlaceHolderImages.map((img) => (
                 <button 
                   key={img.id} 
-                  className="relative aspect-square rounded-[1.5rem] md:rounded-[2rem] overflow-hidden group border-4 border-transparent hover:border-primary transition-all shadow-lg" 
+                  className="relative aspect-square rounded-[1.5rem] overflow-hidden group border-2 border-transparent hover:border-primary transition-all shadow-lg" 
                   onClick={() => handleUpdatePhoto(img.imageUrl)}
                 >
-                  <Image src={img.imageUrl} alt={img.description} fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <Image src={img.imageUrl} alt={img.description} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
                 </button>
               ))}
             </div>
-            <Button className="w-full mt-6 h-12 rounded-xl font-black uppercase tracking-widest text-xs bg-muted text-muted-foreground" onClick={() => setShowPhotoSelector(false)}>Cancel</Button>
           </div>
         </div>
       )}
