@@ -108,12 +108,12 @@ export default function AIProfileBot() {
       updateDocumentNonBlocking(userRef, {
         profileCompleted: false,
         personalityProfile: null,
-        topMatches: null,
+        topMatches: null, // Clear stored matches so UI resets
         updatedAt: new Date().toISOString()
       });
 
       // 3. AGGRESSIVE CLEANUP: Delete all chat requests and conversations
-      // We do this to ensure simulated profiles like Tania reset to the "Message" state.
+      // We do this to ensure simulated profiles reset to the "Message" state.
       const requestsRef = collection(db, 'chat_requests');
       const qSender = query(requestsRef, where('senderId', '==', user.uid));
       const qReceiver = query(requestsRef, where('receiverId', '==', user.uid));
@@ -127,9 +127,13 @@ export default function AIProfileBot() {
         getDocs(qConvs)
       ]);
 
-      snap1.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
-      snap2.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
-      snap3.forEach(d => deleteDocumentNonBlocking(doc(db, 'conversations', d.id)));
+      const batchCleanup = async () => {
+        snap1.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
+        snap2.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
+        snap3.forEach(d => deleteDocumentNonBlocking(doc(db, 'conversations', d.id)));
+      };
+      
+      await batchCleanup();
 
       // 4. Clear local state
       setSessionMessages([]);

@@ -124,6 +124,39 @@ export default function MatchesPage() {
     }
   }, [profile?.topMatches]);
 
+  // Robust Simulated Acceptance Logic
+  // This watches for any pending requests to simulated IDs and auto-accepts them.
+  // This prevents the "Always Pending" bug if the user refreshes or leaves.
+  useEffect(() => {
+    if (!user || !outgoingRequests) return;
+
+    const pendingSimRequests = outgoingRequests.filter(
+      r => r.status === 'pending' && r.receiverId.startsWith('sim_')
+    );
+
+    pendingSimRequests.forEach(req => {
+      const timer = setTimeout(() => {
+        // Update request to accepted
+        updateDocumentNonBlocking(doc(db, 'chat_requests', req.id), { status: 'accepted' });
+        
+        // Create the conversation room
+        const convId = `conv_${user.uid}_${req.receiverId}`;
+        setDocumentNonBlocking(doc(db, 'conversations', convId), {
+          id: convId,
+          participantIds: [user.uid, req.receiverId],
+          lastMessage: "Vibe check passed! You can now chat.",
+          updatedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        }, { merge: true });
+
+        const matchName = SIMULATED_PROFILES.find(p => p.id === req.receiverId)?.name || 'Match';
+        toast({ title: "Request Accepted!", description: `${matchName} is ready to chat!` });
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    });
+  }, [outgoingRequests, user, db, toast]);
+
   const handleScanForMatches = async () => {
     if (!user || !profile?.personalityProfile || isScanning) return;
     setIsScanning(true);
@@ -233,26 +266,8 @@ export default function MatchesPage() {
 
     setDocumentNonBlocking(doc(db, 'chat_requests', requestId), requestData, { merge: true });
     
-    // Logic for simulated acceptance (Fast-track for demo)
-    if (requestConfirmation.id.startsWith('sim_')) {
-      setTimeout(() => {
-        // Update request to accepted
-        updateDocumentNonBlocking(doc(db, 'chat_requests', requestId), { status: 'accepted' });
-        
-        // Create the conversation room
-        const convId = `conv_${user.uid}_${requestConfirmation.id}`;
-        setDocumentNonBlocking(doc(db, 'conversations', convId), {
-          id: convId,
-          participantIds: [user.uid, requestConfirmation.id],
-          lastMessage: "Vibe check passed! You can now chat.",
-          updatedAt: new Date().toISOString(),
-          createdAt: new Date().toISOString()
-        }, { merge: true });
-
-        toast({ title: "Request Accepted!", description: `${requestConfirmation.name} is ready to chat!` });
-      }, 1500);
-    }
-
+    // Note: Simulated auto-acceptance is now handled by the persistent useEffect hook above.
+    
     toast({ title: "Request Sent", description: `We've sent your vibe check to ${requestConfirmation.name}.` });
     setRequestConfirmation(null);
     setIsSendingRequest(false);
