@@ -1,33 +1,34 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 270 20% 98%;
+    --background: 270 33% 99%;
     --foreground: 270 10% 10%;
     --card: 0 0% 100%;
     --card-foreground: 270 10% 15%;
     --popover: 0 0% 100%;
     --popover-foreground: 270 10% 15%;
-    --primary: 264 54% 60%;
+    --primary: 264 80% 62%;
     --primary-foreground: 0 0% 100%;
     --secondary: 236 68% 75%;
     --secondary-foreground: 264 20% 10%;
-    --muted: 270 10% 95%;
+    --muted: 270 15% 96%;
     --muted-foreground: 270 5% 45%;
-    --accent: 236 68% 95%;
-    --accent-foreground: 264 54% 40%;
+    --accent: 236 68% 97%;
+    --accent-foreground: 264 80% 40%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 270 10% 90%;
-    --input: 270 10% 90%;
-    --ring: 264 54% 60%;
-    --radius: 1rem;
+    --border: 270 15% 92%;
+    --input: 270 15% 92%;
+    --ring: 264 80% 62%;
+    --radius: 1.5rem;
     
     /* Verification Status Colors */
-    --verified: 120 52% 46%;
-    --unverified: 36 75% 54%;
+    --verified: 142 71% 45%;
+    --unverified: 38 92% 50%;
   }
 
   .dark {
@@ -37,7 +38,7 @@
     --card-foreground: 270 10% 95%;
     --popover: 270 20% 8%;
     --popover-foreground: 270 10% 95%;
-    --primary: 264 54% 65%;
+    --primary: 264 70% 65%;
     --primary-foreground: 270 20% 5%;
     --secondary: 236 68% 70%;
     --secondary-foreground: 270 10% 95%;
@@ -47,7 +48,7 @@
     --accent-foreground: 270 10% 95%;
     --border: 270 10% 20%;
     --input: 270 10% 20%;
-    --ring: 264 54% 65%;
+    --ring: 264 70% 65%;
   }
 }
 
@@ -57,6 +58,7 @@
   }
   body {
     @apply bg-background text-foreground font-body;
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
@@ -64,3 +66,12 @@
 .text-verified { color: hsl(var(--verified)); }
 .bg-unverified { background-color: hsl(var(--unverified)); }
 .text-unverified { color: hsl(var(--unverified)); }
+
+/* Custom Startup Aesthetic Classes */
+.startup-card {
+  @apply rounded-[2.5rem] border-none shadow-xl shadow-primary/5 transition-all duration-300;
+}
+
+.startup-button {
+  @apply rounded-2xl font-black transition-all active:scale-95 disabled:opacity-50;
+}

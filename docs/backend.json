@@ -8,6 +8,7 @@
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
+        "displayName": { "type": "string" },
         "bio": { "type": "string" },
         "photoURL": { "type": "string", "format": "uri" },
         "isVerified": { "type": "boolean" },
@@ -45,6 +46,27 @@
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
+    "Conversation": {
+      "title": "Conversation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "participantIds": { "type": "array", "items": { "type": "string" } },
+        "lastMessage": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "Notification": {
       "title": "Notification",
       "type": "object",
@@ -76,6 +98,20 @@
         "definition": {
           "entityName": "Match",
           "description": "Compatibility matches between users."
+        }
+      },
+      {
+        "path": "/conversations/{conversationId}",
+        "definition": {
+          "entityName": "Conversation",
+          "description": "Real-time chat conversations."
+        }
+      },
+      {
+        "path": "/conversations/{conversationId}/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "description": "Individual chat messages."
         }
       },
       {
