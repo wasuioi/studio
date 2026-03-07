@@ -1,40 +1,141 @@
+/**
+ * HarmonyAI Security Rules
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for personal data and a collaborative 
+ * shared-access model for communication. The architecture prioritizes "Authorization Independence," 
+ * meaning every document contains the necessary data (like userId or participantIds) to make 
+ * access decisions without requiring expensive cross-document lookups (get() calls).
+ *
+ * Data Structure:
+ * - /users/{userId}: Public-facing user profiles, owned by the respective user.
+ * - /users/{userId}/...: Private subcollections (verifications, personalityResults, matches) 
+ *   accessible only by the owner.
+ * - /conversations/{conversationId}: Shared chat metadata accessible to participants.
+ * - /conversations/{conversationId}/messages/{messageId}: Individual chat messages. 
+ *   Participants are denormalized onto every message for high-performance security checks.
+ *
+ * Key Security Decisions:
+ * - Ownership Enforcement: Writes to user-scoped paths are restricted to the authenticated 
+ *   user matching that path ID.
+ * - Relational Integrity: On creation, documents must include a field (e.g., userId) that 
+ *   matches the path to prevent data from being orphaned or misattributed.
+ * - Shared Access: Conversations and Messages use 'array-contains' logic on a 
+ *   `participantIds` field to authorize groups of users.
+ * - Prototyping Flexibility: While authorization is strict, the rules do not enforce 
+ *   specific data types for content fields to allow for rapid frontend iteration.
+ */
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // --- GLOBAL HELPER FUNCTIONS ---
+
+    /** @description Checks if the user is authenticated. */
     function isSignedIn() {
       return request.auth != null;
     }
+
+    /** @description Checks if the authenticated user's UID matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-    
-    match /user_profiles/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId);
-      
-      match /posts/{postId} {
-        allow read: if isSignedIn();
-        allow write: if isOwner(userId);
-      }
-      
-      match /personality/personality_data {
-        allow read, write: if isOwner(userId);
+
+    /** @description Checks ownership and ensures the document exists for update/delete operations. */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    /** @description Checks if the authenticated user is a member of the participantIds array. */
+    function isParticipant(data) {
+      return isSignedIn() && (request.auth.uid in data.participantIds);
+    }
+
+    // --- COLLECTION RULES ---
+
+    /**
+     * @description Rules for user profiles. Profiles are readable by any authenticated user but modifiable only by the owner.
+     * @path /users/{userId}
+     * @allow (get) Any signed-in user. (write) User with UID matching {userId}.
+     * @deny (write) If UID does not match {userId}.
+     * @principle Pattern 4 (Self-Creation) + Pattern 1 (Ownership).
+     */
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Private verification attempts. Only the owner can view or submit these.
+       * @path /users/{userId}/verifications/{verificationId}
+       * @allow (create) Owner providing matching userId in data.
+       * @deny (list) Anyone other than the owner of the parent user path.
+       * @principle Pattern 1 (Ownership) with internal field validation.
+       */
+      match /verifications/{verificationId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
       }
 
-      match /verification_requests/{requestId} {
-        allow read, write: if isOwner(userId);
+      /**
+       * @description Private AI personality results. Accessible only by the owner.
+       * @path /users/{userId}/personalityResults/{personalityResultId}
+       * @allow (get) Owner.
+       * @deny (get) Another authenticated user.
+       * @principle Restricts access to a user's own data tree.
+       */
+      match /personalityResults/{personalityResultId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description User-specific match lists. Matches are duplicated per participant to enable simple listing.
+       * @path /users/{userId}/matches/{matchId}
+       * @allow (list) Owner querying their own matches.
+       * @principle Structural segregation for performant and secure listing.
+       */
+      match /matches/{matchId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
       }
     }
-    
+
+    /**
+     * @description Metadata for shared conversations. Access is determined by the participantIds array.
+     * @path /conversations/{conversationId}
+     * @allow (get/list) If user UID is in participantIds.
+     * @deny (update) If user is not an existing participant.
+     * @principle Pattern 3 (Shared Access/Closed Collaborators).
+     */
     match /conversations/{conversationId} {
-      allow read, write: if isSignedIn() && request.auth.uid in resource.data.participantIds;
-      allow create: if isSignedIn();
-      
+      allow get, list: if isParticipant(resource.data);
+      allow create: if isParticipant(request.resource.data);
+      allow update: if isParticipant(resource.data) && isParticipant(request.resource.data);
+      allow delete: if false; // Conversations are generally archived rather than deleted
+
+      /**
+       * @description Messages within a conversation. Uses denormalized participantIds for auth independence.
+       * @path /conversations/{conversationId}/messages/{messageId}
+       * @allow (create) If senderId matches auth UID and user is in denormalized participantIds.
+       * @principle Denormalization for Authorization (Mandate A).
+       */
       match /messages/{messageId} {
-        allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
-        allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+        allow get, list: if isParticipant(resource.data);
+        allow create: if isParticipant(request.resource.data) && request.resource.data.senderId == request.auth.uid;
+        allow update: if isParticipant(resource.data) && (request.auth.uid in resource.data.readBy || request.resource.data.senderId == request.auth.uid);
+        allow delete: if false; // Message deletion restricted for audit purposes
       }
     }
+
   }
 }

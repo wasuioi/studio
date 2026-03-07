@@ -8,5 +8,5 @@ export const ai = genkit({
     }),
   ],
   // Use the standard model identifier to ensure compatibility and avoid 404 errors.
-  model: 'googleai/gemini-1.5-flash',
+  model: 'googleai/gemini-2.5-flash',
 });

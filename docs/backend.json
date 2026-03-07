@@ -1,90 +1,403 @@
-
 {
   "entities": {
     "UserProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user's public profile and core information within the HarmonyAI dating application.",
+      "description": "Represents a user's public profile within the HarmonyAI application, including their personal information and verification status.",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "profilePhotoUrl": { "type": "string", "format": "uri" },
-        "bio": { "type": "string" },
-        "gender": { "type": "string" },
-        "dateOfBirth": { "type": "string", "format": "date" },
-        "location": { "type": "string" },
-        "isVerified": { "type": "boolean" },
-        "verificationStatus": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "bio": {
+          "type": "string",
+          "description": "A short biographical description provided by the user."
+        },
+        "profilePhotoUrl": {
+          "type": "string",
+          "description": "URL to the user's profile picture stored in Firebase Storage.",
+          "format": "uri"
+        },
+        "isVerified": {
+          "type": "boolean",
+          "description": "Boolean indicating if the user's identity has been successfully verified. This is often denormalized from the Verification entity for quick lookup."
+        },
+        "verificationId": {
+          "type": "string",
+          "description": "Reference to the Verification entity associated with this user, if a verification process has been initiated. (Relationship: UserProfile 1:1 Verification)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "name", "isVerified", "createdAt", "updatedAt"]
+      "required": [
+        "id",
+        "name",
+        "isVerified",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "Post": {
+    "Verification": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Post",
+      "title": "Verification",
       "type": "object",
+      "description": "Tracks the status and results of a user's identity verification process.",
       "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "content": { "type": "string" },
-        "imageUrl": { "type": "string", "format": "uri" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Verification entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile entity this verification belongs to. (Relationship: Verification 1:1 UserProfile)"
+        },
+        "idCardUrl": {
+          "type": "string",
+          "description": "URL to the uploaded ID card image in Firebase Storage.",
+          "format": "uri"
+        },
+        "selfieUrl": {
+          "type": "string",
+          "description": "URL to the uploaded selfie image in Firebase Storage.",
+          "format": "uri"
+        },
+        "samePerson": {
+          "type": "boolean",
+          "description": "Boolean result from the AI model indicating if the faces in the ID card and selfie images match."
+        },
+        "confidence": {
+          "type": "number",
+          "description": "Confidence score (0-100) from the AI model regarding the face match."
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "Final verification status based on AI comparison results and confidence threshold (e.g., true if same_person is true AND confidence >= 70)."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the verification process (e.g., 'pending' upon submission, 'processing' while AI is analyzing, 'verified' or 'failed' after AI completes).",
+          "format": "enum"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Short explanation from the AI model for the verification result."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the verification record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the verification record was last updated (e.g., after AI processing).",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "userId", "content", "createdAt"]
+      "required": [
+        "id",
+        "userId",
+        "idCardUrl",
+        "selfieUrl",
+        "samePerson",
+        "confidence",
+        "verified",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AIPersonalityResult": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AIPersonalityResult",
+      "type": "object",
+      "description": "Stores the results of a user's AI personality interview, including personality analysis and communication style insights.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AI Personality Result entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile entity for whom this personality analysis was generated. (Relationship: AIPersonalityResult 1:1 UserProfile)"
+        },
+        "personalityAnalysis": {
+          "type": "string",
+          "description": "Detailed analysis of the user's personality as determined by the AI."
+        },
+        "communicationStyle": {
+          "type": "string",
+          "description": "Analysis of the user's communication style as determined by the AI."
+        },
+        "insights": {
+          "type": "array",
+          "description": "An array of key insights or characteristics identified by the AI during the personality interview.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the AI personality analysis was generated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "personalityAnalysis",
+        "communicationStyle",
+        "createdAt"
+      ]
+    },
+    "Match": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Match",
+      "type": "object",
+      "description": "Represents a potential match identified between two users based on AI-driven insights and preferences.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Match entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile entity who initiated or views this match. (Relationship: Match N:1 UserProfile)"
+        },
+        "matchedUserId": {
+          "type": "string",
+          "description": "Reference to the UserProfile entity that is a match for the primary user. (Relationship: Match N:1 UserProfile)"
+        },
+        "matchScore": {
+          "type": "number",
+          "description": "A numerical score (0-100) indicating the strength or compatibility of the match between the two users."
+        },
+        "matchReason": {
+          "type": "string",
+          "description": "A brief explanation generated by AI on why these two users are a match."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when this match was identified or created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "matchedUserId",
+        "createdAt"
+      ]
     },
     "Conversation": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Conversation",
       "type": "object",
+      "description": "Represents a real-time chat conversation between users, linking to individual messages.",
       "properties": {
-        "id": { "type": "string" },
-        "participantIds": { "type": "array", "items": { "type": "string" } },
-        "lastMessage": { "type": "string" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Conversation entity."
+        },
+        "participantIds": {
+          "type": "array",
+          "description": "An array of UserProfile IDs involved in this conversation. (Relationship: Conversation N:N UserProfile)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lastMessageContent": {
+          "type": "string",
+          "description": "The content of the last message sent in this conversation, useful for displaying in conversation lists."
+        },
+        "lastMessageTimestamp": {
+          "type": "string",
+          "description": "Timestamp of the last message sent in this conversation.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the conversation was initiated.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the conversation was last updated (e.g., a new message was sent).",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "participantIds", "updatedAt"]
+      "required": [
+        "id",
+        "participantIds",
+        "createdAt",
+        "updatedAt"
+      ]
     },
     "Message": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Message",
       "type": "object",
+      "description": "Represents an individual message sent within a chat conversation.",
       "properties": {
-        "id": { "type": "string" },
-        "senderId": { "type": "string" },
-        "text": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Message entity."
+        },
+        "conversationId": {
+          "type": "string",
+          "description": "Reference to the Conversation entity this message belongs to. (Relationship: Message N:1 Conversation)"
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Reference to the UserProfile entity who sent this message. (Relationship: Message N:1 UserProfile)"
+        },
+        "content": {
+          "type": "string",
+          "description": "The actual text content of the message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when the message was sent.",
+          "format": "date-time"
+        },
+        "readBy": {
+          "type": "array",
+          "description": "An array of UserProfile IDs who have read this message.",
+          "items": {
+            "type": "string"
+          }
+        }
       },
-      "required": ["id", "senderId", "text", "createdAt"]
+      "required": [
+        "id",
+        "conversationId",
+        "senderId",
+        "content",
+        "timestamp"
+      ]
     }
   },
   "auth": {
-    "providers": ["password", "anonymous"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
     "structure": [
       {
-        "path": "/user_profiles/{userId}",
+        "path": "/users/{userId}",
         "definition": {
-          "schema": { "$ref": "#/backend/entities/UserProfile" },
-          "description": "User profiles."
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profiles. The document ID (`{userId}`) must match the authenticated user's UID. The `isVerified` field is denormalized for quick access and the `verificationId` links to the specific verification record for Authorization Independence."
+        }
+      },
+      {
+        "path": "/users/{userId}/verifications/{verificationId}",
+        "definition": {
+          "entityName": "Verification",
+          "schema": {
+            "$ref": "#/backend/entities/Verification"
+          },
+          "description": "Stores individual identity verification attempts for a user. The document ID (`{verificationId}`) is unique for each attempt, and the `userId` field within the document must match the path's `{userId}` and `request.auth.uid` for Authorization Independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user submitting the verification."
+            },
+            {
+              "name": "verificationId",
+              "description": "The unique ID for this specific verification attempt."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/personalityResults/{personalityResultId}",
+        "definition": {
+          "entityName": "AIPersonalityResult",
+          "schema": {
+            "$ref": "#/backend/entities/AIPersonalityResult"
+          },
+          "description": "Stores the results of AI personality analyses for a specific user. The `userId` field within the document must match the path's `{userId}` and `request.auth.uid` for Authorization Independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user whose personality was analyzed."
+            },
+            {
+              "name": "personalityResultId",
+              "description": "The unique ID for this specific AI personality analysis result."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/matches/{matchId}",
+        "definition": {
+          "entityName": "Match",
+          "schema": {
+            "$ref": "#/backend/entities/Match"
+          },
+          "description": "Stores match relationships for a specific user. This subcollection represents a 'my matches' view. The `userId` field within the document must match the path's `{userId}` and `request.auth.uid` for Authorization Independence. Each match is duplicated for both participants (e.g., user A's matches include an entry for user B, and user B's matches include an entry for user A) to enable simple `list` queries for each user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who owns this match entry."
+            },
+            {
+              "name": "matchId",
+              "description": "The unique ID for this specific match relationship."
+            }
+          ]
         }
       },
       {
         "path": "/conversations/{conversationId}",
         "definition": {
-          "schema": { "$ref": "#/backend/entities/Conversation" },
-          "description": "Chat conversations."
+          "entityName": "Conversation",
+          "schema": {
+            "$ref": "#/backend/entities/Conversation"
+          },
+          "description": "Stores metadata for chat conversations. Includes the `participantIds` array for Authorization Independence, allowing members to read/write their own conversations via `request.auth.uid in resource.data.participantIds`."
         }
       },
       {
         "path": "/conversations/{conversationId}/messages/{messageId}",
         "definition": {
-          "schema": { "$ref": "#/backend/entities/Message" },
-          "description": "Messages within a conversation."
+          "entityName": "Message",
+          "schema": {
+            "$ref": "#/backend/entities/Message"
+          },
+          "description": "Stores individual messages within a conversation. To achieve Authorization Independence, each message document *MUST* include the `participantIds` array (denormalized from the parent Conversation) to allow read/write access checks without requiring a `get()` call to the parent. The `senderId` must match `request.auth.uid` for write access.",
+          "params": [
+            {
+              "name": "conversationId",
+              "description": "The unique ID of the parent conversation."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique ID for this specific message."
+            }
+          ]
         }
       }
-    ]
+    ],
+    "reasoning": "The Firestore structure is designed to adhere strictly to the CORE DESIGN PRINCIPLES and DESIGN STRATEGY MANDATES, prioritizing Authorization Independence, clarity, and scalability. Each collection and subcollection is structured to ensure that security rules are simple, robust, and debuggable.\n\n1.  **Authorization Independence (CRITICAL) via Denormalization (Strategy A):**\n    *   For all user-specific data (`UserProfile`, `Verification`, `AIPersonalityResult`, `Match`), the `userId` field within the document explicitly matches the `{userId}` wildcard in the path (`/users/{userId}/...`). This allows security rules to evaluate ownership solely based on `request.auth.uid == userId` or `request.auth.uid == request.resource.data.userId` without requiring `get()` operations on parent documents. This supports atomic writes (transactions/batches) without breaking security.\n    *   For collaborative data (`Conversation`, `Message`), the `participantIds` array is stored directly within the `Conversation` document. Crucially, for `Message` documents (a subcollection of `Conversation`), the `participantIds` array is **denormalized and copied into each `Message` document**. This is a direct implementation of Mandate A, eliminating the need for `get()` calls to the parent `Conversation` document for authorization checks, thus maintaining authorization independence at the document level for subcollections.\n\n2.  **QAPs (Rules are not Filters) via Structural Segregation (Strategy B) and Access Modeling (Strategy C):**\n    *   **Private User Data:** For entities like `UserProfile`, `Verification`, and `AIPersonalityResult`, the use of path-based ownership (`/users/{userId}/...`) ensures that `list` operations are implicitly secure. A user can only query their own data, and the rules enforce `request.auth.uid == userId`, preventing unauthorized `list` queries from returning other users' data.\n    *   **User-Owned Matches:** The `Match` entity is stored as a subcollection under the user (`/users/{userId}/matches/{matchId}`). This means a user can efficiently and securely `list` *their own* matches by querying `/users/{request.auth.uid}/matches`. While this results in duplicated `Match` entries (one per participant per match), it vastly simplifies `list` rules and ensures QAPs by eliminating the need for complex `where` clauses on a top-level collection that rules might fail to filter.\n    *   **Collaborative Conversations:** For `Conversation` documents, the `participantIds` array allows for efficient `list` operations using `where('participantIds', 'array-contains', request.auth.uid)`. Security rules can then check `request.auth.uid in resource.data.participantIds` for both `list` and `get` operations, which Firestore supports directly.\n    *   **Messages within Conversations:** Because `participantIds` is denormalized into each `Message` document, listing messages within a specific conversation (`/conversations/{conversationId}/messages`) is secure. The rule `request.auth.uid in resource.data.participantIds` will apply to each message, ensuring only authorized participants can view the messages. This supports QAPs even for subcollection `list` operations.\n\n3.  **Structural Segregation (Strategy B):** Each path (e.g., `/users/{userId}/verifications` vs. `/conversations/{conversationId}`) holds documents with a homogeneous security posture. User-specific data is kept distinct from collaborative data, simplifying rule sets. For instance, all documents within `/users/{userId}/verifications` are owned by `{userId}`.\n\n4.  **Access Modeling (Strategy C):**\n    *   **Private Data:** Utilizes path-based ownership (`/users/{userId}/...`) for `UserProfile`, `Verification`, `AIPersonalityResult`, and `Match` (as a user-owned subcollection).\n    *   **Collaborative Data:** Standardizes on the `participantIds` array for `Conversation` and denormalizes it into `Message` documents for access control.\n\n5.  **Data Clarity and Predictability (Strategy D):** Explicit state modeling is used for `Verification.status` (e.g., 'pending', 'processing', 'verified', 'failed'), avoiding ambiguous boolean flags. Consistent naming (`userId`, `createdAt`, `updatedAt`, descriptive wildcards like `{userId}`, `{conversationId}`) enhances debuggability and maintainability."
   }
 }
