@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
@@ -59,8 +58,6 @@ export default function LandingPage() {
         {/* Subtle texture overlay */}
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1475274047050-1d0c0975c63e?auto=format&fit=crop&q=80')] opacity-5 mix-blend-overlay bg-cover" />
       </div>
-
-      <Navigation />
       
       <main className="relative z-10 max-w-lg w-full space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
         <div className="space-y-10">
