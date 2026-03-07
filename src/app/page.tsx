@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Navigation } from '@/components/Navigation';
@@ -13,7 +14,11 @@ export default function LandingPage() {
 
   const handleStart = () => {
     if (user) {
-      router.push('/bot');
+      if (!user.emailVerified) {
+        router.push('/auth/verify');
+      } else {
+        router.push('/bot');
+      }
     } else {
       router.push('/auth/login');
     }
@@ -42,7 +47,7 @@ export default function LandingPage() {
               className="rounded-[2rem] h-20 px-16 text-2xl font-black shadow-2xl shadow-primary/40 hover:scale-105 transition-all duration-300 truevibe-gradient border-none"
               onClick={handleStart}
             >
-              Start Your Journey
+              Get Started
               <ArrowRight className="ml-2 w-8 h-8" />
             </Button>
           </div>

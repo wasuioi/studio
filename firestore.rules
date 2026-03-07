@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -9,63 +10,51 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    function isPremium() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().tier == 'premium';
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
     }
 
     match /users/{userId} {
-      allow get, list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create, update, delete: if isOwner(userId);
       
       match /posts/{postId} {
         allow read: if isSignedIn();
-        allow write: if isOwner(userId);
+        allow write: if isOwner(userId) && isEmailVerified();
       }
       
       match /personality/{docId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isEmailVerified();
       }
       
       match /verification_requests/{requestId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isEmailVerified();
       }
     }
 
-    // Support for user_profiles collection if referenced in legacy or updated code
-    match /user_profiles/{userId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isOwner(userId);
-    }
-
     match /bot_chats/{chatId} {
-      // Allow creation if the document belongs to the signed-in user
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      
-      // Allow the owner to read (get/list) their own messages
-      allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
-      
-      // Allow updates/deletes only for the owner
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && isEmailVerified();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     match /matches/{matchId} {
       allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && isEmailVerified();
       allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
     }
 
     match /conversations/{conversationId} {
       allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
-      allow create: if isSignedIn() && isPremium();
+      allow create: if isSignedIn() && isEmailVerified();
       allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
 
       match /messages/{messageId} {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
-        allow create: if isSignedIn() && isPremium() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+        allow create: if isSignedIn() && isEmailVerified() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
       }
     }
   }

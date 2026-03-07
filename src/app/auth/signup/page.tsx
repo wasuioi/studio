@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -22,6 +23,7 @@ export default function SignupPage() {
   const { toast } = useToast();
 
   const validatePassword = (pass: string) => {
+    // Min 8 chars, letters and numbers
     return pass.length >= 8 && /[a-zA-Z]/.test(pass) && /[0-9]/.test(pass);
   };
 
@@ -37,7 +39,7 @@ export default function SignupPage() {
       toast({ 
         variant: "destructive", 
         title: "Weak Password", 
-        description: "Must be 8+ chars with letters and numbers." 
+        description: "Must be at least 8 characters and include both letters and numbers." 
       });
       return;
     }
@@ -45,11 +47,12 @@ export default function SignupPage() {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Send verification email immediately
       await sendEmailVerification(userCredential.user);
       
       toast({
-        title: "Welcome to TrueVibe!",
-        description: "Check your email for a verification link.",
+        title: "Account Created!",
+        description: "Please check your email to verify your account.",
       });
       
       router.push('/auth/verify');
@@ -105,10 +108,10 @@ export default function SignupPage() {
                 required 
                 className="rounded-2xl h-14 bg-muted/30 border-none shadow-inner"
               />
-              <p className="text-[10px] text-muted-foreground font-bold px-1">Min. 8 chars, letters and numbers.</p>
+              <p className="text-[10px] text-muted-foreground font-bold px-1">Min. 8 chars, letters & numbers.</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" title="confirm password" className="font-bold text-xs uppercase tracking-widest ml-1">Confirm</Label>
+              <Label htmlFor="confirmPassword" title="confirm password" className="font-bold text-xs uppercase tracking-widest ml-1">Confirm Password</Label>
               <Input 
                 id="confirmPassword" 
                 type="password" 

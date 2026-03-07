@@ -20,18 +20,28 @@ export function useAuth() {
   useEffect(() => {
     if (authLoading) return;
 
+    const publicPaths = ['/', '/auth/login', '/auth/signup'];
+    const isPublicPath = publicPaths.includes(pathname);
+
     if (!user) {
       setProfile(null);
       setLoading(false);
-      const publicPaths = ['/', '/auth/login', '/auth/signup', '/auth/verify'];
-      if (!publicPaths.includes(pathname)) {
+      if (!isPublicPath) {
         router.push('/auth/login');
       }
       return;
     }
 
+    // Mandatory Email Verification Protection
     if (!user.emailVerified && pathname !== '/auth/verify') {
       router.push('/auth/verify');
+      return;
+    }
+
+    // If verified and trying to access verify page, move to dashboard
+    if (user.emailVerified && pathname === '/auth/verify') {
+      router.push('/bot');
+      return;
     }
 
     setLoading(true);
@@ -48,11 +58,11 @@ export function useAuth() {
           id: user.uid,
           uid: user.uid,
           email: user.email || '',
-          displayName: user.displayName || 'Harmony User',
-          name: user.displayName || 'Harmony User',
+          displayName: user.displayName || 'TrueVibe User',
+          name: user.displayName || 'TrueVibe User',
           photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/400/400`,
           profilePhotoUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/400/400`,
-          bio: "Looking for connection...",
+          bio: "Just joined TrueVibe! Looking for real vibes.",
           emailVerified: user.emailVerified,
           identityVerified: false,
           verificationStatus: 'not_verified',
@@ -79,11 +89,14 @@ export function useAuth() {
           });
       }
     }, (error) => {
-      const permissionError = new FirestorePermissionError({
-        path: userRef.path,
-        operation: 'get',
-      });
-      errorEmitter.emit('permission-error', permissionError);
+      // Don't emit error if we're just loading or on a public path
+      if (!isPublicPath) {
+        const permissionError = new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'get',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      }
       setLoading(false);
     });
 
