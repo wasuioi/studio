@@ -18,6 +18,16 @@ export interface UserProfile {
   createdAt: string;
   updatedAt: string;
   tier: 'free' | 'lite' | 'premium';
+  topMatches?: Array<{
+    id: string;
+    name: string;
+    gender: string;
+    age: number;
+    photoURL: string;
+    summary: string;
+    score: number;
+    reason: string;
+  }>;
   personalityProfile?: {
     user_persona: {
       summary: string;

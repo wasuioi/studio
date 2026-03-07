@@ -3,18 +3,20 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, BrainCircuit, Check, Crown, MessageCircle, Loader2, X, Info, Zap, Heart } from 'lucide-react';
+import { Sparkles, BrainCircuit, Check, Crown, MessageCircle, Loader2, Info, Zap, Heart, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { 
   useFirestore, 
+  updateDocumentNonBlocking
 } from '@/firebase';
 import { cn } from '@/lib/utils';
 import { findMatches } from '@/ai/flows/find-matches-flow';
 import { useToast } from '@/hooks/use-toast';
 import { UpgradeModal } from '@/components/UpgradeModal';
+import { doc } from 'firebase/firestore';
 
 const SIMULATED_PROFILES = [
   {
@@ -69,11 +71,19 @@ const SIMULATED_PROFILES = [
 
 export default function MatchesPage() {
   const { profile, user, loading } = useAuth();
+  const db = useFirestore();
   const { toast } = useToast();
   const [isScanning, setIsScanning] = useState(false);
   const [matches, setMatches] = useState<any[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [lockedFeature, setLockedFeature] = useState('');
+
+  // Synchronize local matches state with persisted profile matches
+  useEffect(() => {
+    if (profile?.topMatches) {
+      setMatches(profile.topMatches);
+    }
+  }, [profile?.topMatches]);
 
   const handleScanForMatches = async () => {
     if (!user || !profile?.personalityProfile || isScanning) return;
@@ -94,17 +104,28 @@ export default function MatchesPage() {
         }))
       });
 
-      const processedMatches = results.matches.map(m => {
-        const fullProfile = SIMULATED_PROFILES.find(p => p.id === m.targetUserId);
-        return {
-          ...fullProfile,
-          score: m.score,
-          reason: m.reason
-        };
-      }).sort((a, b) => b.score - a.score);
+      // Map results back to full profile data, sort by score, and take only TOP 3
+      const processedMatches = results.matches
+        .map(m => {
+          const fullProfile = SIMULATED_PROFILES.find(p => p.id === m.targetUserId);
+          return {
+            ...fullProfile,
+            score: m.score,
+            reason: m.reason
+          };
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3); // ONLY TOP 3
+
+      // Persist the top 3 matches to the user's profile
+      const userRef = doc(db, 'users', user.uid);
+      updateDocumentNonBlocking(userRef, {
+        topMatches: processedMatches,
+        updatedAt: new Date().toISOString()
+      });
 
       setMatches(processedMatches);
-      toast({ title: "Vibe Analysis Complete!", description: "We found some high-energy connections for you." });
+      toast({ title: "Vibe Analysis Complete!", description: "We've saved your top 3 high-energy connections." });
     } catch (err) {
       console.error(err);
       toast({ variant: "destructive", title: "Scan Failed", description: "Vera is having trouble sensing right now." });
@@ -124,7 +145,10 @@ export default function MatchesPage() {
 
   if (loading) return (
     <div className="flex h-screen items-center justify-center">
-      <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+        <p className="font-bold text-muted-foreground animate-pulse">Loading Vibes...</p>
+      </div>
     </div>
   );
 
@@ -133,11 +157,13 @@ export default function MatchesPage() {
       <Navigation />
       
       <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
+        <div className="space-y-2">
           <h1 className="text-4xl font-black tracking-tight flex items-center gap-3">
-            Your Vibe Matches <Sparkles className="text-primary fill-current w-8 h-8" />
+            Top 3 Vibe Matches <Sparkles className="text-primary fill-current w-8 h-8" />
           </h1>
-          <p className="text-muted-foreground font-medium mt-2">Weighted AI-powered compatibility analysis based on your energy.</p>
+          <p className="text-muted-foreground font-medium max-w-lg">
+            Vera has analyzed thousands of signals to find the 3 people who best match your current energy.
+          </p>
         </div>
         
         {profile?.personalityProfile && (
@@ -147,9 +173,9 @@ export default function MatchesPage() {
             className="rounded-2xl h-14 px-8 font-black truevibe-gradient border-none shadow-xl shadow-primary/20 active:scale-95 transition-all"
           >
             {isScanning ? (
-              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Calculating Weights...</>
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Calculating Vibes...</>
             ) : (
-              <><Zap className="mr-2 h-5 w-5 fill-current" /> Scan for Matches</>
+              <>{matches.length > 0 ? <RefreshCw className="mr-2 h-5 w-5" /> : <Zap className="mr-2 h-5 w-5 fill-current" />} {matches.length > 0 ? 'Refresh Matches' : 'Find My Top 3'}</>
             )}
           </Button>
         )}
@@ -167,11 +193,11 @@ export default function MatchesPage() {
       ) : matches.length === 0 ? (
         <div className="text-center py-24 bg-muted/20 rounded-[4rem] border-4 border-dashed border-muted/30">
           <Heart className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
-          <p className="text-xl font-bold text-muted-foreground">Ready to find your match? Click "Scan for Matches" above.</p>
+          <p className="text-xl font-bold text-muted-foreground">Ready to find your top 3? Click "Find My Top 3" above.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-          {matches.map((match, idx) => (
+          {matches.map((match) => (
             <Card key={match.id} className="group relative rounded-[3rem] overflow-hidden border-none shadow-2xl transition-all duration-500 hover:translate-y-[-8px]">
               <div className="relative aspect-[4/5] w-full">
                 <Image 

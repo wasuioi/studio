@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -17,6 +16,10 @@
         "lastLogin": { "type": "string", "format": "date-time" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" },
+        "topMatches": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
         "personalityProfile": {
           "type": "object",
           "properties": {
