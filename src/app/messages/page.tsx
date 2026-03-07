@@ -81,27 +81,33 @@ export default function MessagesPage() {
   const [activeConversation, setActiveConversation] = useState<any>(null);
   const [messageText, setMessageText] = useState('');
 
+  // Robust check for verification status
+  const isVerified = useMemo(() => {
+    return profile?.isVerified || profile?.verificationStatus === 'verified';
+  }, [profile?.isVerified, profile?.verificationStatus]);
+
   // Fetch conversations where current user is a participant
+  // We use user?.uid and isVerified as dependencies to avoid flickering
   const convQuery = useMemoFirebase(() => {
-    if (!user || !user.uid) return null;
+    if (!user?.uid || !isVerified) return null;
     return query(
       collection(db, 'conversations'),
       where('participantIds', 'array-contains', user.uid),
       orderBy('updatedAt', 'desc')
     );
-  }, [db, user]);
+  }, [db, user?.uid, isVerified]);
 
   const { data: conversations, isLoading: convLoading } = useCollection(convQuery);
 
   // Fetch messages for active conversation
   const messagesQuery = useMemoFirebase(() => {
-    if (!activeConversation) return null;
+    if (!activeConversation?.id || !isVerified) return null;
     return query(
       collection(db, 'conversations', activeConversation.id, 'messages'),
       orderBy('createdAt', 'asc'),
       limit(50)
     );
-  }, [db, activeConversation]);
+  }, [db, activeConversation?.id, isVerified]);
 
   const { data: messages } = useCollection(messagesQuery);
 
@@ -145,7 +151,8 @@ export default function MessagesPage() {
     );
   }
 
-  if (profile && !profile.isVerified) {
+  // If profile exists but is not verified, show the lock screen
+  if (profile && !isVerified) {
     return (
       <div className="flex flex-col h-screen max-w-2xl mx-auto items-center justify-center p-8 text-center bg-background">
         <Navigation />

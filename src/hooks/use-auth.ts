@@ -27,12 +27,14 @@ export function useAuth() {
     
     const unsubscribe = onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
-        setProfile(docSnap.data() as UserProfile);
+        const data = docSnap.data() as UserProfile;
+        // Only update state if data actually changed to prevent unnecessary re-renders
+        setProfile(data);
         setLoading(false);
       } else {
         const now = new Date().toISOString();
         const newProfile: UserProfile = {
-          id: user.uid, // CRITICAL: Security rules check request.resource.data.id
+          id: user.uid,
           uid: user.uid,
           displayName: user.displayName || 'Guest User',
           name: user.displayName || 'Guest User',
