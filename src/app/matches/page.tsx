@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -373,7 +372,7 @@ export default function MatchesPage() {
               <Star className="w-8 h-8 text-primary fill-current" />
             </div>
             <div>
-              <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight text-white">Soul Insight</DialogTitle Reviewing</h3>
+              <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight text-white">Soul Insight</DialogTitle>
             </div>
           </DialogHeader>
           
