@@ -93,9 +93,10 @@
 }
 
 .truevibe-text-gradient {
-  background: linear-gradient(135deg, #B14BFF 0%, #FF4DA6 100%);
+  background: linear-gradient(90deg, #5B00FF, #FF2E8B, #FF8A5C);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  display: inline-block;
 }
 
 .scrollbar-hide::-webkit-scrollbar {

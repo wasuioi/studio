@@ -53,9 +53,8 @@ export function Logo({ className, size = "md", showText = true }: LogoProps) {
         </svg>
       </div>
       {showText && (
-        <span className={cn("font-black tracking-tight", textSizes[size])}>
-          <span className="text-white">True</span>
-          <span className="text-white opacity-80">vibe</span>
+        <span className={cn("font-black tracking-tight truevibe-text-gradient", textSizes[size])}>
+          TrueVibe
         </span>
       )}
     </div>
