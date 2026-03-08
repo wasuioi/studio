@@ -44,7 +44,7 @@ export function Navigation() {
     { label: 'Profile', href: '/profile', icon: User },
     { label: 'Vera AI', href: '/bot', icon: Zap },
     { label: 'Matches', href: '/matches', icon: Heart },
-    { label: 'Inbox', href: '/requests', icon: Inbox, showBadge: true },
+    { label: 'Invite', href: '/requests', icon: Inbox, showBadge: true },
     { label: 'Chat', href: '/messages', icon: MessageCircle },
     { label: 'Verify', href: '/verification', icon: ShieldCheck },
   ];
@@ -104,7 +104,7 @@ export function Navigation() {
         <div className="flex items-center w-[180px]">
           <Link href="/" className="flex items-center">
           <Image 
-              src="/alllogo.png" // ใส่ชื่อไฟล์รูปใหม่ของคุณตรงนี้
+              src="/alllogo.png" 
               alt="Truevibe Nav Logo" 
               width={40} 
               height={40} 

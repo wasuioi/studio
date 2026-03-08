@@ -44,7 +44,7 @@ export default function LandingPage() {
             Find Your<br />True Vibe
           </h1>
           <p className="text-sm md:text-base text-white/70 font-medium px-6 max-w-[300px] mx-auto leading-relaxed">
-            Intentional dating for<br />real connection.
+            We sell <br />guarantee.
           </p>
         </div>
 
