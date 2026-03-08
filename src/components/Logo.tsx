@@ -11,42 +11,47 @@ interface LogoProps {
 export function Logo({ className, size = "md", showText = true }: LogoProps) {
   const iconSizes = {
     sm: "w-8 h-8",
-    md: "w-12 h-12",
-    lg: "w-24 h-24",
+    md: "w-14 h-16",
+    lg: "w-32 h-40",
   };
 
   const textSizes = {
     sm: "text-xl",
-    md: "text-2xl",
-    lg: "text-5xl",
+    md: "text-3xl",
+    lg: "text-6xl",
   };
 
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-2", className)}>
+    <div className={cn("flex flex-col items-center justify-center gap-4", className)}>
       <div className={cn("relative", iconSizes[size])}>
-        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-2xl">
-          {/* Left Petal */}
+        <svg viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-2xl">
+          {/* Left Petal - Deep Purple Gradient */}
           <path 
-            d="M50 85C50 85 45 60 20 40C5 25 10 10 25 10C40 10 50 25 50 45" 
-            fill="url(#purple_petal)" 
+            d="M50 110C50 110 40 80 15 50C0 30 10 5 30 10C50 15 50 40 50 60" 
+            fill="url(#purple_petal_grad)" 
+            className="opacity-95"
           />
-          {/* Right Petal */}
+          {/* Right Petal - Pink/Coral Gradient (Overlapping) */}
           <path 
-            d="M50 85C50 85 55 60 80 40C95 25 90 10 75 10C60 10 50 25 50 45" 
-            fill="url(#pink_petal)" 
+            d="M50 110C50 110 60 80 85 50C100 30 90 5 70 10C50 15 50 40 50 60" 
+            fill="url(#pink_petal_grad)" 
+            className="opacity-95"
           />
           
-          {/* Central Highlight Detail (+) */}
-          <circle cx="50" cy="45" r="4" fill="#FF6B6B" className="opacity-80" />
-          <path d="M50 42V48M47 45H53" stroke="#FF6B6B" strokeWidth="1.5" strokeLinecap="round" />
+          {/* Central Sparkle Star */}
+          <path 
+            d="M50 35C50 35 49 40 45 40C49 40 50 45 50 45C50 45 51 40 55 40C51 40 50 35 50 35Z" 
+            fill="#FF6B6B" 
+            className="animate-pulse"
+          />
           
           <defs>
-            <linearGradient id="purple_petal" x1="25" y1="10" x2="50" y2="85" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#6C3BFF" />
-              <stop offset="1" stopColor="#4B1FAF" />
+            <linearGradient id="purple_petal_grad" x1="15" y1="10" x2="50" y2="110" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#5B00FF" />
+              <stop offset="1" stopColor="#9D00FF" />
             </linearGradient>
-            <linearGradient id="pink_petal" x1="75" y1="10" x2="50" y2="85" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#FF6B6B" />
+            <linearGradient id="pink_petal_grad" x1="85" y1="10" x2="50" y2="110" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#FF2E8B" />
               <stop offset="1" stopColor="#FF8A5C" />
             </linearGradient>
           </defs>
@@ -54,7 +59,7 @@ export function Logo({ className, size = "md", showText = true }: LogoProps) {
       </div>
       {showText && (
         <span className={cn("font-black tracking-tight truevibe-text-gradient", textSizes[size])}>
-          TrueVibe
+          Truevibe
         </span>
       )}
     </div>

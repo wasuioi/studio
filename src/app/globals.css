@@ -71,7 +71,7 @@
 }
 
 .truevibe-text-gradient {
-  background: linear-gradient(90deg, #5B00FF, #FF2E8B, #FF8A5C);
+  background: linear-gradient(90deg, #5B00FF 0%, #FF2E8B 50%, #FF8A5C 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
