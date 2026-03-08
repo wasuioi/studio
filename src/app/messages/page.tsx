@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -34,14 +35,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const SIM_PROFILES: Record<string, { name: string; photo: string }> = {
-  'sim_1': { name: 'Jason', photo: 'https://picsum.photos/seed/jason1/600/800' },
-  'sim_2': { name: 'Leo', photo: 'https://picsum.photos/seed/leo2/600/800' },
-  'sim_3': { name: 'Tim', photo: 'https://picsum.photos/seed/tim3/600/800' },
-  'sim_4': { name: 'Mary', photo: 'https://picsum.photos/seed/mary4/600/800' },
-  'sim_5': { name: 'Tania', photo: 'https://picsum.photos/seed/tania5/600/800' },
-  'sim_6': { name: 'Su', photo: 'https://picsum.photos/seed/su6/600/800' },
+  'sim_1': { name: 'Jason', photo: PlaceHolderImages.find(img => img.id === 'sim_jason')?.imageUrl || 'https://picsum.photos/seed/jason1/600/800' },
+  'sim_2': { name: 'Leo', photo: PlaceHolderImages.find(img => img.id === 'sim_leo')?.imageUrl || 'https://picsum.photos/seed/leo2/600/800' },
+  'sim_3': { name: 'Tim', photo: PlaceHolderImages.find(img => img.id === 'sim_tim')?.imageUrl || 'https://picsum.photos/seed/tim3/600/800' },
+  'sim_4': { name: 'Mary', photo: PlaceHolderImages.find(img => img.id === 'sim_mary')?.imageUrl || 'https://picsum.photos/seed/mary4/600/800' },
+  'sim_5': { name: 'Tania', photo: PlaceHolderImages.find(img => img.id === 'sim_tania')?.imageUrl || 'https://picsum.photos/seed/tania5/600/800' },
+  'sim_6': { name: 'Su', photo: PlaceHolderImages.find(img => img.id === 'sim_su')?.imageUrl || 'https://picsum.photos/seed/su6/600/800' },
 };
 
 function ConversationListItem({ conversation, currentUserId, isActive, onClick }: { 
