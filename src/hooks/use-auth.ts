@@ -8,6 +8,7 @@ import { UserProfile } from '@/types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useRouter, usePathname } from 'next/navigation';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export function useAuth() {
   const { user, isUserLoading: authLoading } = useUser();
@@ -64,7 +65,8 @@ export function useAuth() {
           router.push('/bot');
         }
       } else {
-        // Initialize profile
+        // Initialize profile with stable human placeholder
+        const defaultAvatar = PlaceHolderImages.find(img => img.id === 'user1')?.imageUrl || '';
         const now = new Date().toISOString();
         const newProfile: UserProfile = {
           id: user.uid,
@@ -72,8 +74,8 @@ export function useAuth() {
           email: user.email || '',
           displayName: user.displayName || 'Your Name',
           name: user.displayName || 'Your Name',
-          photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/400/400`,
-          profilePhotoUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/400/400`,
+          photoURL: user.photoURL || defaultAvatar,
+          profilePhotoUrl: user.photoURL || defaultAvatar,
           bio: "Just joined Truevibe! Looking for real vibes.",
           emailVerified: true,
           identityVerified: false,

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -9,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Edit3, X, Save, Camera, Plus, Trash2, Image as ImageIcon, Loader2, ShieldCheck, Heart, User } from 'lucide-react';
+import { Edit3, X, Save, Camera, Trash2, Image as ImageIcon, Loader2, Heart, User } from 'lucide-react';
 import Image from 'next/image';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { 
@@ -90,6 +91,8 @@ export default function ProfilePage() {
 
   if (!profile) return null;
 
+  const coverImage = PlaceHolderImages.find(img => img.id === 'default_cover');
+
   return (
     <div className="max-w-3xl mx-auto p-4 min-h-screen pb-32 space-y-8 pt-20">
       <Navigation />
@@ -98,9 +101,10 @@ export default function ProfilePage() {
       <div className="relative animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="relative h-40 md:h-60 w-full bg-gradient-to-r from-[#6A5CFF] to-[#FF4DA6] rounded-[2rem] overflow-hidden group">
           <Image 
-            src={profile.photoURL} 
+            src={coverImage?.imageUrl || "https://picsum.photos/seed/vibe_cover/1200/400"} 
             alt="Cover" 
             fill 
+            data-ai-hint={coverImage?.imageHint || "abstract purple"}
             className="object-cover opacity-30 blur-sm"
           />
           <div className="absolute inset-0 bg-black/20" />
@@ -108,8 +112,12 @@ export default function ProfilePage() {
         
         <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center">
           <div className="relative group">
-            <Avatar className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-background shadow-2xl">
-              <AvatarImage src={profile.photoURL} className="object-cover" />
+            <Avatar className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-background shadow-2xl overflow-hidden bg-muted">
+              <AvatarImage 
+                src={profile.photoURL} 
+                className="object-cover" 
+                data-ai-hint="portrait person"
+              />
               <AvatarFallback className="font-black bg-primary/20">{profile.displayName[0]}</AvatarFallback>
             </Avatar>
             <button 
@@ -150,7 +158,6 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="glass-card rounded-[2rem] p-6 space-y-3">
           <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
@@ -187,12 +194,15 @@ export default function ProfilePage() {
         </Card>
       </div>
 
-      {/* Feed Section */}
       <div className="space-y-6">
         <Card className="glass-card rounded-[2rem] p-6">
           <div className="flex gap-4">
-            <Avatar className="w-10 h-10 rounded-full border border-white/10">
-              <AvatarImage src={profile.photoURL} />
+            <Avatar className="w-10 h-10 rounded-full border border-white/10 overflow-hidden">
+              <AvatarImage 
+                src={profile.photoURL} 
+                className="object-cover" 
+                data-ai-hint="portrait person"
+              />
               <AvatarFallback className="font-black">{profile.displayName[0]}</AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-4">
@@ -226,8 +236,8 @@ export default function ProfilePage() {
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10 rounded-full border border-white/10">
-                        <AvatarImage src={profile.photoURL} />
+                      <Avatar className="w-10 h-10 rounded-full border border-white/10 overflow-hidden">
+                        <AvatarImage src={profile.photoURL} className="object-cover" data-ai-hint="portrait person" />
                         <AvatarFallback className="font-black">{profile.displayName[0]}</AvatarFallback>
                       </Avatar>
                       <div>
@@ -255,13 +265,19 @@ export default function ProfilePage() {
               <Button variant="ghost" size="icon" className="rounded-full text-white/40" onClick={() => setShowPhotoSelector(false)}><X className="w-6 h-6" /></Button>
             </div>
             <div className="grid grid-cols-2 gap-4 overflow-y-auto scrollbar-hide py-2">
-              {PlaceHolderImages.map((img) => (
+              {PlaceHolderImages.filter(img => img.id.startsWith('user')).map((img) => (
                 <button 
                   key={img.id} 
                   className="relative aspect-square rounded-[1.5rem] overflow-hidden group border-2 border-transparent hover:border-primary transition-all shadow-lg" 
                   onClick={() => handleUpdatePhoto(img.imageUrl)}
                 >
-                  <Image src={img.imageUrl} alt={img.description} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
+                  <Image 
+                    src={img.imageUrl} 
+                    alt={img.description} 
+                    fill 
+                    data-ai-hint={img.imageHint}
+                    className="object-cover transition-transform duration-500 group-hover:scale-110" 
+                  />
                 </button>
               ))}
             </div>

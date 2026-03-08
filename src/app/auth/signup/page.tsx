@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState } from 'react';
-import { useAuth as useFirebaseAuth, useUser, useFirestore } from '@/firebase';
+import { useAuth as useFirebaseAuth, useFirestore } from '@/firebase';
 import { 
   createUserWithEmailAndPassword, 
   sendEmailVerification 
@@ -12,10 +13,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Loader2, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/Logo';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -55,6 +57,9 @@ export default function SignupPage() {
 
       await sendEmailVerification(user);
 
+      // Use a stable human placeholder from our collection
+      const defaultAvatar = PlaceHolderImages.find(img => img.id === 'user1')?.imageUrl || '';
+
       const userRef = doc(db, 'users', user.uid);
       await setDoc(userRef, {
         id: user.uid,
@@ -62,7 +67,7 @@ export default function SignupPage() {
         email: user.email,
         displayName: 'Your Name',
         name: 'Your Name',
-        photoURL: `https://picsum.photos/seed/${user.uid}/400/400`,
+        photoURL: defaultAvatar,
         emailVerified: false,
         identityVerified: false,
         profileCompleted: false,
@@ -91,7 +96,6 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Background radial glow */}
       <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-0">
         <div className="w-[120vw] h-[120vh] bg-[radial-gradient(circle_at_center,rgba(255,120,180,0.15),transparent_70%)] opacity-50" />
       </div>

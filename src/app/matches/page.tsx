@@ -39,7 +39,8 @@ const SIMULATED_PROFILES = [
     name: 'Jason',
     gender: 'Male',
     age: 35,
-    photoURL: PlaceHolderImages.find(img => img.id === 'sim_jason')?.imageUrl || 'https://picsum.photos/seed/jason1/600/800',
+    photoURL: PlaceHolderImages.find(img => img.id === 'sim_jason')?.imageUrl || '',
+    imageHint: PlaceHolderImages.find(img => img.id === 'sim_jason')?.imageHint || 'man portrait',
     summary: "Jason is a 35-year-old professional in Bangkok seeking a serious, long-term partnership built on trust and communication."
   },
   {
@@ -47,7 +48,8 @@ const SIMULATED_PROFILES = [
     name: 'Leo',
     gender: 'Male',
     age: 28,
-    photoURL: PlaceHolderImages.find(img => img.id === 'sim_leo')?.imageUrl || 'https://picsum.photos/seed/leo2/600/800',
+    photoURL: PlaceHolderImages.find(img => img.id === 'sim_leo')?.imageUrl || '',
+    imageHint: PlaceHolderImages.find(img => img.id === 'sim_leo')?.imageHint || 'man portrait',
     summary: "Leo is a 28-year-old from Bangkok with high emotional intelligence and a secure attachment pattern."
   },
   {
@@ -55,7 +57,8 @@ const SIMULATED_PROFILES = [
     name: 'Tim',
     gender: 'Male',
     age: 39,
-    photoURL: PlaceHolderImages.find(img => img.id === 'sim_tim')?.imageUrl || 'https://picsum.photos/seed/tim3/600/800',
+    photoURL: PlaceHolderImages.find(img => img.id === 'sim_tim')?.imageUrl || '',
+    imageHint: PlaceHolderImages.find(img => img.id === 'sim_tim')?.imageHint || 'man portrait',
     summary: "Tim is a 39-year-old in Bangkok seeking marriage and children. Secure orientation with avoidant tendencies."
   },
   {
@@ -63,7 +66,8 @@ const SIMULATED_PROFILES = [
     name: 'Mary',
     gender: 'Female',
     age: 30,
-    photoURL: PlaceHolderImages.find(img => img.id === 'sim_mary')?.imageUrl || 'https://picsum.photos/seed/mary4/600/800',
+    photoURL: PlaceHolderImages.find(img => img.id === 'sim_mary')?.imageUrl || '',
+    imageHint: PlaceHolderImages.find(img => img.id === 'sim_mary')?.imageHint || 'woman portrait',
     summary: "Mary is a 30-year-old female from Bangkok seeking marriage. Secure attachment style, high self-worth."
   },
   {
@@ -71,7 +75,8 @@ const SIMULATED_PROFILES = [
     name: 'Tania',
     gender: 'Female',
     age: 28,
-    photoURL: PlaceHolderImages.find(img => img.id === 'sim_tania')?.imageUrl || 'https://picsum.photos/seed/tania5/600/800',
+    photoURL: PlaceHolderImages.find(img => img.id === 'sim_tania')?.imageUrl || '',
+    imageHint: PlaceHolderImages.find(img => img.id === 'sim_tania')?.imageHint || 'woman portrait',
     summary: "Tania is a 28-year-old female in Bangkok, highly relationship-ready (9/10 emotional readiness)."
   },
   {
@@ -79,7 +84,8 @@ const SIMULATED_PROFILES = [
     name: 'Su',
     gender: 'Female',
     age: 36,
-    photoURL: PlaceHolderImages.find(img => img.id === 'sim_su')?.imageUrl || 'https://picsum.photos/seed/su6/600/800',
+    photoURL: PlaceHolderImages.find(img => img.id === 'sim_su')?.imageUrl || '',
+    imageHint: PlaceHolderImages.find(img => img.id === 'sim_su')?.imageHint || 'woman portrait',
     summary: "Su is a 36-year-old female from Bangkok seeking marriage for companionship and mutual growth."
   }
 ];
@@ -94,7 +100,6 @@ export default function MatchesPage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [activeMatchForPayment, setActiveMatchForPayment] = useState<any>(null);
   const [selectedAnalysis, setSelectedAnalysis] = useState<any>(null);
-  const [isSendingRequest, setIsSendingRequest] = useState(false);
 
   const outgoingQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -194,14 +199,12 @@ export default function MatchesPage() {
   const handleActionInitiated = (match: any) => {
     if (!profile || !user) return;
     
-    // Check if already connected - if so, just navigate
     const hasActiveConv = activeConversations?.some(conv => conv.participantIds.includes(match.id));
     if (hasActiveConv) {
       router.push('/messages');
       return;
     }
 
-    // Always trigger payment table for new actions
     setActiveMatchForPayment(match);
     setShowUpgradeModal(true);
   };
@@ -218,7 +221,6 @@ export default function MatchesPage() {
 
   const sendChatRequest = (match: any) => {
     if (!user || !profile || !match) return;
-    setIsSendingRequest(true);
     const requestId = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 3);
@@ -236,7 +238,6 @@ export default function MatchesPage() {
     };
     setDocumentNonBlocking(doc(db, 'chat_requests', requestId), requestData, { merge: true });
     toast({ title: "Request Sent", description: "Sending your energy to " + match.name });
-    setIsSendingRequest(false);
   };
 
   if (loading) return (
@@ -302,6 +303,7 @@ export default function MatchesPage() {
                     src={match.photoURL} 
                     alt={match.name} 
                     fill 
+                    data-ai-hint={match.imageHint || "portrait person"}
                     className="object-cover transition-all duration-700 group-hover:scale-105"
                   />
                   
