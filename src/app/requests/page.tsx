@@ -72,7 +72,7 @@ export default function RequestsPage() {
       
       <header className="mb-10 space-y-1 px-2">
         <h1 className="text-3xl md:text-5xl font-black tracking-tight flex items-center gap-3 text-white">
-          Vibe Requests <UserPlus className="text-primary w-6 h-6 md:w-10 md:h-10" />
+          Your Invite <UserPlus className="text-primary w-6 h-6 md:w-10 md:h-10" />
         </h1>
         <p className="text-white/60 font-medium max-w-lg text-sm md:text-base">
           Who's sensing your frequency?
