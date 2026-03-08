@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -25,9 +24,10 @@ service cloud.firestore {
         allow write: if isOwner(userId) && isEmailVerified();
       }
 
+      // 🌟 แก้ไขตรงนี้: ลบ && isEmailVerified() ออก
       match /personality/{docId} {
         allow read: if isOwner(userId);
-        allow write: if isOwner(userId) && isEmailVerified();
+        allow write: if isOwner(userId); 
       }
 
       match /verification_requests/{requestId} {
@@ -37,24 +37,21 @@ service cloud.firestore {
     }
 
     match /chat_requests/{requestId} {
-      // Anyone can see requests they sent or received
       allow read: if isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
-      // Only verified users can send requests
       allow create: if isSignedIn() && isEmailVerified() && request.resource.data.senderId == request.auth.uid;
-      // Only the receiver can update the status (accept/decline)
       allow update: if isSignedIn() && request.auth.uid == resource.data.receiverId;
       allow delete: if isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
     }
 
     match /bot_chats/{chatId} {
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && isEmailVerified();
+      // 🌟 แก้ไขตรงนี้: ลบ && isEmailVerified() ออก เพื่อให้บอทเริ่มคุยได้เลย
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     match /conversations/{conversationId} {
       allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
-      // Conversations created via requests, usually server-side or after verification
       allow create: if isSignedIn() && isEmailVerified();
       allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
       allow delete: if isSignedIn() && request.auth.uid in resource.data.participantIds;

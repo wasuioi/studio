@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import { useAuth as useFirebaseAuth, useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
-import { Logo } from '@/components/Logo';
 import { collection, query, where } from 'firebase/firestore';
 import Image from 'next/image';
 
@@ -50,70 +49,77 @@ export function Navigation() {
   ];
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] w-full bg-black/40 backdrop-blur-3xl border-b border-white/5 shadow-2xl h-16">
-      {/* Mobile Nav - Top Header */}
-      <nav className="md:hidden flex h-full items-center justify-between px-4">
-        <Link href="/" className="shrink-0">
-        <Image 
-            src="/logo.png" 
+    <>
+      {/* 📱 Mobile Top Header */}
+      <nav className="fixed top-0 left-0 right-0 z-[100] md:hidden flex h-16 items-center justify-between px-4 bg-black/40 backdrop-blur-3xl border-b border-white/5">
+        <Link href="/" className="flex items-center justify-center shrink-0">
+          <Image 
+            src="/finallogo.png" 
             alt="Truevibe Nav Logo" 
             width={32} 
             height={32} 
             className="object-contain"
+            priority
           />
         </Link>
-        <div className="flex flex-1 justify-center items-center gap-3">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link 
-                key={item.href} 
-                href={item.href}
-                className={cn(
-                  "relative flex items-center justify-center transition-all duration-300",
-                  isActive ? "text-primary" : "text-white/40 hover:text-white"
-                )}
-              >
-                <div className={cn("p-1.5 rounded-lg", isActive && "bg-white/10")}>
-                  <Icon className={cn("w-5 h-5", isActive && "fill-current")} />
-                </div>
-                {item.showBadge && pendingCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-accent text-[7px] text-white font-black items-center justify-center border border-black/50 shadow-sm">
-                      {pendingCount}
-                    </span>
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </div>
-        <div className="w-8 flex justify-end">
+        
+        <div className="flex items-center gap-2">
           {user && (
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-white/30 h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
-              <LogOut className="w-4 h-4" />
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-white/30 h-10 w-10 rounded-full hover:bg-destructive/10 hover:text-destructive">
+              <LogOut className="w-5 h-5" />
             </Button>
           )}
         </div>
       </nav>
 
-      {/* Desktop Nav - Centered Flexbox */}
-      <nav className="hidden md:flex h-full items-center justify-between px-8">
-        {/* Left Section: Logo */}
+      {/* 📱 Mobile Bottom Navigation Bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-[100] md:hidden flex items-center justify-around h-16 px-2 bg-black/60 backdrop-blur-3xl border-t border-white/10">
+        {navItems.map((item) => {
+          const isActive = pathname === item.href;
+          const Icon = item.icon;
+          return (
+            <Link 
+              key={item.href} 
+              href={item.href}
+              className={cn(
+                "flex flex-col items-center justify-center flex-1 py-1 transition-all duration-300 relative",
+                isActive ? "text-primary" : "text-white/40"
+              )}
+            >
+              <div className={cn(
+                "p-1.5 rounded-xl transition-all",
+                isActive && "bg-primary/10"
+              )}>
+                <Icon className={cn("w-5 h-5", isActive && "fill-current")} />
+              </div>
+              <span className="text-[8px] font-black uppercase tracking-tighter mt-0.5">{item.label}</span>
+              {item.showBadge && pendingCount > 0 && (
+                <span className="absolute top-1 right-1/4 flex h-4 w-4">
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-accent text-[8px] text-white font-black items-center justify-center border border-black shadow-lg">
+                    {pendingCount}
+                  </span>
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* 💻 Desktop Nav */}
+      <nav className="hidden md:flex fixed top-0 left-0 right-0 z-[100] h-16 items-center justify-between px-8 bg-black/40 backdrop-blur-3xl border-b border-white/5">
         <div className="flex items-center w-[180px]">
           <Link href="/" className="flex items-center">
-          <Image 
+            <Image 
               src="/alllogo.png" 
               alt="Truevibe Nav Logo" 
               width={40} 
               height={40} 
               className="object-contain"
+              priority
             />
           </Link>
         </div>
 
-        {/* Center Section: Tabs */}
         <div className="flex items-center justify-center flex-1 gap-2 lg:gap-4">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
@@ -143,7 +149,6 @@ export function Navigation() {
           })}
         </div>
 
-        {/* Right Section: Sign Out */}
         <div className="flex items-center justify-end w-[180px]">
           {user && (
             <Button 
@@ -158,6 +163,6 @@ export function Navigation() {
           )}
         </div>
       </nav>
-    </div>
+    </>
   );
 }
