@@ -192,16 +192,20 @@ export default function MatchesPage() {
 
   const handleMessageClick = (match: any) => {
     if (!profile || !user) return;
+    
+    // Premium check for messaging/connecting
+    if (profile.tier !== 'premium') {
+      setLockedFeature('Premium Connection Access');
+      setShowUpgradeModal(true);
+      return;
+    }
+
     const hasActiveConv = activeConversations?.some(conv => conv.participantIds.includes(match.id));
     if (hasActiveConv) {
       router.push('/messages');
       return;
     }
-    if (profile.tier !== 'premium') {
-      setLockedFeature('Unlimited Messaging');
-      setShowUpgradeModal(true);
-      return;
-    }
+
     const pending = outgoingRequests?.find(r => r.receiverId === match.id && r.status === 'pending');
     if (pending) {
       toast({ description: "Vibe check is already pending." });
@@ -212,8 +216,10 @@ export default function MatchesPage() {
 
   const handleAnalysisClick = (match: any) => {
     if (!profile) return;
+    
+    // Per-credit/Lite check for analysis
     if (profile.tier === 'free') {
-      setLockedFeature('Detailed Vibe Insights');
+      setLockedFeature('Detailed Vibe Insight');
       setShowUpgradeModal(true);
       return;
     }
@@ -256,7 +262,7 @@ export default function MatchesPage() {
       
       <header className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-2">
         <div className="space-y-1">
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight flex items-center gap-3">
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight flex items-center gap-3 text-white">
             Your Vibe <Sparkles className="text-accent fill-current w-6 h-6 md:w-10 md:h-10" />
           </h1>
           <p className="text-white/60 font-medium max-w-lg text-sm md:text-base">
@@ -280,7 +286,7 @@ export default function MatchesPage() {
       </header>
 
       {!profile?.personalityProfile ? (
-        <Card className="glass-card p-10 md:p-20 text-center rounded-[2.5rem] animate-in zoom-in-95">
+        <Card className="glass-card p-10 md:p-20 text-center rounded-[2.5rem] animate-in zoom-in-95 bg-white/5 border-white/10">
           <BrainCircuit className="w-12 h-12 md:w-20 md:h-20 mx-auto mb-6 text-primary/40" />
           <h3 className="text-2xl md:text-4xl font-black mb-4 text-white">Vibe Profile Hidden</h3>
           <p className="text-white/60 font-medium mb-8 max-w-xs mx-auto text-sm md:text-lg">Vera needs to know your energy before she can match you.</p>
@@ -289,7 +295,7 @@ export default function MatchesPage() {
           </Link>
         </Card>
       ) : matches.length === 0 ? (
-        <div className="text-center py-24 glass-card rounded-[2.5rem] border-dashed border-white/10 mx-2">
+        <div className="text-center py-24 glass-card rounded-[2.5rem] border-dashed border-white/10 mx-2 bg-white/5">
           <Heart className="w-10 h-10 md:w-16 md:h-16 mx-auto mb-4 text-white/10" />
           <p className="text-lg md:text-2xl font-bold text-white/40 italic">Waiting for the stars to align. Click sync above.</p>
         </div>
@@ -301,7 +307,7 @@ export default function MatchesPage() {
             const hasActiveConv = activeConversations?.some(conv => conv.participantIds.includes(match.id));
 
             return (
-              <Card key={match.id} className="glass-card glass-card-hover group relative rounded-[2rem] overflow-hidden flex flex-col h-full shadow-lg">
+              <Card key={match.id} className="glass-card glass-card-hover group relative rounded-[2rem] overflow-hidden flex flex-col h-full shadow-lg bg-white/5 border-white/10">
                 <div className="relative aspect-[4/5] w-full">
                   <Image 
                     src={match.photoURL} 
@@ -348,8 +354,8 @@ export default function MatchesPage() {
                       <Button 
                         size="sm"
                         className={cn(
-                          "flex-1 rounded-full h-10 font-black text-xs transition-all",
-                          (hasActiveConv || hasAcceptedRequest) ? "bg-verified text-white" : "bg-white text-black hover:bg-white/90"
+                          "flex-1 rounded-full h-10 font-black text-xs transition-all text-white",
+                          (hasActiveConv || hasAcceptedRequest) ? "bg-verified" : "bg-white/20 hover:bg-white/30 backdrop-blur-md"
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -385,8 +391,9 @@ export default function MatchesPage() {
         </div>
       )}
 
+      {/* Confirmation for Request */}
       <Dialog open={!!requestConfirmation} onOpenChange={() => setRequestConfirmation(null)}>
-        <DialogContent className="glass-card rounded-[2rem] border-white/10 max-w-sm p-8 text-center">
+        <DialogContent className="glass-card rounded-[2rem] border-white/10 max-w-sm p-8 text-center bg-[#0F0819]/90">
           <DialogHeader className="items-center space-y-4">
             <div className="truevibe-pill-button p-4 rounded-full shadow-lg">
               <Sparkles className="w-8 h-8 text-white fill-current" />
@@ -394,7 +401,7 @@ export default function MatchesPage() {
             <div>
               <DialogTitle className="text-xl md:text-2xl font-black text-white">Send Vibe Check?</DialogTitle>
               <DialogDescription className="text-white/60 font-medium text-sm">
-                Your souls are vibrating at <strong>{requestConfirmation?.score}%</strong> harmony.
+                Your souls are vibrating at <strong>{requestConfirmation?.score}%</strong> harmony. (Requires Premium)
               </DialogDescription>
             </div>
           </DialogHeader>
@@ -411,8 +418,9 @@ export default function MatchesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Analysis Details */}
       <Dialog open={!!selectedAnalysis} onOpenChange={() => setSelectedAnalysis(null)}>
-        <DialogContent className="glass-card rounded-[2.5rem] border-white/10 max-w-md p-8">
+        <DialogContent className="glass-card rounded-[2.5rem] border-white/10 max-w-md p-8 bg-[#0F0819]/90">
           <DialogHeader className="items-center text-center space-y-4">
             <div className="bg-primary/20 p-4 rounded-full">
               <Star className="w-8 h-8 text-primary fill-current" />
