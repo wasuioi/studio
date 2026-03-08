@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from '@/components/ui/button';
@@ -34,16 +35,16 @@ export default function LandingPage() {
         {/* Logo Section */}
         <div className="flex justify-center relative">
           <div className="absolute inset-0 bg-primary/20 blur-[60px] rounded-full scale-150" />
-          <Logo size="lg" showText={false} className="relative transform transition-transform hover:scale-110 duration-500" />
+          <Logo size="md" showText={false} className="relative transform transition-transform hover:scale-110 duration-500" />
         </div>
         
         {/* Text Section */}
         <div className="space-y-4">
-        <h1 className="text-5xl md:text-6xl font-semibold tracking-tight text-white leading-[1.05] drop-shadow-sm">
-         Find Your<br />True Vibe
-        </h1>
+          <h1 className="text-5xl md:text-6xl font-semibold tracking-tight text-white leading-[1.05] drop-shadow-sm">
+            Find Your<br />True Vibe
+          </h1>
           <p className="text-sm md:text-base text-white/70 font-medium px-6 max-w-[300px] mx-auto leading-relaxed">
-            Intentional dating for<br />value real connection.
+            Intentional dating for<br />real connections.
           </p>
         </div>
 
