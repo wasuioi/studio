@@ -39,9 +39,9 @@ export default function LandingPage() {
         
         {/* Text Section */}
         <div className="space-y-4">
-          <h1 className="text-5xl md:text-6xl font-black tracking-tight text-white leading-[1.05] drop-shadow-sm">
-            Find Your<br />True Vibe
-          </h1>
+        <h1 className="text-5xl md:text-6xl font-semibold tracking-tight text-white leading-[1.05] drop-shadow-sm">
+         Find Your<br />True Vibe
+        </h1>
           <p className="text-sm md:text-base text-white/70 font-medium px-6 max-w-[300px] mx-auto leading-relaxed">
             Intentional dating for<br />value real connection.
           </p>

@@ -9,6 +9,7 @@ import { signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
 import { collection, query, where } from 'firebase/firestore';
+import Image from 'next/image';
 
 export function Navigation() {
   const pathname = usePathname();
@@ -53,7 +54,13 @@ export function Navigation() {
       {/* Mobile Nav - Top Header */}
       <nav className="md:hidden flex h-full items-center justify-between px-4">
         <Link href="/" className="shrink-0">
-          <Logo size="sm" showText={false} />
+        <Image 
+            src="/logo.png" 
+            alt="Truevibe Nav Logo" 
+            width={32} 
+            height={32} 
+            className="object-contain"
+          />
         </Link>
         <div className="flex flex-1 justify-center items-center gap-3">
           {navItems.map((item) => {
@@ -96,7 +103,13 @@ export function Navigation() {
         {/* Left Section: Logo */}
         <div className="flex items-center w-[180px]">
           <Link href="/" className="flex items-center">
-            <Logo size="sm" />
+          <Image 
+              src="/alllogo.png" // ใส่ชื่อไฟล์รูปใหม่ของคุณตรงนี้
+              alt="Truevibe Nav Logo" 
+              width={40} 
+              height={40} 
+              className="object-contain"
+            />
           </Link>
         </div>
 
