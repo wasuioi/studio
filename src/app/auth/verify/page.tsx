@@ -6,7 +6,7 @@ import { signOut, sendEmailVerification } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Loader2, ArrowLeft, RefreshCw, ShieldCheck, Mail } from 'lucide-react';
+import { Loader2, ArrowLeft, RefreshCw, ShieldCheck, Mail, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/Logo';
 
@@ -117,6 +117,13 @@ export default function VerifyPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-[11px] font-bold text-amber-800 leading-tight uppercase tracking-tight">
+              Can&apos;t find the email? Please check your <span className="underline">spam or junk folder</span> in your email app.
+            </p>
+          </div>
+
           <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200">
             <p className="text-sm font-black text-slate-600 leading-relaxed text-center uppercase tracking-tight">
               Safety First: You must verify your email before using TrueVibe features.
@@ -127,7 +134,7 @@ export default function VerifyPage() {
             className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none transition-all active:scale-95 text-white"
             onClick={handleCheckStatus}
           >
-            I've Verified My Email
+            I&apos;ve Verified My Email
           </Button>
 
           <Button 

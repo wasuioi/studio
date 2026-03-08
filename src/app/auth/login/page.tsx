@@ -33,7 +33,7 @@ export default function LoginPage() {
       if (!user.emailVerified) {
         toast({
           title: "Verification Required",
-          description: "Please verify your email to unlock your TrueVibe account.",
+          description: "Please verify your email. If you don't see it, check your spam folder.",
         });
         router.push('/auth/verify');
       } else {
@@ -57,19 +57,19 @@ export default function LoginPage() {
         <div className="w-[80vw] h-[80vh] bg-[radial-gradient(circle_at_center,rgba(255,120,180,0.35),transparent_65%)] opacity-60" />
       </div>
 
-      <Card className="w-full max-w-md rounded-[3rem] border border-white/10 shadow-2xl bg-white/10 backdrop-blur-2xl z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-700">
+      <Card className="w-full max-w-md rounded-[3rem] border border-white/10 shadow-2xl bg-white/95 backdrop-blur-2xl z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-700">
         <div className="truevibe-gradient h-1 w-full opacity-50" />
         <CardHeader className="space-y-4 text-center pt-10">
           <Logo size="md" className="mx-auto mb-2" />
           <div>
-            <CardTitle className="text-4xl font-black tracking-tighter text-white">Welcome Back</CardTitle>
-            <CardDescription className="text-white/60 font-bold text-sm">Enter your credentials to find your vibe.</CardDescription>
+            <CardTitle className="text-4xl font-black tracking-tighter text-slate-900">Welcome Back</CardTitle>
+            <CardDescription className="text-slate-500 font-bold text-sm">Enter your credentials to find your vibe.</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="px-8">
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email" className="font-black text-[10px] uppercase tracking-[0.2em] text-white/50 ml-1">Email Address</Label>
+              <Label htmlFor="email" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">Email Address</Label>
               <Input 
                 id="email" 
                 type="email" 
@@ -77,12 +77,12 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required 
-                className="rounded-2xl h-14 bg-white/5 border-white/10 text-white placeholder:text-white/20 font-medium focus-visible:ring-primary/40"
+                className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-300 font-medium focus-visible:ring-primary/40"
               />
             </div>
             <div className="space-y-2">
               <div className="flex justify-between items-center ml-1">
-                <Label htmlFor="password" title="password" className="font-black text-[10px] uppercase tracking-[0.2em] text-white/50">Password</Label>
+                <Label htmlFor="password" title="password" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Password</Label>
               </div>
               <Input 
                 id="password" 
@@ -90,7 +90,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required 
-                className="rounded-2xl h-14 bg-white/5 border-white/10 text-white font-medium focus-visible:ring-primary/40"
+                className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 font-medium focus-visible:ring-primary/40"
               />
             </div>
             <Button 
@@ -103,17 +103,17 @@ export default function LoginPage() {
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-6 pb-10">
-          <p className="text-sm font-bold text-white/40">
-            New to TrueVibe?{" "}
+          <p className="text-sm font-bold text-slate-500">
+            New to Truevibe?{" "}
             <Link href="/auth/signup" className="text-primary font-black hover:underline underline-offset-4">
               Join now
             </Link>
           </p>
-          <div className="flex items-center gap-2 text-[9px] text-white/20 font-black uppercase tracking-[0.2em]">
+          <div className="flex items-center gap-2 text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">
             <ShieldCheck className="w-4 h-4 text-primary" />
             Verified Secure Connection
           </div>
-          <Link href="/" className="text-[10px] font-black text-white/30 hover:text-primary transition-colors flex items-center gap-2 uppercase tracking-[0.2em]">
+          <Link href="/" className="text-[10px] font-black text-slate-400 hover:text-primary transition-colors flex items-center gap-2 uppercase tracking-[0.2em]">
             Back to Home <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </CardFooter>

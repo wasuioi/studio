@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -75,7 +74,7 @@ export default function SignupPage() {
 
       toast({
         title: "Welcome to Truevibe!",
-        description: "A verification email has been sent to your inbox.",
+        description: "A verification email has been sent. Please check your inbox and spam folder.",
       });
       
       router.push('/auth/verify');
