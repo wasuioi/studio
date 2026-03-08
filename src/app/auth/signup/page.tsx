@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { useAuth as useFirebaseAuth, useFirestore } from '@/firebase';
+import { useAuth as useFirebaseAuth, useUser, useFirestore } from '@/firebase';
 import { 
   createUserWithEmailAndPassword, 
   sendEmailVerification 
@@ -60,8 +60,8 @@ export default function SignupPage() {
         id: user.uid,
         uid: user.uid,
         email: user.email,
-        displayName: 'TrueVibe User',
-        name: 'TrueVibe User',
+        displayName: 'Your Name',
+        name: 'Your Name',
         photoURL: `https://picsum.photos/seed/${user.uid}/400/400`,
         emailVerified: false,
         identityVerified: false,
@@ -73,7 +73,7 @@ export default function SignupPage() {
       }, { merge: true });
 
       toast({
-        title: "Welcome to TrueVibe!",
+        title: "Welcome to Truevibe!",
         description: "A verification email has been sent to your inbox.",
       });
       
@@ -91,37 +91,28 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Page-Specific Radial Glow behind the card */}
-      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-        <div className="w-[80vw] h-[80vh] bg-[radial-gradient(circle_at_center,rgba(255,120,180,0.3),transparent_65%)] opacity-60" />
+      {/* Background radial glow */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-0">
+        <div className="w-[120vw] h-[120vh] bg-[radial-gradient(circle_at_center,rgba(255,120,180,0.15),transparent_70%)] opacity-50" />
       </div>
 
-      <Card className="w-full max-w-md rounded-[3rem] border border-white/10 shadow-2xl bg-white/10 backdrop-blur-2xl z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-700">
-        <div className="truevibe-gradient h-1 w-full opacity-50" />
+      <Card className="w-full max-w-md rounded-[3rem] border border-white/10 shadow-2xl bg-white/95 backdrop-blur-2xl z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-700">
         <CardHeader className="space-y-4 text-center pt-10">
           <Logo size="md" className="mx-auto mb-2" />
           <div>
-            <CardTitle className="text-4xl font-black tracking-tighter text-white">Join TrueVibe</CardTitle>
-            <CardDescription className="text-white/60 font-bold text-sm">Discover connections that match your energy.</CardDescription>
+            <CardTitle className="text-4xl font-black tracking-tighter text-slate-900">Join Truevibe</CardTitle>
+            <CardDescription className="text-slate-500 font-bold text-sm">Discover connections that match your energy.</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="px-8">
           <form onSubmit={handleSignup} className="space-y-4">
             {error && (
-              <div className="bg-destructive/20 text-white text-xs font-black p-4 rounded-2xl border border-destructive/20 animate-in fade-in slide-in-from-top-1 uppercase tracking-tight">
+              <div className="bg-destructive/10 text-destructive text-xs font-black p-4 rounded-2xl border border-destructive/20 animate-in fade-in slide-in-from-top-1 uppercase tracking-tight">
                 {error}
-                {error === "This email is already registered." && (
-                  <div className="mt-2 text-[10px] flex items-center gap-1 opacity-70">
-                    Already a member? 
-                    <Link href="/auth/login" className="text-primary hover:underline underline-offset-2 flex items-center gap-1 font-black">
-                      Login now <ArrowRight className="w-3 h-3" />
-                    </Link>
-                  </div>
-                )}
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email" className="font-black text-[10px] uppercase tracking-[0.2em] text-white/50 ml-1">Email</Label>
+              <Label htmlFor="email" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">Email</Label>
               <Input 
                 id="email" 
                 type="email" 
@@ -129,30 +120,30 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required 
-                className="rounded-2xl h-14 bg-white/5 border-white/10 text-white placeholder:text-white/20 font-medium focus-visible:ring-primary/40"
+                className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-300 font-medium focus-visible:ring-primary/40"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" title="password" className="font-black text-[10px] uppercase tracking-[0.2em] text-white/50 ml-1">Password</Label>
+              <Label htmlFor="password" title="password" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">Password</Label>
               <Input 
                 id="password" 
                 type="password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required 
-                className="rounded-2xl h-14 bg-white/5 border-white/10 text-white font-medium focus-visible:ring-primary/40"
+                className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 font-medium focus-visible:ring-primary/40"
               />
-              <p className="text-[9px] text-white/30 font-black px-1 uppercase tracking-[0.1em]">Min. 8 chars, letters & numbers.</p>
+              <p className="text-[9px] text-slate-400 font-black px-1 uppercase tracking-[0.1em]">Min. 8 chars, letters & numbers.</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" title="confirm password" className="font-black text-[10px] uppercase tracking-[0.2em] text-white/50 ml-1">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" title="confirm password" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">Confirm Password</Label>
               <Input 
                 id="confirmPassword" 
                 type="password" 
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required 
-                className="rounded-2xl h-14 bg-white/5 border-white/10 text-white font-medium focus-visible:ring-primary/40"
+                className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 font-medium focus-visible:ring-primary/40"
               />
             </div>
             <Button 
@@ -165,13 +156,13 @@ export default function SignupPage() {
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-4 pb-10">
-          <p className="text-sm font-bold text-white/40">
+          <p className="text-sm font-bold text-slate-500">
             Already a member?{" "}
             <Link href="/auth/login" className="text-primary font-black hover:underline underline-offset-4">
               Log in
             </Link>
           </p>
-          <div className="flex items-center gap-3 text-[9px] text-white/20 bg-white/5 px-6 py-3 rounded-2xl font-black uppercase tracking-[0.2em] border border-white/5">
+          <div className="flex items-center gap-3 text-[9px] text-slate-400 bg-slate-50 px-6 py-3 rounded-2xl font-black uppercase tracking-[0.2em] border border-slate-100">
             <ShieldCheck className="w-4 h-4 text-primary" />
             Verified Secure Connection
           </div>
