@@ -14,20 +14,16 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+      allow get, list: if isSignedIn();
+      allow create, update: if isOwner(userId);
       
       match /posts/{postId} {
         allow read: if isSignedIn();
         allow write: if isOwner(userId) && isEmailVerified();
       }
 
-      // 🌟 แก้ไขตรงนี้: ลบ && isEmailVerified() ออก
       match /personality/{docId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId); 
+        allow read, write: if isOwner(userId); 
       }
 
       match /verification_requests/{requestId} {
@@ -44,7 +40,6 @@ service cloud.firestore {
     }
 
     match /bot_chats/{chatId} {
-      // 🌟 แก้ไขตรงนี้: ลบ && isEmailVerified() ออก เพื่อให้บอทเริ่มคุยได้เลย
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;

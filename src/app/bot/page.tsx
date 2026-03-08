@@ -70,6 +70,8 @@ export default function AIProfileBot() {
   }, [sessionMessages, isAiThinking]);
 
   const handleLanguageSelect = (lang: 'en' | 'th') => {
+    if (!user || !personalityRef) return;
+    
     setSelectedLanguage(lang);
     const initialMsg = lang === 'en' 
       ? "Hi! I'm Vera, your TrueVibe companion. I'm here to understand your unique energy. Ready to begin our vibe check?" 
@@ -83,15 +85,13 @@ export default function AIProfileBot() {
 
     setSessionMessages([firstMsg]);
 
-    if (personalityRef && user) {
-      setDocumentNonBlocking(personalityRef, {
-        id: 'personality_data',
-        userId: user.uid,
-        preferredLanguage: lang === 'th' ? 'Thai' : 'English',
-        chatHistory: [firstMsg],
-        lastAnalysisDate: new Date().toISOString()
-      }, { merge: true });
-    }
+    setDocumentNonBlocking(personalityRef, {
+      id: 'personality_data',
+      userId: user.uid,
+      preferredLanguage: lang === 'th' ? 'Thai' : 'English',
+      chatHistory: [firstMsg],
+      lastAnalysisDate: new Date().toISOString()
+    }, { merge: true });
   };
 
   const handleResetConversation = async () => {
