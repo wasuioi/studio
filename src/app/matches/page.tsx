@@ -90,9 +90,8 @@ export default function MatchesPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [matches, setMatches] = useState<any[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [lockedFeature, setLockedFeature] = useState('');
+  const [activeMatchForPayment, setActiveMatchForPayment] = useState<any>(null);
   const [selectedAnalysis, setSelectedAnalysis] = useState<any>(null);
-  const [requestConfirmation, setRequestConfirmation] = useState<any>(null);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
 
   const outgoingQuery = useMemoFirebase(() => {
@@ -190,44 +189,33 @@ export default function MatchesPage() {
     }
   };
 
-  const handleMessageClick = (match: any) => {
+  const handleActionInitiated = (match: any) => {
     if (!profile || !user) return;
     
-    // Premium check for messaging/connecting
-    if (profile.tier !== 'premium') {
-      setLockedFeature('Premium Connection Access');
-      setShowUpgradeModal(true);
-      return;
-    }
-
+    // Check if already connected - if so, just navigate
     const hasActiveConv = activeConversations?.some(conv => conv.participantIds.includes(match.id));
     if (hasActiveConv) {
       router.push('/messages');
       return;
     }
 
-    const pending = outgoingRequests?.find(r => r.receiverId === match.id && r.status === 'pending');
-    if (pending) {
-      toast({ description: "Vibe check is already pending." });
-      return;
-    }
-    setRequestConfirmation(match);
+    // Always trigger payment table for new actions
+    setActiveMatchForPayment(match);
+    setShowUpgradeModal(true);
   };
 
-  const handleAnalysisClick = (match: any) => {
-    if (!profile) return;
-    
-    // Per-credit/Lite check for analysis
-    if (profile.tier === 'free') {
-      setLockedFeature('Detailed Vibe Insight');
-      setShowUpgradeModal(true);
-      return;
+  const executeActionAfterPayment = (type: 'insight' | 'connection') => {
+    if (!activeMatchForPayment || !user || !profile) return;
+
+    if (type === 'insight') {
+      setSelectedAnalysis(activeMatchForPayment);
+    } else if (type === 'connection') {
+      sendChatRequest(activeMatchForPayment);
     }
-    setSelectedAnalysis(match);
   };
 
-  const sendChatRequest = () => {
-    if (!user || !profile || !requestConfirmation) return;
+  const sendChatRequest = (match: any) => {
+    if (!user || !profile || !match) return;
     setIsSendingRequest(true);
     const requestId = crypto.randomUUID();
     const expiresAt = new Date();
@@ -237,16 +225,15 @@ export default function MatchesPage() {
       senderId: user.uid,
       senderName: profile.displayName || profile.name,
       senderPhotoURL: profile.photoURL,
-      receiverId: requestConfirmation.id,
-      matchScore: requestConfirmation.score,
+      receiverId: match.id,
+      matchScore: match.score,
       status: 'pending',
-      reason: requestConfirmation.reason,
+      reason: match.reason,
       createdAt: new Date().toISOString(),
       expiresAt: expiresAt.toISOString(),
     };
     setDocumentNonBlocking(doc(db, 'chat_requests', requestId), requestData, { merge: true });
-    toast({ title: "Request Sent", description: "Sending your energy to " + requestConfirmation.name });
-    setRequestConfirmation(null);
+    toast({ title: "Request Sent", description: "Sending your energy to " + match.name });
     setIsSendingRequest(false);
   };
 
@@ -313,26 +300,9 @@ export default function MatchesPage() {
                     src={match.photoURL} 
                     alt={match.name} 
                     fill 
-                    className={cn(
-                      "object-cover transition-all duration-700 group-hover:scale-105",
-                      profile.tier === 'free' && "blur-2xl opacity-40"
-                    )}
+                    className="object-cover transition-all duration-700 group-hover:scale-105"
                   />
                   
-                  {profile.tier === 'free' && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-20 backdrop-blur-sm bg-black/40">
-                      <Crown className="w-10 h-10 mb-3 text-accent fill-current animate-pulse" />
-                      <h4 className="text-xl md:text-2xl font-black mb-3 text-white">Mystery Match</h4>
-                      <Button 
-                        size="sm"
-                        className="bg-white text-primary rounded-full font-bold text-xs"
-                        onClick={() => { setLockedFeature('Identity Reveal'); setShowUpgradeModal(true); }}
-                      >
-                        Reveal Energy
-                      </Button>
-                    </div>
-                  )}
-
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
                   
                   <div className="absolute top-4 right-4 bg-gradient-to-r from-[#FF4DA6] to-[#FF8A8A] px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg z-10">
@@ -342,12 +312,12 @@ export default function MatchesPage() {
 
                   <div className="absolute bottom-0 p-6 text-white w-full z-30">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-2xl font-black tracking-tight">{profile.tier === 'free' ? 'Hidden Vibe' : match.name}</h3>
+                      <h3 className="text-2xl font-black tracking-tight">{match.name}</h3>
                       <Check className="w-4 h-4 bg-verified text-white rounded-full p-1" />
                     </div>
                     
-                    <p className="text-white/70 text-xs md:text-sm font-medium leading-relaxed mb-4 line-clamp-2 italic">
-                      "{match.reason}"
+                    <p className="text-white/70 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-4">
+                      Frequency: {match.score >= 90 ? 'Perfect Harmony' : 'High Vibe'}
                     </p>
                     
                     <div className="flex gap-2">
@@ -359,7 +329,7 @@ export default function MatchesPage() {
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleMessageClick(match);
+                          handleActionInitiated(match);
                         }}
                         disabled={isScanning}
                       >
@@ -377,7 +347,7 @@ export default function MatchesPage() {
                         className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white border-white/10"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleAnalysisClick(match);
+                          handleActionInitiated(match);
                         }}
                       >
                         <Info className="w-5 h-5" />
@@ -390,33 +360,6 @@ export default function MatchesPage() {
           })}
         </div>
       )}
-
-      {/* Confirmation for Request */}
-      <Dialog open={!!requestConfirmation} onOpenChange={() => setRequestConfirmation(null)}>
-        <DialogContent className="glass-card rounded-[2rem] border-white/10 max-w-sm p-8 text-center bg-[#0F0819]/90">
-          <DialogHeader className="items-center space-y-4">
-            <div className="truevibe-pill-button p-4 rounded-full shadow-lg">
-              <Sparkles className="w-8 h-8 text-white fill-current" />
-            </div>
-            <div>
-              <DialogTitle className="text-xl md:text-2xl font-black text-white">Send Vibe Check?</DialogTitle>
-              <DialogDescription className="text-white/60 font-medium text-sm">
-                Your souls are vibrating at <strong>{requestConfirmation?.score}%</strong> harmony. (Requires Premium)
-              </DialogDescription>
-            </div>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col gap-2 mt-6">
-            <Button 
-              className="truevibe-pill-button w-full"
-              onClick={sendChatRequest}
-              disabled={isSendingRequest}
-            >
-              {isSendingRequest ? <Loader2 className="animate-spin" /> : "Initiate Connection"}
-            </Button>
-            <Button variant="ghost" onClick={() => setRequestConfirmation(null)} className="text-white/60 hover:text-white font-bold h-10">Maybe Later</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Analysis Details */}
       <Dialog open={!!selectedAnalysis} onOpenChange={() => setSelectedAnalysis(null)}>
@@ -457,7 +400,9 @@ export default function MatchesPage() {
           isOpen={showUpgradeModal} 
           onClose={() => setShowUpgradeModal(false)} 
           userId={profile.uid}
-          featureName={lockedFeature}
+          featureName="Exclusive Content"
+          targetMatchName={activeMatchForPayment?.name}
+          onPaymentSuccess={executeActionAfterPayment}
         />
       )}
     </div>
