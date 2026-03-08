@@ -373,10 +373,7 @@ export default function MatchesPage() {
               <Star className="w-8 h-8 text-primary fill-current" />
             </div>
             <div>
-              <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight text-white">Soul Insight</DialogTitle>
-              <DialogDescription className="text-white/60 text-sm">
-                Vera's detailed frequency check for {selectedAnalysis?.name}.
-              </DialogDescription>
+              <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight text-white">Soul Insight</DialogTitle Reviewing</h3>
             </div>
           </DialogHeader>
           
