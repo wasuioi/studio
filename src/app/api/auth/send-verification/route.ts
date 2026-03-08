@@ -1,4 +1,3 @@
-
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
 
@@ -26,7 +25,7 @@ export async function POST(request: Request) {
             <p style="color: #666; font-size: 16px; margin-top: 8px;">Real Vibes Only</p>
           </div>
           
-          <h2 style="color: #1a1a1a; font-size: 24px; font-weight: 700; margin-bottom: 16px;">Hello ${displayName || 'Viber'},</h2>
+          <h2 style="color: #1a1a1a; font-size: 24px; font-weight: 700; margin-bottom: 16px;">Hello ${displayName || 'Your Name'},</h2>
           
           <p style="color: #444; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
             Welcome to TrueVibe! We're excited to have you join our community of authentic connections. 

@@ -60,7 +60,7 @@ function ConversationListItem({ conversation, currentUserId, isActive, onClick }
   
   const { data: profile } = useDoc<any>(profileRef);
   const simData = otherParticipantId ? SIM_PROFILES[otherParticipantId] : null;
-  const displayName = profile?.displayName || simData?.name || 'Viber';
+  const displayName = profile?.displayName || simData?.name || 'Your Name';
   const photoURL = profile?.photoURL || simData?.photo || '';
 
   return (
@@ -125,7 +125,7 @@ export default function MessagesPage() {
   
   const { data: activeChatProfile } = useDoc<any>(activeChatProfileRef);
   const simData = otherParticipantId ? SIM_PROFILES[otherParticipantId] : null;
-  const activeDisplayName = activeChatProfile?.displayName || simData?.name || 'Viber';
+  const activeDisplayName = activeChatProfile?.displayName || simData?.name || 'Your Name';
   const activePhotoURL = activeChatProfile?.photoURL || simData?.photo || '';
 
   useEffect(() => {
