@@ -44,7 +44,7 @@ export default function LandingPage() {
             Find Your<br />True Vibe
           </h1>
           <p className="text-sm md:text-base text-white/70 font-medium px-6 max-w-[300px] mx-auto leading-relaxed">
-            Intentional dating for<br />real connections.
+            Intentional dating for<br />real connection.
           </p>
         </div>
 
@@ -56,7 +56,7 @@ export default function LandingPage() {
             onClick={handleStart}
           >
             <Rocket className="mr-2 w-5 h-5 fill-current" />
-            Start with AI
+            Welcome Back
           </Button>
           
           <Link href="/auth/signup" className="block w-full">
