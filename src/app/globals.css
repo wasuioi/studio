@@ -36,34 +36,12 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body antialiased;
-    background: linear-gradient(135deg, #0F0819 0%, #2A004F 25%, #5A0FBF 50%, #FF4DA6 85%, #FF8A8A 100%);
+    @apply text-foreground font-body antialiased;
+    background: linear-gradient(135deg, #2A004F 0%, #5E1B9A 35%, #C43A8F 70%, #FF7A6B 100%);
     background-attachment: fixed;
     position: relative;
+    min-height: 100vh;
     overflow-x: hidden;
-  }
-  /* Soft background blobs for luminosity */
-  body::before {
-    content: '';
-    position: fixed;
-    top: 10%;
-    left: 10%;
-    width: 40vw;
-    height: 40vw;
-    background: radial-gradient(circle, rgba(106, 92, 255, 0.15) 0%, transparent 70%);
-    z-index: -1;
-    pointer-events: none;
-  }
-  body::after {
-    content: '';
-    position: fixed;
-    bottom: 5%;
-    right: 5%;
-    width: 30vw;
-    height: 30vw;
-    background: radial-gradient(circle, rgba(255, 77, 166, 0.1) 0%, transparent 70%);
-    z-index: -1;
-    pointer-events: none;
   }
 }
 

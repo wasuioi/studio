@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
@@ -8,32 +7,9 @@ import { Logo } from '@/components/Logo';
 import { Rocket, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
-interface StarProps {
-  top: string;
-  left: string;
-  width: string;
-  height: string;
-  delay: string;
-  opacity: number;
-}
-
 export default function LandingPage() {
   const { user } = useUser();
   const router = useRouter();
-  const [stars, setStars] = useState<StarProps[]>([]);
-
-  useEffect(() => {
-    // Generate star properties only on the client to avoid hydration mismatch
-    const generatedStars = [...Array(40)].map(() => ({
-      top: `${Math.random() * 100}%`,
-      left: `${Math.random() * 100}%`,
-      width: `${Math.random() * 2 + 1}px`,
-      height: `${Math.random() * 2 + 1}px`,
-      delay: `${Math.random() * 5}s`,
-      opacity: Math.random() * 0.6
-    }));
-    setStars(generatedStars);
-  }, []);
 
   const handleStart = () => {
     if (user) {
@@ -48,14 +24,8 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col items-center justify-center p-6 text-center overflow-hidden bg-[#0F0819]">
-      {/* Immersive Nebula Background */}
-      <div className="absolute inset-0 pointer-events-none">
-        {/* Deep Purple Glow */}
-        <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] bg-[#6C3BFF] rounded-full blur-[160px] opacity-20" />
-        {/* Coral/Pink Glow */}
-        <div className="absolute bottom-[-10%] right-[-10%] w-[80%] h-[80%] bg-[#FF6B6B] rounded-full blur-[160px] opacity-15" />
-      </div>
+    <div className="min-h-screen relative flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+      {/* Background is now handled globally in RootLayout */}
       
       <main className="relative z-10 max-w-lg w-full space-y-10 md:space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
         <div className="space-y-8 md:space-y-10">
@@ -101,24 +71,6 @@ export default function LandingPage() {
           <ShieldCheck className="w-3.5 h-3.5 text-[#FF6B6B]" />
           Verified profiles only. No fake accounts.
         </div>
-      </div>
-
-      {/* Decorative Stars */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {stars.map((star, i) => (
-          <div 
-            key={i}
-            className="absolute bg-white rounded-full animate-pulse"
-            style={{
-              top: star.top,
-              left: star.left,
-              width: star.width,
-              height: star.height,
-              animationDelay: star.delay,
-              opacity: star.opacity
-            }}
-          />
-        ))}
       </div>
     </div>
   );
