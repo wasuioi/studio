@@ -13,16 +13,21 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email_verified == true;
     }
 
+    // User profile and subcollections
     match /users/{userId} {
-      allow get, list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create, update: if isOwner(userId);
       
+      // Subcollections
       match /posts/{postId} {
         allow read: if isSignedIn();
         allow write: if isOwner(userId) && isEmailVerified();
       }
 
       match /personality/{docId} {
+        // Personality data is core to the Vera AI interview
+        // Users can manage their own interview state once signed in
         allow read, write: if isOwner(userId); 
       }
 
@@ -32,6 +37,7 @@ service cloud.firestore {
       }
     }
 
+    // Chat Requests
     match /chat_requests/{requestId} {
       allow read: if isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
       allow create: if isSignedIn() && isEmailVerified() && request.resource.data.senderId == request.auth.uid;
@@ -39,12 +45,14 @@ service cloud.firestore {
       allow delete: if isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
     }
 
+    // Bot interactions (ephemeral history)
     match /bot_chats/{chatId} {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
+    // Active Conversations
     match /conversations/{conversationId} {
       allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
       allow create: if isSignedIn() && isEmailVerified();

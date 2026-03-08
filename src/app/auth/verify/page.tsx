@@ -64,6 +64,9 @@ export default function VerifyPage() {
     try {
       await user.reload();
       if (user.emailVerified) {
+        // CRITICAL: Force refresh the ID token so Firestore picks up the 'email_verified' claim immediately
+        await user.getIdToken(true);
+        
         toast({
           title: "Account Activated!",
           description: "Welcome to the TrueVibe community.",
