@@ -96,34 +96,35 @@ export default function VerifyPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Background Luminous Spots */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[100px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-primary/20 rounded-full blur-[120px] opacity-40" />
       </div>
 
-      <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white/95 backdrop-blur-xl z-10">
-        <div className="truevibe-gradient h-2" />
+      <Card className="w-full max-w-md rounded-[3rem] border-none shadow-2xl overflow-hidden bg-white/95 backdrop-blur-2xl z-10">
+        <div className="truevibe-gradient h-1.5 w-full" />
         <CardHeader className="space-y-4 text-center pt-8">
           <Logo size="md" className="mx-auto mb-4" />
           <div className="bg-primary/5 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-2 animate-bounce">
             <Mail className="w-10 h-10 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-3xl font-black tracking-tight">Activate Account</CardTitle>
-            <CardDescription className="text-base font-medium">
+            <CardTitle className="text-3xl font-black tracking-tight text-slate-900">Activate Account</CardTitle>
+            <CardDescription className="text-base font-bold text-slate-500">
               We sent a verification link to<br/>
-              <span className="font-black text-foreground break-all">{user?.email}</span>
+              <span className="font-black text-primary break-all">{user?.email}</span>
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="bg-muted/30 p-6 rounded-3xl border border-border/50">
-            <p className="text-sm font-bold text-muted-foreground leading-relaxed text-center">
+          <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200">
+            <p className="text-sm font-black text-slate-600 leading-relaxed text-center uppercase tracking-tight">
               Safety First: You must verify your email before using TrueVibe features.
             </p>
           </div>
           
           <Button 
-            className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none transition-all active:scale-95"
+            className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none transition-all active:scale-95 text-white"
             onClick={handleCheckStatus}
           >
             I've Verified My Email
@@ -131,7 +132,7 @@ export default function VerifyPage() {
 
           <Button 
             variant="ghost"
-            className="w-full h-12 rounded-xl gap-2 font-bold text-muted-foreground hover:text-primary transition-all"
+            className="w-full h-12 rounded-xl gap-2 font-black text-slate-500 hover:text-primary transition-all uppercase tracking-widest text-[10px]"
             onClick={handleResend}
             disabled={resending || countdown > 0}
           >
@@ -139,12 +140,12 @@ export default function VerifyPage() {
             {countdown > 0 ? `Resend in ${countdown}s` : "Resend Verification Link"}
           </Button>
         </CardContent>
-        <CardFooter className="flex flex-col gap-6 pb-10 border-t pt-6 bg-muted/5">
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+        <CardFooter className="flex flex-col gap-6 pb-10 border-t border-slate-100 pt-6 bg-slate-50/50">
+          <div className="flex items-center gap-2 text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">
             <ShieldCheck className="w-4 h-4 text-primary" />
             Anti-Spam Protection Active
           </div>
-          <Button variant="ghost" onClick={handleSignOut} className="text-muted-foreground gap-2 font-bold hover:text-foreground">
+          <Button variant="ghost" onClick={handleSignOut} className="text-slate-500 gap-2 font-black hover:text-slate-900 uppercase tracking-widest text-[10px]">
             <ArrowLeft className="w-4 h-4" /> Sign out & Back to Login
           </Button>
         </CardFooter>

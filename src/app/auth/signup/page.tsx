@@ -91,28 +91,30 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Background Luminous Spots */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[100px]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent/20 rounded-full blur-[100px]" />
+        <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-accent/20 rounded-full blur-[120px] opacity-40" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/30 rounded-full blur-[100px] opacity-50" />
       </div>
 
-      <Card className="w-full max-w-md rounded-[3rem] border-none shadow-2xl bg-white/90 backdrop-blur-xl z-10">
+      <Card className="w-full max-w-md rounded-[3rem] border-none shadow-2xl bg-white/95 backdrop-blur-2xl z-10 overflow-hidden">
+        <div className="truevibe-gradient h-1.5 w-full" />
         <CardHeader className="space-y-4 text-center pt-10">
-          <Logo size="md" className="mx-auto mb-4" />
+          <Logo size="md" className="mx-auto mb-2" />
           <div>
-            <CardTitle className="text-4xl font-black tracking-tighter">Join TrueVibe</CardTitle>
-            <CardDescription className="font-medium">Discover connections that match your energy.</CardDescription>
+            <CardTitle className="text-4xl font-black tracking-tighter text-slate-900">Join TrueVibe</CardTitle>
+            <CardDescription className="text-slate-600 font-bold text-sm">Discover connections that match your energy.</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="px-8">
           <form onSubmit={handleSignup} className="space-y-4">
             {error && (
-              <div className="bg-destructive/10 text-destructive text-sm font-bold p-4 rounded-2xl border border-destructive/20 animate-in fade-in slide-in-from-top-1">
+              <div className="bg-destructive/10 text-destructive text-xs font-black p-4 rounded-2xl border border-destructive/20 animate-in fade-in slide-in-from-top-1 uppercase tracking-tight">
                 {error}
                 {error === "This email is already registered." && (
-                  <div className="mt-2 text-xs flex items-center gap-1">
+                  <div className="mt-2 text-[10px] flex items-center gap-1">
                     Already a member? 
-                    <Link href="/auth/login" className="text-primary hover:underline underline-offset-2 flex items-center gap-1">
+                    <Link href="/auth/login" className="text-primary hover:underline underline-offset-2 flex items-center gap-1 font-black">
                       Login now <ArrowRight className="w-3 h-3" />
                     </Link>
                   </div>
@@ -120,7 +122,7 @@ export default function SignupPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email" className="font-bold text-xs uppercase tracking-widest ml-1">Email</Label>
+              <Label htmlFor="email" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-500 ml-1">Email</Label>
               <Input 
                 id="email" 
                 type="email" 
@@ -128,35 +130,35 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required 
-                className="rounded-2xl h-14 bg-muted/30 border-none shadow-inner"
+                className="rounded-2xl h-14 bg-slate-100/50 border-slate-200 text-slate-900 placeholder:text-slate-400 font-medium focus-visible:ring-primary/40"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" title="password" className="font-bold text-xs uppercase tracking-widest ml-1">Password</Label>
+              <Label htmlFor="password" title="password" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-500 ml-1">Password</Label>
               <Input 
                 id="password" 
                 type="password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required 
-                className="rounded-2xl h-14 bg-muted/30 border-none shadow-inner"
+                className="rounded-2xl h-14 bg-slate-100/50 border-slate-200 text-slate-900 font-medium focus-visible:ring-primary/40"
               />
-              <p className="text-[10px] text-muted-foreground font-bold px-1 uppercase tracking-widest">Min. 8 chars, letters & numbers.</p>
+              <p className="text-[9px] text-slate-400 font-black px-1 uppercase tracking-[0.1em]">Min. 8 chars, letters & numbers.</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" title="confirm password" className="font-bold text-xs uppercase tracking-widest ml-1">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" title="confirm password" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-500 ml-1">Confirm Password</Label>
               <Input 
                 id="confirmPassword" 
                 type="password" 
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required 
-                className="rounded-2xl h-14 bg-muted/30 border-none shadow-inner"
+                className="rounded-2xl h-14 bg-slate-100/50 border-slate-200 text-slate-900 font-medium focus-visible:ring-primary/40"
               />
             </div>
             <Button 
               type="submit" 
-              className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none mt-4 transition-all active:scale-95"
+              className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none mt-4 transition-all active:scale-95 text-white"
               disabled={loading}
             >
               {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Create Account"}
@@ -164,13 +166,13 @@ export default function SignupPage() {
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-4 pb-10">
-          <p className="text-sm font-medium text-muted-foreground">
+          <p className="text-sm font-bold text-slate-500">
             Already a member?{" "}
             <Link href="/auth/login" className="text-primary font-black hover:underline underline-offset-4">
               Log in
             </Link>
           </p>
-          <div className="flex items-center gap-3 text-[10px] text-muted-foreground bg-primary/5 px-6 py-3 rounded-2xl font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-3 text-[9px] text-slate-400 bg-slate-100/80 px-6 py-3 rounded-2xl font-black uppercase tracking-[0.2em] border border-slate-200">
             <ShieldCheck className="w-4 h-4 text-primary fill-current" />
             Verified Secure Auth
           </div>
