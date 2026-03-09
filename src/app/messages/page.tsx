@@ -343,11 +343,12 @@ export default function MessagesPage() {
         </div>
       </div>
 
-      <UpgradeModal 
-        isOpen={showUpgradeModal} 
-        onClose={() => setShowUpgradeModal(false)} 
-        userId={user?.uid || ''} 
-        featureName="Direct Messaging" 
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        userId={user?.uid || ''}
+        featureName="Direct Messaging"
+        onPaymentSuccess={() => setShowUpgradeModal(false)}
       />
     </div>
   );
