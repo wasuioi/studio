@@ -47,8 +47,9 @@ service cloud.firestore {
       // Participants can view their own requests
       allow get: if isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
       
-      // Listing requires query filters to match these conditions
-      allow list: if isSignedIn() && (request.query.limit <= 50) && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
+      // Listing requires query filters to match these conditions. 
+      // Removed the limit restriction to prevent mismatches with client queries.
+      allow list: if isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
       
       // Only receiver can update status, only sender can delete pending
       allow update: if isSignedIn() && (request.auth.uid == resource.data.receiverId || request.auth.uid == resource.data.senderId);
