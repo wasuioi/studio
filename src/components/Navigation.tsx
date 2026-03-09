@@ -53,15 +53,16 @@ export function Navigation() {
     <>
       {/* 📱 Mobile Top Header */}
       <nav className="fixed top-0 left-0 right-0 z-[100] md:hidden flex h-16 items-center justify-between px-4 bg-black/40 backdrop-blur-3xl border-b border-white/5">
-        <Link href="/" className="flex items-center justify-center shrink-0">
+        <Link href="/" className="flex items-center gap-1 shrink-0 ml-7">
           <Image
-            src="/finallogo.png"
+            src="/superlogo2.png"
             alt="Truevibe Nav Logo"
-            width={72}
-            height={72}
+            width={52}
+            height={52}
             className="object-contain"
             priority
           />
+          <span className="text-2xl font-black leading-none truevibe-text-gradient ml-5 self-center whitespace-nowrap">True Vibe</span>
         </Link>
         
         <div className="flex items-center gap-2">
@@ -108,16 +109,17 @@ export function Navigation() {
 
       {/* 💻 Desktop Nav */}
       <nav className="hidden md:flex fixed top-0 left-0 right-0 z-[100] h-16 items-center justify-between px-8 bg-black/40 backdrop-blur-3xl border-b border-white/5">
-        <div className="flex items-center w-[180px]">
-          <Link href="/" className="flex items-center">
+        <div className="flex items-center w-[220px]">
+          <Link href="/" className="flex items-center gap-1 ml-7">
             <Image
-              src="/alllogo.png"
+              src="/superlogo2.png"
               alt="Truevibe Nav Logo"
-              width={72}
-              height={72}
+              width={42}
+              height={42}
               className="object-contain"
               priority
             />
+            <span className="text-3xl font-black leading-none truevibe-text-gradient ml-5 self-center whitespace-nowrap">True Vibe</span>
           </Link>
         </div>
 

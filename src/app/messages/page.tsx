@@ -175,10 +175,10 @@ export default function MessagesPage() {
           </div>
           <div className="space-y-4">
             <h1 className="text-3xl font-black tracking-tight text-white">Trust Only</h1>
-            <p className="text-white/60 font-medium">Verify your soul identity before connecting with others.</p>
+            <p className="text-white/60 font-medium">Please verify your identity.</p>
           </div>
           <Link href="/verification" className="block w-full">
-            <Button className="truevibe-pill-button h-14 w-full">Verify My Soul</Button>
+            <Button className="truevibe-pill-button h-14 w-full">Verify</Button>
           </Link>
         </Card>
       </div>

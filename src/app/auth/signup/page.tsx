@@ -22,7 +22,9 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -34,11 +36,23 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
+
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("Please enter both first name and last name.");
+      return;
+    }
+
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
     }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    const displayName = `${firstName.trim()} ${lastName.trim()}`;
 
     setLoading(true);
     try {
@@ -109,16 +123,29 @@ export default function SignupPage() {
                 {error}
               </div>
             )}
-            <div className="space-y-1.5">
-              <Label htmlFor="name" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">Full Name</Label>
-              <Input 
-                id="name" 
-                placeholder="How should we call you?" 
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                required 
-                className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 font-medium focus-visible:ring-primary/40"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="firstName" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">First Name</Label>
+                <Input
+                  id="firstName"
+                  placeholder="First"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 font-medium focus-visible:ring-primary/40"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="lastName" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">Last Name</Label>
+                <Input
+                  id="lastName"
+                  placeholder="Last"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                  className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 font-medium focus-visible:ring-primary/40"
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="email" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">Email</Label>
@@ -133,13 +160,25 @@ export default function SignupPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password" title="password" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
+              <Label htmlFor="password" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">Password</Label>
+              <Input
+                id="password"
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required 
+                required
+                className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 font-medium focus-visible:ring-primary/40"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmPassword" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Re-enter your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
                 className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 font-medium focus-visible:ring-primary/40"
               />
             </div>

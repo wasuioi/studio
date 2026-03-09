@@ -77,7 +77,7 @@
 }
 
 .truevibe-text-gradient {
-  background: linear-gradient(90deg, #5B00FF 0%, #FF2E8B 50%, #FF8A5C 100%);
+  background: linear-gradient(90deg, #A78BFF 0%, #FF5EA8 50%, #FFB347 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
@@ -93,3 +93,25 @@
 
 .bg-verified { background-color: hsl(var(--verified)); }
 .bg-unverified { background-color: hsl(var(--unverified)); }
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) rotate(-2deg); }
+  50% { transform: translateY(-18px) rotate(2deg); }
+}
+@keyframes float-slow-reverse {
+  0%, 100% { transform: translateY(0px) rotate(2deg); }
+  50% { transform: translateY(-14px) rotate(-2deg); }
+}
+@keyframes float-mid {
+  0%, 100% { transform: translateY(0px) rotate(1deg); }
+  50% { transform: translateY(-10px) rotate(-1deg); }
+}
+.animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
+.animate-float-slow-reverse { animation: float-slow-reverse 7s ease-in-out infinite; }
+.animate-float-mid { animation: float-mid 5s ease-in-out infinite; }
+
+@keyframes float-logo {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float-logo { animation: float-logo 3.5s ease-in-out infinite; }
