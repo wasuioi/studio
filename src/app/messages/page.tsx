@@ -35,16 +35,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-
-const SIM_PROFILES: Record<string, { name: string; photo: string }> = {
-  'sim_1': { name: 'Jason', photo: PlaceHolderImages.find(img => img.id === 'sim_jason')?.imageUrl || 'https://picsum.photos/seed/jason1/600/800' },
-  'sim_2': { name: 'Leo', photo: PlaceHolderImages.find(img => img.id === 'sim_leo')?.imageUrl || 'https://picsum.photos/seed/leo2/600/800' },
-  'sim_3': { name: 'Tim', photo: PlaceHolderImages.find(img => img.id === 'sim_tim')?.imageUrl || 'https://picsum.photos/seed/tim3/600/800' },
-  'sim_4': { name: 'Mary', photo: PlaceHolderImages.find(img => img.id === 'sim_mary')?.imageUrl || 'https://picsum.photos/seed/mary4/600/800' },
-  'sim_5': { name: 'Tania', photo: PlaceHolderImages.find(img => img.id === 'sim_tania')?.imageUrl || 'https://picsum.photos/seed/tania5/600/800' },
-  'sim_6': { name: 'Su', photo: PlaceHolderImages.find(img => img.id === 'sim_su')?.imageUrl || 'https://picsum.photos/seed/su6/600/800' },
-};
 
 function ConversationListItem({ conversation, currentUserId, isActive, onClick }: { 
   conversation: any, 
@@ -56,14 +46,13 @@ function ConversationListItem({ conversation, currentUserId, isActive, onClick }
   const otherParticipantId = conversation.participantIds.find((id: string) => id !== currentUserId);
   
   const profileRef = useMemoFirebase(() => {
-    if (!otherParticipantId || otherParticipantId.startsWith('sim_')) return null;
+    if (!otherParticipantId) return null;
     return doc(db, 'users', otherParticipantId);
   }, [db, otherParticipantId]);
   
   const { data: profile } = useDoc<any>(profileRef);
-  const simData = otherParticipantId ? SIM_PROFILES[otherParticipantId] : null;
-  const displayName = profile?.displayName || simData?.name || 'Your Name';
-  const photoURL = profile?.photoURL || simData?.photo || '';
+  const displayName = profile?.displayName || profile?.name || 'Viber';
+  const photoURL = profile?.photoURL || '';
 
   return (
     <button 
@@ -121,14 +110,13 @@ export default function MessagesPage() {
   const otherParticipantId = activeConversation?.participantIds.find((id: string) => id !== user?.uid);
   
   const activeChatProfileRef = useMemoFirebase(() => {
-    if (!otherParticipantId || otherParticipantId.startsWith('sim_')) return null;
+    if (!otherParticipantId) return null;
     return doc(db, 'users', otherParticipantId);
   }, [db, otherParticipantId]);
   
   const { data: activeChatProfile } = useDoc<any>(activeChatProfileRef);
-  const simData = otherParticipantId ? SIM_PROFILES[otherParticipantId] : null;
-  const activeDisplayName = activeChatProfile?.displayName || simData?.name || 'Your Name';
-  const activePhotoURL = activeChatProfile?.photoURL || simData?.photo || '';
+  const activeDisplayName = activeChatProfile?.displayName || activeChatProfile?.name || 'Viber';
+  const activePhotoURL = activeChatProfile?.photoURL || '';
 
   useEffect(() => {
     if (scrollRef.current) {

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
@@ -107,6 +108,7 @@ export default function AIProfileBot() {
         updatedAt: new Date().toISOString()
       });
 
+      // Cleanup user's real requests and conversations to allow a fresh start
       const requestsRef = collection(db, 'chat_requests');
       const qSender = query(requestsRef, where('senderId', '==', user.uid));
       const qReceiver = query(requestsRef, where('receiverId', '==', user.uid));

@@ -26,42 +26,6 @@
       "imageHint": "man professional"
     },
     {
-      "id": "sim_jason",
-      "description": "Jason - Professional Man",
-      "imageUrl": "https://picsum.photos/seed/jason_vibe/600/800",
-      "imageHint": "man professional"
-    },
-    {
-      "id": "sim_leo",
-      "description": "Leo - Young Man",
-      "imageUrl": "https://picsum.photos/seed/leo_vibe/600/800",
-      "imageHint": "man casual"
-    },
-    {
-      "id": "sim_tim",
-      "description": "Tim - Mature Man",
-      "imageUrl": "https://picsum.photos/seed/tim_vibe/600/800",
-      "imageHint": "man mature"
-    },
-    {
-      "id": "sim_mary",
-      "description": "Mary - Young Woman",
-      "imageUrl": "https://picsum.photos/seed/mary_vibe/600/800",
-      "imageHint": "woman casual"
-    },
-    {
-      "id": "sim_tania",
-      "description": "Tania - Modern Woman",
-      "imageUrl": "https://picsum.photos/seed/tania_vibe/600/800",
-      "imageHint": "woman modern"
-    },
-    {
-      "id": "sim_su",
-      "description": "Su - Mature Woman",
-      "imageUrl": "https://picsum.photos/seed/su_vibe/600/800",
-      "imageHint": "woman mature"
-    },
-    {
       "id": "default_cover",
       "description": "Cosmic background",
       "imageUrl": "https://picsum.photos/seed/vibe_cover/1200/400",

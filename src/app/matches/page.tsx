@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -26,68 +27,10 @@ import { cn } from '@/lib/utils';
 import { findMatches } from '@/ai/flows/find-matches-flow';
 import { useToast } from '@/hooks/use-toast';
 import { UpgradeModal } from '@/components/UpgradeModal';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { ChatRequest } from '@/types';
 import Link from 'next/link';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-
-const SIMULATED_PROFILES = [
-  {
-    id: 'sim_1',
-    name: 'Jason',
-    gender: 'Male',
-    age: 35,
-    photoURL: PlaceHolderImages.find(img => img.id === 'sim_jason')?.imageUrl || '',
-    imageHint: PlaceHolderImages.find(img => img.id === 'sim_jason')?.imageHint || 'man portrait',
-    summary: "Jason is a 35-year-old professional in Bangkok seeking a serious, long-term partnership built on trust and communication."
-  },
-  {
-    id: 'sim_2',
-    name: 'Leo',
-    gender: 'Male',
-    age: 28,
-    photoURL: PlaceHolderImages.find(img => img.id === 'sim_leo')?.imageUrl || '',
-    imageHint: PlaceHolderImages.find(img => img.id === 'sim_leo')?.imageHint || 'man portrait',
-    summary: "Leo is a 28-year-old from Bangkok with high emotional intelligence and a secure attachment pattern."
-  },
-  {
-    id: 'sim_3',
-    name: 'Tim',
-    gender: 'Male',
-    age: 39,
-    photoURL: PlaceHolderImages.find(img => img.id === 'sim_tim')?.imageUrl || '',
-    imageHint: PlaceHolderImages.find(img => img.id === 'sim_tim')?.imageHint || 'man portrait',
-    summary: "Tim is a 39-year-old in Bangkok seeking marriage and children. Secure orientation with avoidant tendencies."
-  },
-  {
-    id: 'sim_4',
-    name: 'Mary',
-    gender: 'Female',
-    age: 30,
-    photoURL: PlaceHolderImages.find(img => img.id === 'sim_mary')?.imageUrl || '',
-    imageHint: PlaceHolderImages.find(img => img.id === 'sim_mary')?.imageHint || 'woman portrait',
-    summary: "Mary is a 30-year-old female from Bangkok seeking marriage. Secure attachment style, high self-worth."
-  },
-  {
-    id: 'sim_5',
-    name: 'Tania',
-    gender: 'Female',
-    age: 28,
-    photoURL: PlaceHolderImages.find(img => img.id === 'sim_tania')?.imageUrl || '',
-    imageHint: PlaceHolderImages.find(img => img.id === 'sim_tania')?.imageHint || 'woman portrait',
-    summary: "Tania is a 28-year-old female in Bangkok, highly relationship-ready (9/10 emotional readiness)."
-  },
-  {
-    id: 'sim_6',
-    name: 'Su',
-    gender: 'Female',
-    age: 36,
-    photoURL: PlaceHolderImages.find(img => img.id === 'sim_su')?.imageUrl || '',
-    imageHint: PlaceHolderImages.find(img => img.id === 'sim_su')?.imageHint || 'woman portrait',
-    summary: "Su is a 36-year-old female from Bangkok seeking marriage for companionship and mutual growth."
-  }
-];
 
 export default function MatchesPage() {
   const { profile, user, loading } = useAuth();
@@ -126,33 +69,38 @@ export default function MatchesPage() {
     }
   }, [profile?.topMatches]);
 
-  useEffect(() => {
-    if (!user || !outgoingRequests) return;
-    const pendingSimRequests = outgoingRequests.filter(
-      r => r.status === 'pending' && r.receiverId.startsWith('sim_')
-    );
-    pendingSimRequests.forEach(req => {
-      const timer = setTimeout(() => {
-        updateDocumentNonBlocking(doc(db, 'chat_requests', req.id), { status: 'accepted' });
-        const convId = `conv_${user.uid}_${req.receiverId}`;
-        setDocumentNonBlocking(doc(db, 'conversations', convId), {
-          id: convId,
-          participantIds: [user.uid, req.receiverId],
-          lastMessage: "Vibe check passed!",
-          updatedAt: new Date().toISOString(),
-          createdAt: new Date().toISOString()
-        }, { merge: true });
-        const matchName = SIMULATED_PROFILES.find(p => p.id === req.receiverId)?.name || 'Match';
-        toast({ title: "Connection Unlocked", description: `${matchName} is ready to vibe!` });
-      }, 2000);
-      return () => clearTimeout(timer);
-    });
-  }, [outgoingRequests, user, db, toast]);
-
   const handleScanForMatches = async () => {
     if (!user || !profile?.personalityProfile || isScanning) return;
     setIsScanning(true);
     try {
+      // Query real users who have completed their profile, excluding self
+      const usersRef = collection(db, 'users');
+      const q = query(
+        usersRef, 
+        where('profileCompleted', '==', true),
+        limit(20)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const potentialMatches = querySnapshot.docs
+        .filter(doc => doc.id !== user.uid)
+        .map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.displayName || data.name,
+            photoURL: data.photoURL,
+            summary: data.personalityProfile?.user_persona?.summary || "No summary available."
+          };
+        });
+
+      if (potentialMatches.length === 0) {
+        toast({ title: "Sync Failed", description: "No other active vibes found in the universe yet." });
+        setMatches([]);
+        setIsScanning(false);
+        return;
+      }
+
       const results = await findMatches({
         currentUser: {
           id: user.uid,
@@ -161,7 +109,7 @@ export default function MatchesPage() {
           ideal_partner: profile.personalityProfile.ideal_partner,
           weights: profile.personalityProfile.weights
         },
-        potentialMatches: SIMULATED_PROFILES.map(p => ({
+        potentialMatches: potentialMatches.map(p => ({
           id: p.id,
           name: p.name,
           summary: p.summary
@@ -170,7 +118,7 @@ export default function MatchesPage() {
 
       const processedMatches = results.matches
         .map(m => {
-          const fullProfile = SIMULATED_PROFILES.find(p => p.id === m.targetUserId);
+          const fullProfile = potentialMatches.find(p => p.id === m.targetUserId);
           return {
             ...fullProfile,
             score: m.score,
@@ -178,7 +126,7 @@ export default function MatchesPage() {
           };
         })
         .sort((a, b) => b.score - a.score)
-        .slice(0, 3);
+        .slice(0, 5);
 
       const userRef = doc(db, 'users', user.uid);
       updateDocumentNonBlocking(userRef, {
@@ -298,13 +246,19 @@ export default function MatchesPage() {
             return (
               <Card key={match.id} className="glass-card glass-card-hover group relative rounded-[2rem] overflow-hidden flex flex-col h-full shadow-lg bg-white/5 border-white/10">
                 <div className="relative aspect-[4/5] w-full">
-                  <Image 
-                    src={match.photoURL} 
-                    alt={match.name} 
-                    fill 
-                    data-ai-hint={match.imageHint || "portrait person"}
-                    className="object-cover transition-all duration-700 group-hover:scale-105"
-                  />
+                  {match.photoURL ? (
+                    <Image 
+                      src={match.photoURL} 
+                      alt={match.name} 
+                      fill 
+                      data-ai-hint="portrait person"
+                      className="object-cover transition-all duration-700 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-white/5 flex items-center justify-center">
+                      <Sparkles className="w-10 h-10 text-white/20" />
+                    </div>
+                  )}
                   
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
                   
