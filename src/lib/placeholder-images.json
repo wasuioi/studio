@@ -3,25 +3,25 @@
     {
       "id": "user1",
       "description": "Sophisticated woman portrait",
-      "imageUrl": "https://picsum.photos/seed/vibe1/400/400",
+      "imageUrl": "https://picsum.photos/seed/portrait_a1/400/400",
       "imageHint": "woman portrait"
     },
     {
       "id": "user2",
       "description": "Friendly man portrait",
-      "imageUrl": "https://picsum.photos/seed/vibe2/400/400",
+      "imageUrl": "https://picsum.photos/seed/portrait_a2/400/400",
       "imageHint": "man portrait"
     },
     {
       "id": "user3",
       "description": "Artist woman portrait",
-      "imageUrl": "https://picsum.photos/seed/vibe3/400/400",
+      "imageUrl": "https://picsum.photos/seed/portrait_a3/400/400",
       "imageHint": "woman artist"
     },
     {
       "id": "user4",
       "description": "Professional man portrait",
-      "imageUrl": "https://picsum.photos/seed/vibe4/400/400",
+      "imageUrl": "https://picsum.photos/seed/portrait_a4/400/400",
       "imageHint": "man professional"
     }
   ]
