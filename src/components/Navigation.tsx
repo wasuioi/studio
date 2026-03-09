@@ -18,7 +18,8 @@ export function Navigation() {
   const db = useFirestore();
 
   const requestsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    // Guard against unverified users querying protected collections
+    if (!user || !user.emailVerified) return null;
     return query(
       collection(db, 'chat_requests'),
       where('receiverId', '==', user.uid),

@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -45,17 +44,6 @@
         "expiresAt": { "type": "string", "format": "date-time" }
       }
     },
-    "Match": {
-      "title": "Match",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "participantIds": { "type": "array", "items": { "type": "string" } },
-        "score": { "type": "number" },
-        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
-    },
     "Conversation": {
       "title": "Conversation",
       "type": "object",
@@ -82,35 +70,21 @@
     "providers": ["password"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "description": "User profile and state."
-        }
-      },
-      {
-        "path": "/chat_requests/{requestId}",
-        "definition": {
-          "entityName": "ChatRequest",
-          "description": "Requests to start a conversation."
-        }
-      },
-      {
-        "path": "/conversations/{conversationId}",
-        "definition": {
-          "entityName": "Conversation",
-          "description": "Chat metadata."
-        }
-      },
-      {
-        "path": "/conversations/{conversationId}/messages/{messageId}",
-        "definition": {
-          "entityName": "Message",
-          "description": "Individual chat messages."
-        }
-      }
-    ]
+    "/users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/User" },
+      "description": "User profile and state."
+    },
+    "/chat_requests/{requestId}": {
+      "schema": { "$ref": "#/backend/entities/ChatRequest" },
+      "description": "Requests to start a conversation."
+    },
+    "/conversations/{conversationId}": {
+      "schema": { "$ref": "#/backend/entities/Conversation" },
+      "description": "Chat metadata."
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/backend/entities/Message" },
+      "description": "Individual chat messages."
+    }
   }
 }

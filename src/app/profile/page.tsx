@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -13,13 +12,15 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Edit3, X, Save, Camera, Trash2, Image as ImageIcon, Loader2, Heart, User, Upload } from 'lucide-react';
 import Image from 'next/image';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   useFirestore, 
   updateDocumentNonBlocking, 
   addDocumentNonBlocking,
   deleteDocumentNonBlocking,
   useCollection,
-  useMemoFirebase
+  useMemoFirebase,
+  initializeFirebase
 } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useRouter } from 'next/navigation';
@@ -28,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function ProfilePage() {
   const { profile, user, loading } = useProfileAuth();
   const db = useFirestore();
+  const { storage } = initializeFirebase();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -68,31 +70,40 @@ export default function ProfilePage() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user || !storage) return;
 
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > 5 * 1024 * 1024) {
       toast({ 
         variant: "destructive", 
         title: "File Too Large", 
-        description: "Please select an image smaller than 2MB." 
+        description: "Please select an image smaller than 5MB." 
       });
       return;
     }
 
     setIsUploading(true);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
+    try {
+      const storageRef = ref(storage, `profile_pictures/${user.uid}/${Date.now()}_${file.name}`);
+      const uploadResult = await uploadBytes(storageRef, file);
+      const downloadUrl = await getDownloadURL(uploadResult.ref);
+
       const userRef = doc(db, 'users', user.uid);
       updateDocumentNonBlocking(userRef, {
-        photoURL: base64String,
-        profilePhotoUrl: base64String,
+        photoURL: downloadUrl,
+        profilePhotoUrl: downloadUrl,
         updatedAt: new Date().toISOString(),
       });
+      
+      toast({ title: "Avatar Updated", description: "Your photo has been uploaded securely." });
+    } catch (err: any) {
+      toast({ 
+        variant: "destructive", 
+        title: "Upload Failed", 
+        description: err.message || "Could not upload image." 
+      });
+    } finally {
       setIsUploading(false);
-      toast({ title: "Avatar Updated", description: "Your new photo is live!" });
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const triggerFileSelect = () => {
@@ -113,7 +124,6 @@ export default function ProfilePage() {
     <div className="max-w-3xl mx-auto p-4 min-h-screen pb-32 space-y-8 pt-20">
       <Navigation />
       
-      {/* Hidden File Input */}
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -122,7 +132,6 @@ export default function ProfilePage() {
         onChange={handleFileChange} 
       />
 
-      {/* Top Section: Cover & Avatar */}
       <div className="relative animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="relative h-40 md:h-60 w-full bg-gradient-to-r from-[#6A5CFF] to-[#FF4DA6] rounded-[2rem] overflow-hidden group">
           <Image 
