@@ -124,12 +124,13 @@ export default function ProfilePage() {
     <div className="max-w-3xl mx-auto p-4 min-h-screen pb-32 space-y-8 pt-20">
       <Navigation />
       
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        className="hidden" 
-        accept="image/*" 
-        onChange={handleFileChange} 
+      <input
+        type="file"
+        ref={fileInputRef}
+        id="profile-photo-input"
+        className="sr-only"
+        accept="image/*"
+        onChange={handleFileChange}
       />
 
       <div className="relative animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -152,19 +153,15 @@ export default function ProfilePage() {
                   <Loader2 className="w-6 h-6 animate-spin text-white" />
                 </div>
               )}
-              <AvatarImage 
-                src={profile.photoURL} 
-                className="object-cover" 
-              />
+              <AvatarImage src={profile.photoURL} className="object-cover" />
               <AvatarFallback className="font-black bg-primary/20 text-primary">{profile.displayName[0]}</AvatarFallback>
             </Avatar>
-            <button 
-              onClick={triggerFileSelect}
-              disabled={isUploading}
-              className="absolute bottom-1 right-1 bg-white p-2 rounded-full shadow-lg text-primary hover:scale-110 transition-transform active:scale-95 disabled:opacity-50"
+            <label
+              htmlFor="profile-photo-input"
+              className="absolute bottom-1 right-1 bg-white p-2 rounded-full shadow-lg text-primary hover:scale-110 transition-transform active:scale-95 cursor-pointer"
             >
               <Camera className="w-4 h-4" />
-            </button>
+            </label>
           </div>
         </div>
       </div>
@@ -194,9 +191,9 @@ export default function ProfilePage() {
               <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} className="rounded-full text-white/40 hover:text-white mt-2">
                 <Edit3 className="w-4 h-4 mr-2" /> Edit Info
               </Button>
-              <Button variant="ghost" size="sm" onClick={triggerFileSelect} className="rounded-full text-white/40 hover:text-white mt-2">
-                <Upload className="w-4 h-4 mr-2" /> Change Photo
-              </Button>
+              <label htmlFor="profile-photo-input" className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm text-white/40 hover:text-white mt-2 cursor-pointer transition-colors hover:bg-white/5">
+                <Upload className="w-4 h-4" /> Change Photo
+              </label>
             </div>
           </>
         )}

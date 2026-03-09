@@ -168,7 +168,7 @@ export default function VerificationPage() {
       )}
 
       {step === 1 && (
-        <Card className="rounded-[2rem] md:rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white mx-2">
+        <Card className="rounded-[2rem] md:rounded-[2.5rem] border-none shadow-2xl overflow-hidden glass-card mx-2">
           <CardHeader className="bg-primary/5 pb-6 md:pb-8">
             <ShieldCheck className="w-10 h-10 md:w-12 md:h-12 text-primary mb-4" />
             <CardTitle className="text-xl md:text-2xl font-black">Identity Verification</CardTitle>
@@ -198,7 +198,7 @@ export default function VerificationPage() {
 
       {step === 2 && (
         <div className="space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-4 px-2">
-          <Card className="rounded-2xl md:rounded-3xl p-4 md:p-6 border-none shadow-lg bg-white">
+          <Card className="rounded-2xl md:rounded-3xl p-4 md:p-6 border-none shadow-lg glass-card">
             <h3 className="font-black text-[10px] md:text-xs uppercase tracking-widest mb-4">Step 1: Upload ID Card</h3>
             {idCardUrl ? (
               <div className="relative aspect-video rounded-xl md:rounded-2xl overflow-hidden shadow-inner">
@@ -215,7 +215,7 @@ export default function VerificationPage() {
             )}
           </Card>
 
-          <Card className="rounded-2xl md:rounded-3xl p-4 md:p-6 border-none shadow-lg bg-white">
+          <Card className="rounded-2xl md:rounded-3xl p-4 md:p-6 border-none shadow-lg glass-card">
             <h3 className="font-black text-[10px] md:text-xs uppercase tracking-widest mb-4">Step 2: Live Selfie</h3>
             {selfieUrl ? (
               <div className="relative aspect-video rounded-xl md:rounded-2xl overflow-hidden shadow-inner">
@@ -247,7 +247,7 @@ export default function VerificationPage() {
       )}
 
       {step === 3 && (
-        <Card className="rounded-[2.5rem] md:rounded-[3rem] p-10 md:p-16 text-center border-none shadow-2xl bg-white animate-in zoom-in-95 mx-2">
+        <Card className="rounded-[2.5rem] md:rounded-[3rem] p-10 md:p-16 text-center border-none shadow-2xl glass-card animate-in zoom-in-95 mx-2">
           <Sparkles className="w-16 h-16 md:w-20 md:h-20 text-primary mx-auto mb-8 animate-pulse" />
           <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-2">Vera is Reviewing</h2>
           <p className="text-muted-foreground font-medium text-sm md:text-base">Verifying your unique vibes... This usually takes a few seconds.</p>
@@ -255,7 +255,7 @@ export default function VerificationPage() {
       )}
 
       {step === 4 && aiResult && (
-        <Card className="rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10 text-center border-none shadow-2xl bg-white animate-in zoom-in-95 mx-2">
+        <Card className="rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10 text-center border-none shadow-2xl glass-card animate-in zoom-in-95 mx-2">
           {aiResult.isMatch ? (
             <div className="bg-verified/10 w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="w-10 h-10 md:w-12 md:h-12 text-verified" />

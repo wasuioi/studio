@@ -27,7 +27,7 @@ export default function RequestsPage() {
   const { toast } = useToast();
 
   const requestsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.emailVerified) return null;
     return query(
       collection(db, 'chat_requests'),
       where('receiverId', '==', user.uid),
@@ -60,7 +60,7 @@ export default function RequestsPage() {
     toast({ description: "Request declined." });
   };
 
-  if (loading || isLoading) return (
+  if (loading || isLoading || (user && !user.emailVerified)) return (
     <div className="flex h-screen items-center justify-center">
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
     </div>

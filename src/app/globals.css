@@ -38,10 +38,16 @@
   body {
     @apply text-foreground font-body antialiased;
     background: linear-gradient(135deg, #2A004F 0%, #5E1B9A 35%, #C43A8F 70%, #FF7A6B 100%);
-    background-attachment: fixed;
+    background-attachment: scroll;
     position: relative;
     min-height: 100vh;
     overflow-x: hidden;
+  }
+
+  /* Fix: background-attachment: fixed doesn't work on iOS Safari */
+  html {
+    background: linear-gradient(135deg, #2A004F 0%, #5E1B9A 35%, #C43A8F 70%, #FF7A6B 100%);
+    min-height: 100%;
   }
 }
 

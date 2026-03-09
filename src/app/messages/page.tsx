@@ -87,13 +87,13 @@ export default function MessagesPage() {
   const isPremium = profile?.tier === 'premium' || profile?.tier === 'lite';
 
   const convQuery = useMemoFirebase(() => {
-    if (!user?.uid) return null;
+    if (!user?.uid || !user.emailVerified || !profile?.identityVerified) return null;
     return query(
-      collection(db, 'conversations'), 
-      where('participantIds', 'array-contains', user.uid), 
+      collection(db, 'conversations'),
+      where('participantIds', 'array-contains', user.uid),
       orderBy('updatedAt', 'desc')
     );
-  }, [db, user?.uid]);
+  }, [db, user?.uid, user?.emailVerified, profile?.identityVerified]);
 
   const { data: conversations, isLoading: convLoading } = useCollection(convQuery);
 
@@ -159,7 +159,7 @@ export default function MessagesPage() {
     toast({ title: "Frequency Severed", description: "Chat removed." });
   };
 
-  if (loading || convLoading) return (
+  if (loading || convLoading || (user && !user.emailVerified)) return (
     <div className="h-screen flex items-center justify-center">
       <Loader2 className="animate-spin text-primary w-10 h-10" />
     </div>

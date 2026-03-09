@@ -44,7 +44,7 @@ export default function MatchesPage() {
   const [selectedAnalysis, setSelectedAnalysis] = useState<any>(null);
 
   const outgoingQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.emailVerified) return null;
     return query(
       collection(db, 'chat_requests'),
       where('senderId', '==', user.uid)
@@ -54,7 +54,7 @@ export default function MatchesPage() {
   const { data: outgoingRequests } = useCollection<ChatRequest>(outgoingQuery);
 
   const conversationsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.emailVerified) return null;
     return query(
       collection(db, 'conversations'),
       where('participantIds', 'array-contains', user.uid)
@@ -187,7 +187,7 @@ export default function MatchesPage() {
     toast({ title: "Request Sent", description: "Sending your energy to " + match.name });
   };
 
-  if (loading) return (
+  if (loading || (user && !user.emailVerified)) return (
     <div className="flex h-screen items-center justify-center">
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
     </div>

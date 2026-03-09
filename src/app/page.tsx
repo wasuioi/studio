@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Logo } from '@/components/Logo';
-import { Rocket, ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Heart, Zap, Star } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LandingPage() {
@@ -25,57 +25,76 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-      {/* Background radial glow behind the main content area */}
-      <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-0">
-        <div className="w-[120vw] h-[120vh] bg-[radial-gradient(circle_at_center,rgba(255,120,180,0.15),transparent_70%)] opacity-50" />
-      </div>
-      
-      <main className="relative z-10 max-w-sm w-full space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-        {/* Logo Section */}
-        <div className="flex justify-center relative">
-          <div className="absolute inset-0 bg-primary/20 blur-[60px] rounded-full scale-150" />
-          <Logo size="md" showText={false} className="relative transform transition-transform hover:scale-110 duration-500" />
-        </div>
-        
-        {/* Text Section */}
-        <div className="space-y-4">
-          <h1 className="text-5xl md:text-6xl font-semibold tracking-tight text-white leading-[1.05] drop-shadow-sm">
-            Find Your<br />True Vibe
-          </h1>
-          <p className="text-sm md:text-base text-white/70 font-medium px-6 max-w-[300px] mx-auto leading-relaxed">
-            We sell <br />guarantee.
-          </p>
-        </div>
+    <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden">
 
-        {/* Buttons Section */}
-        <div className="space-y-4 pt-4">
-          <Button 
-            size="lg" 
-            className="w-full h-14 md:h-16 rounded-full bg-white text-[#6C3BFF] hover:bg-white/95 text-lg font-black shadow-2xl transition-all duration-300 active:scale-95 border-none"
-            onClick={handleStart}
-          >
-            <Rocket className="mr-2 w-5 h-5 fill-current" />
-            Welcome Back
-          </Button>
-          
-          <Link href="/auth/signup" className="block w-full">
-            <Button 
-              size="lg" 
-              className="w-full h-14 md:h-16 rounded-full bg-gradient-to-r from-[#6A3CFF] to-[#B14BFF] text-white hover:opacity-90 text-lg font-black shadow-xl transition-all duration-300 active:scale-95 border-none"
-            >
-              Sign Up
-            </Button>
-          </Link>
-        </div>
+      {/* Ambient background orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-purple-600/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[-5%] right-[-10%] w-[50vw] h-[50vw] bg-pink-500/20 rounded-full blur-[100px] pointer-events-none" />
 
-        {/* Trust Footer */}
-        <div className="pt-8 flex flex-col items-center gap-2">
-          <div className="inline-flex items-center gap-2 text-white/40 text-[10px] font-bold uppercase tracking-[0.25em]">
-            <ShieldCheck className="w-4 h-4 text-[#FF6B6B]" />
-            Verified profiles only.<br className="md:hidden" /> No fake accounts.
+      <main className="relative z-10 w-full max-w-sm mx-auto px-6 flex flex-col items-center gap-10 py-16">
+
+        {/* Logo */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/30 blur-[80px] rounded-full scale-[1.8]" />
+            <Logo size="lg" showText={false} className="relative drop-shadow-2xl" />
+          </div>
+          <div className="space-y-1 text-center">
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
+              Find Your<br />
+              <span className="truevibe-text-gradient">True Vibe</span>
+            </h1>
+            <p className="text-white/50 text-sm font-medium">
+              Real connections. Real people. No fakes.
+            </p>
           </div>
         </div>
+
+        {/* Feature pills */}
+        <div className="flex flex-wrap justify-center gap-2">
+          {[
+            { icon: Zap, label: 'AI Matching' },
+            { icon: ShieldCheck, label: 'Verified Only' },
+            { icon: Heart, label: 'Real Vibes' },
+            { icon: Star, label: 'Personality AI' },
+          ].map(({ icon: Icon, label }) => (
+            <div
+              key={label}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/60 text-xs font-bold"
+            >
+              <Icon className="w-3 h-3 text-primary" />
+              {label}
+            </div>
+          ))}
+        </div>
+
+        {/* CTA Buttons */}
+        <div className="w-full space-y-3">
+          <Link href="/auth/signup" className="block w-full">
+            <Button
+              size="lg"
+              className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#6A3CFF] to-[#FF4DA6] text-white text-base font-black shadow-2xl shadow-purple-900/40 hover:opacity-90 transition-all duration-300 active:scale-95 border-none"
+            >
+              Create Account
+            </Button>
+          </Link>
+
+          <Button
+            size="lg"
+            variant="ghost"
+            className="w-full h-14 rounded-2xl bg-white/8 border border-white/15 text-white text-base font-black backdrop-blur-sm hover:bg-white/15 transition-all duration-300 active:scale-95"
+            onClick={handleStart}
+          >
+            Sign In
+          </Button>
+        </div>
+
+        {/* Trust badge */}
+        <div className="flex items-center gap-2 text-white/30 text-[10px] font-bold uppercase tracking-widest">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          Verified profiles only · No fake accounts
+        </div>
+
       </main>
     </div>
   );

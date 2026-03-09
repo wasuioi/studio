@@ -54,11 +54,11 @@ export function Navigation() {
       {/* 📱 Mobile Top Header */}
       <nav className="fixed top-0 left-0 right-0 z-[100] md:hidden flex h-16 items-center justify-between px-4 bg-black/40 backdrop-blur-3xl border-b border-white/5">
         <Link href="/" className="flex items-center justify-center shrink-0">
-          <Image 
-            src="/finallogo.png" 
-            alt="Truevibe Nav Logo" 
-            width={32} 
-            height={32} 
+          <Image
+            src="/finallogo.png"
+            alt="Truevibe Nav Logo"
+            width={72}
+            height={72}
             className="object-contain"
             priority
           />
@@ -110,11 +110,11 @@ export function Navigation() {
       <nav className="hidden md:flex fixed top-0 left-0 right-0 z-[100] h-16 items-center justify-between px-8 bg-black/40 backdrop-blur-3xl border-b border-white/5">
         <div className="flex items-center w-[180px]">
           <Link href="/" className="flex items-center">
-            <Image 
-              src="/alllogo.png" 
-              alt="Truevibe Nav Logo" 
-              width={40} 
-              height={40} 
+            <Image
+              src="/alllogo.png"
+              alt="Truevibe Nav Logo"
+              width={72}
+              height={72}
               className="object-contain"
               priority
             />
