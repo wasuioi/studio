@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth as useProfileAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Edit3, X, Save, Camera, Trash2, Image as ImageIcon, Loader2, Heart, User } from 'lucide-react';
+import { Edit3, X, Save, Camera, Trash2, Image as ImageIcon, Loader2, Heart, User, Upload } from 'lucide-react';
 import Image from 'next/image';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { 
@@ -23,17 +23,21 @@ import {
 } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ProfilePage() {
   const { profile, user, loading } = useProfileAuth();
   const db = useFirestore();
   const router = useRouter();
+  const { toast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [editedBio, setEditedBio] = useState('');
   const [newPostContent, setNewPostContent] = useState('');
-  const [showPhotoSelector, setShowPhotoSelector] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const postsQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -59,28 +63,40 @@ export default function ProfilePage() {
       updatedAt: new Date().toISOString(),
     });
     setIsEditing(false);
+    toast({ title: "Profile Updated", description: "Your vibe has been saved." });
   };
 
-  const handleUpdatePhoto = (url: string) => {
-    if (!user || !profile) return;
-    const userRef = doc(db, 'users', user.uid);
-    updateDocumentNonBlocking(userRef, {
-      photoURL: url,
-      profilePhotoUrl: url,
-      updatedAt: new Date().toISOString(),
-    });
-    setShowPhotoSelector(false);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ 
+        variant: "destructive", 
+        title: "File Too Large", 
+        description: "Please select an image smaller than 2MB." 
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      const userRef = doc(db, 'users', user.uid);
+      updateDocumentNonBlocking(userRef, {
+        photoURL: base64String,
+        profilePhotoUrl: base64String,
+        updatedAt: new Date().toISOString(),
+      });
+      setIsUploading(false);
+      toast({ title: "Avatar Updated", description: "Your new photo is live!" });
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleCreatePost = () => {
-    if (!user || !newPostContent.trim()) return;
-    const postsRef = collection(db, 'users', user.uid, 'posts');
-    addDocumentNonBlocking(postsRef, {
-      userId: user.uid,
-      content: newPostContent,
-      createdAt: new Date().toISOString(),
-    });
-    setNewPostContent('');
+  const triggerFileSelect = () => {
+    fileInputRef.current?.click();
   };
 
   if (loading) return (
@@ -97,6 +113,15 @@ export default function ProfilePage() {
     <div className="max-w-3xl mx-auto p-4 min-h-screen pb-32 space-y-8 pt-20">
       <Navigation />
       
+      {/* Hidden File Input */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept="image/*" 
+        onChange={handleFileChange} 
+      />
+
       {/* Top Section: Cover & Avatar */}
       <div className="relative animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="relative h-40 md:h-60 w-full bg-gradient-to-r from-[#6A5CFF] to-[#FF4DA6] rounded-[2rem] overflow-hidden group">
@@ -104,7 +129,7 @@ export default function ProfilePage() {
             src={coverImage?.imageUrl || "https://picsum.photos/seed/vibe_cover/1200/400"} 
             alt="Cover" 
             fill 
-            data-ai-hint={coverImage?.imageHint || "abstract purple"}
+            data-ai-hint="lifestyle blurred background"
             className="object-cover opacity-30 blur-sm"
           />
           <div className="absolute inset-0 bg-black/20" />
@@ -112,17 +137,22 @@ export default function ProfilePage() {
         
         <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center">
           <div className="relative group">
-            <Avatar className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-background shadow-2xl overflow-hidden bg-muted">
+            <Avatar className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-background shadow-2xl overflow-hidden bg-muted relative">
+              {isUploading && (
+                <div className="absolute inset-0 z-10 bg-black/40 flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-white" />
+                </div>
+              )}
               <AvatarImage 
                 src={profile.photoURL} 
                 className="object-cover" 
-                data-ai-hint="portrait person"
               />
-              <AvatarFallback className="font-black bg-primary/20">{profile.displayName[0]}</AvatarFallback>
+              <AvatarFallback className="font-black bg-primary/20 text-primary">{profile.displayName[0]}</AvatarFallback>
             </Avatar>
             <button 
-              onClick={() => setShowPhotoSelector(true)}
-              className="absolute bottom-1 right-1 bg-white p-2 rounded-full shadow-lg text-primary hover:scale-110 transition-transform"
+              onClick={triggerFileSelect}
+              disabled={isUploading}
+              className="absolute bottom-1 right-1 bg-white p-2 rounded-full shadow-lg text-primary hover:scale-110 transition-transform active:scale-95 disabled:opacity-50"
             >
               <Camera className="w-4 h-4" />
             </button>
@@ -133,8 +163,8 @@ export default function ProfilePage() {
       <div className="pt-12 text-center space-y-2">
         {isEditing ? (
           <div className="max-w-md mx-auto space-y-4">
-            <Input value={editedName} onChange={(e) => setEditedName(e.target.value)} className="text-center font-black text-xl md:text-2xl h-12 rounded-xl bg-white/10 border-none shadow-inner" />
-            <Textarea value={editedBio} onChange={(e) => setEditedBio(e.target.value)} className="text-center rounded-xl bg-white/10 border-none shadow-inner min-h-[80px]" />
+            <Input value={editedName} onChange={(e) => setEditedName(e.target.value)} className="text-center font-black text-xl md:text-2xl h-12 rounded-xl bg-white/10 border-none shadow-inner text-white" />
+            <Textarea value={editedBio} onChange={(e) => setEditedBio(e.target.value)} className="text-center rounded-xl bg-white/10 border-none shadow-inner min-h-[80px] text-white" />
             <div className="flex gap-2 justify-center">
               <Button onClick={handleSaveProfile} size="sm" className="truevibe-pill-button px-8"><Save className="w-4 h-4 mr-2" /> Save</Button>
               <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} className="rounded-full h-10 w-10 p-0 text-white/60"><X className="w-4 h-4" /></Button>
@@ -145,15 +175,20 @@ export default function ProfilePage() {
             <div className="flex items-center justify-center gap-2">
               <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">{profile.displayName}</h1>
               {profile.identityVerified ? (
-                <Badge className="bg-verified text-white rounded-full font-black px-3 py-0.5 text-[10px] uppercase tracking-widest">VERIFIED</Badge>
+                <Badge className="bg-verified text-white rounded-full font-black px-3 py-0.5 text-[10px] uppercase tracking-widest border-none">VERIFIED</Badge>
               ) : (
                 <button onClick={() => router.push('/verification')} className="text-[10px] font-black uppercase text-accent hover:underline">Verify Soul</button>
               )}
             </div>
             <p className="text-sm md:text-base text-white/60 max-w-md mx-auto font-medium">{profile.bio || "Just joined TrueVibe! Looking for real vibes."}</p>
-            <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} className="rounded-full text-white/40 hover:text-white mt-2">
-              <Edit3 className="w-4 h-4 mr-2" /> Edit Profile
-            </Button>
+            <div className="flex justify-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} className="rounded-full text-white/40 hover:text-white mt-2">
+                <Edit3 className="w-4 h-4 mr-2" /> Edit Info
+              </Button>
+              <Button variant="ghost" size="sm" onClick={triggerFileSelect} className="rounded-full text-white/40 hover:text-white mt-2">
+                <Upload className="w-4 h-4 mr-2" /> Change Photo
+              </Button>
+            </div>
           </>
         )}
       </div>
@@ -201,7 +236,6 @@ export default function ProfilePage() {
               <AvatarImage 
                 src={profile.photoURL} 
                 className="object-cover" 
-                data-ai-hint="portrait person"
               />
               <AvatarFallback className="font-black">{profile.displayName[0]}</AvatarFallback>
             </Avatar>
@@ -210,7 +244,7 @@ export default function ProfilePage() {
                 placeholder="Share your current vibe..." 
                 value={newPostContent}
                 onChange={(e) => setNewPostContent(e.target.value)}
-                className="min-h-[100px] border-none bg-white/5 rounded-2xl resize-none focus-visible:ring-primary/20 p-4 text-sm font-medium"
+                className="min-h-[100px] border-none bg-white/5 rounded-2xl resize-none focus-visible:ring-primary/20 p-4 text-sm font-medium text-white"
               />
               <div className="flex justify-between items-center">
                 <Button variant="ghost" size="sm" className="rounded-full text-white/40 font-bold hover:bg-white/5">
@@ -237,7 +271,7 @@ export default function ProfilePage() {
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
                       <Avatar className="w-10 h-10 rounded-full border border-white/10 overflow-hidden">
-                        <AvatarImage src={profile.photoURL} className="object-cover" data-ai-hint="portrait person" />
+                        <AvatarImage src={profile.photoURL} className="object-cover" />
                         <AvatarFallback className="font-black">{profile.displayName[0]}</AvatarFallback>
                       </Avatar>
                       <div>
@@ -256,34 +290,18 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
-
-      {showPhotoSelector && (
-        <div className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="glass-card rounded-[2.5rem] p-8 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 max-h-[80vh] flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black text-white">Choose Avatar</h3>
-              <Button variant="ghost" size="icon" className="rounded-full text-white/40" onClick={() => setShowPhotoSelector(false)}><X className="w-6 h-6" /></Button>
-            </div>
-            <div className="grid grid-cols-2 gap-4 overflow-y-auto scrollbar-hide py-2">
-              {PlaceHolderImages.filter(img => img.id.startsWith('user')).map((img) => (
-                <button 
-                  key={img.id} 
-                  className="relative aspect-square rounded-[1.5rem] overflow-hidden group border-2 border-transparent hover:border-primary transition-all shadow-lg" 
-                  onClick={() => handleUpdatePhoto(img.imageUrl)}
-                >
-                  <Image 
-                    src={img.imageUrl} 
-                    alt={img.description} 
-                    fill 
-                    data-ai-hint={img.imageHint}
-                    className="object-cover transition-transform duration-500 group-hover:scale-110" 
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
+
+  function handleCreatePost() {
+    if (!user || !newPostContent.trim()) return;
+    const postsRef = collection(db, 'users', user.uid, 'posts');
+    addDocumentNonBlocking(postsRef, {
+      userId: user.uid,
+      content: newPostContent,
+      createdAt: new Date().toISOString(),
+    });
+    setNewPostContent('');
+    toast({ title: "Update Shared", description: "Your vibe has resonated." });
+  }
 }
