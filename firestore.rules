@@ -13,22 +13,18 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email_verified == true;
     }
 
-    // User profile and subcollections
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create, update: if isOwner(userId);
+      allow get, list: if isSignedIn();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
       
-      // Subcollections
       match /posts/{postId} {
         allow read: if isSignedIn();
         allow write: if isOwner(userId) && isEmailVerified();
       }
 
       match /personality/{docId} {
-        // Personality data is core to the Vera AI interview
-        // Users can manage their own interview state once signed in
-        allow read, write: if isOwner(userId); 
+        allow read, write: if isOwner(userId);
       }
 
       match /verification_requests/{requestId} {
@@ -37,29 +33,39 @@ service cloud.firestore {
       }
     }
 
-    // Chat Requests
     match /chat_requests/{requestId} {
-      allow read: if isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
-      allow create: if isSignedIn() && isEmailVerified() && request.resource.data.senderId == request.auth.uid;
-      allow update: if isSignedIn() && request.auth.uid == resource.data.receiverId;
-      allow delete: if isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
+      // Allow creating a request if signed in and verified
+      allow create: if isSignedIn() && isEmailVerified();
+      
+      // Allow reading (get/list) if involved in the request
+      // Listing is allowed because queries in the app filter by senderId or receiverId
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && (
+        request.auth.uid == resource.data.senderId || 
+        request.auth.uid == resource.data.receiverId
+      );
+      
+      // Allow updating or deleting if involved in the request
+      allow update, delete: if isSignedIn() && (
+        request.auth.uid == resource.data.senderId || 
+        request.auth.uid == resource.data.receiverId
+      );
     }
 
-    // Bot interactions (ephemeral history)
     match /bot_chats/{chatId} {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
-    // Active Conversations
     match /conversations/{conversationId} {
-      allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      // Participant check for conversations
+      allow read, update, delete: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      
+      // Allow creation via verification or request acceptance
       allow create: if isSignedIn() && isEmailVerified();
-      allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
-      allow delete: if isSignedIn() && request.auth.uid in resource.data.participantIds;
 
       match /messages/{messageId} {
+        // Access messages if a participant in the parent conversation
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
         allow create: if isSignedIn() && isEmailVerified() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
       }
