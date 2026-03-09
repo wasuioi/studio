@@ -1,4 +1,4 @@
-# **App Name**: HarmonyAI
+# **App Name**: TrueVibe
 
 ## Core Features:
 
