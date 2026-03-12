@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(netstat:*)",
+      "Bash(npx next:*)",
+      "Bash(cmd:*)",
+      "Bash(for f in /c/truevibe/truevibeversion2/studio/src/app/bot/page.tsx /c/truevibe/truevibeversion2/studio/src/app/matches/page.tsx /c/truevibe/truevibeversion2/studio/src/app/messages/page.tsx /c/truevibe/truevibeversion2/studio/src/app/profile/page.tsx /c/truevibe/truevibeversion2/studio/src/app/requests/page.tsx /c/truevibe/truevibeversion2/studio/src/app/verification/page.tsx)",
+      "Bash(do echo \"=== $f ===\")",
+      "Read(//c/truevibe/truevibeversion2/**)",
+      "Bash(done)",
+      "Bash(powershell:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node:*)",
+      "Bash(npx firebase-tools:*)"
+    ]
+  }
+}
