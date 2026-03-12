@@ -1,0 +1,90 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "type": "object",
+      "description": "The primary user record containing authentication and profile state.",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string", "format": "uri" },
+        "bio": { "type": "string" },
+        "emailVerified": { "type": "boolean" },
+        "identityVerified": { "type": "boolean" },
+        "profileCompleted": { "type": "boolean" },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "topMatches": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "personalityProfile": {
+          "type": "object",
+          "properties": {
+            "traits": { "type": "object" },
+            "summary": { "type": "string" }
+          }
+        }
+      },
+      "required": ["id", "email", "emailVerified", "identityVerified", "createdAt"]
+    },
+    "ChatRequest": {
+      "title": "ChatRequest",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "matchScore": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "expired"] },
+        "reason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "participantIds": { "type": "array", "items": { "type": "string" } },
+        "lastMessage": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["password"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/User" },
+      "description": "User profile and state."
+    },
+    "/chat_requests/{requestId}": {
+      "schema": { "$ref": "#/backend/entities/ChatRequest" },
+      "description": "Requests to start a conversation."
+    },
+    "/conversations/{conversationId}": {
+      "schema": { "$ref": "#/backend/entities/Conversation" },
+      "description": "Chat metadata."
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/backend/entities/Message" },
+      "description": "Individual chat messages."
+    }
+  }
+}
