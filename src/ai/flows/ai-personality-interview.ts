@@ -5,7 +5,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import z from 'genkit';
+import { z } from 'genkit';
 
 const AiPersonalityInterviewInputSchema = z.object({
   chatHistory: z.array(z.object({
