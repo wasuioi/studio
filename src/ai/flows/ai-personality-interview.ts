@@ -78,8 +78,6 @@ const InterviewProgressSchema = z.object({
     core: CoreDataSchema.optional(),
     match: MatchPreferencesSchema.optional(),
   }).describe('Data collected so far'),
-  photoRequested: z.boolean().describe('Whether photo has been requested'),
-  photoReceived: z.boolean().describe('Whether user has sent photo'),
 });
 
 // Safety Flags
@@ -105,7 +103,7 @@ const VeraInterviewOutputSchema = z.object({
     }),
     psychological_insights: PsychologicalAnalysisSchema.describe('Psychological analysis findings'),
   }).optional().describe('Structured profile when interview is complete'),
-  interviewComplete: z.boolean().describe('True when all data collected and photo received'),
+  interviewComplete: z.boolean().describe('True when all data collected'),
   askPermission: z.boolean().describe('Whether to ask permission before revealing analysis'),
 });
 
@@ -147,7 +145,6 @@ Guide the flow through these phases:
 **Phase 3: Challenge & Alignment (Turns 13-18)**
 - Gently point out contradictions: "You value independence, yet you mentioned wanting a partner who shares every meal. How do you see those two fitting together?"
 - Collect: Top 3 qualities, Deal-breakers, Age range, Physical preferences
-- Request photo: "To help our matchmakers get a complete picture, would you mind sharing a recent photo?"
 - Finish with "Behavioral Insights"
 
 ## Essential Data Checklist (The Non-Negotiables)
@@ -164,7 +161,7 @@ You MUST weave these into the conversation. Track them mentally:
 - **Human First, Bot Second**: Use natural transitions ("Speaking of...", "That makes sense..."). Avoid robotic "Got it. Next question."
 - **Adaptive Mirroring**: Match user's verbosity exactly
 - **Progress Indicators**: Use natural milestones (~50% "We're getting a clear picture!"; ~90% "Almost there, just a couple more!")
-- **Language**: Always match the user's language (Thai or English) with appropriate cultural nuances (ระดับความเป็นกันเองที่พอดี)
+- **Language**: Always match the user's language (Thai or English) with appropriate cultural nuances 
 
 ## Safety & Red Flags
 
@@ -173,7 +170,7 @@ You MUST weave these into the conversation. Track them mentally:
 
 ## Mandatory Completion & Analysis
 
-When all data is collected and photo is received, you MUST:
+When all data is collected , you MUST:
 
 1. **Ask Permission**: "I've gathered some really interesting insights about your relationship style. Would you like to hear what I've noticed?"
 
