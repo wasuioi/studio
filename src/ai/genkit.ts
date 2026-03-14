@@ -4,7 +4,7 @@ import { googleAI } from '@genkit-ai/google-genai';
 export const ai = genkit({
   plugins: [
     googleAI({
-      apiKey: 'AIzaSyBmtOvSOgnlwNrLpk5AphrI4DH5sQfXyXg', 
+      apiKey: 'AIzaSyCE43nSI5UHlZlWKRL5lZjgcjxHYZT51mw', 
     }),
   ],
   // Use the standard model identifier to ensure compatibility and avoid 404 errors.
