@@ -1,9 +1,19 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resendApiKey = process.env.RESEND_API_KEY;
+
+if (!resendApiKey) {
+  console.warn('RESEND_API_KEY is not set. Email verification will not work.');
+}
+
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 export async function POST(request: Request) {
+  if (!resend) {
+    return NextResponse.json({ error: 'Email service not configured' }, { status: 503 });
+  }
+
   try {
     const { email, code, displayName } = await request.json();
 

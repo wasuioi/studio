@@ -107,7 +107,7 @@ export default function MatchesPage() {
           name: profile.displayName || profile.name,
           persona: profile.personalityProfile.user_persona,
           ideal_partner: profile.personalityProfile.ideal_partner,
-          weights: profile.personalityProfile.weights
+          psychological_insights: profile.personalityProfile.psychological_insights
         },
         potentialMatches: potentialMatches.map(p => ({
           id: p.id,
@@ -121,7 +121,7 @@ export default function MatchesPage() {
           const fullProfile = potentialMatches.find(p => p.id === m.targetUserId);
           return {
             ...fullProfile,
-            score: m.score,
+            score: m.finalScore,
             reason: m.reason
           };
         })

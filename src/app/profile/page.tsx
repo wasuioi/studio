@@ -271,7 +271,9 @@ export default function ProfilePage() {
               <p className="text-white/30 font-bold italic text-sm">No updates yet. Start the vibe!</p>
             </div>
           ) : (
-            posts?.map((post) => (
+            posts?.map((post) => {
+              if (!user) return null;
+              return (
               <Card key={post.id} className="glass-card rounded-[2rem] overflow-hidden animate-in fade-in slide-in-from-bottom-6 duration-500">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
@@ -292,7 +294,8 @@ export default function ProfilePage() {
                   <p className="text-sm leading-relaxed text-white/80 font-medium">{post.content}</p>
                 </CardContent>
               </Card>
-            ))
+              );
+            })
           )}
         </div>
       </div>

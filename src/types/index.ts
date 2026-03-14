@@ -45,6 +45,18 @@ export interface UserProfile {
       humor: number;
       physicalActivity: number;
     };
+    psychological_insights?: {
+      attachmentStyle?: string;
+      coreValueVsSurfaceDesire?: {
+        surface?: string;
+        core?: string;
+      };
+      shadowSelf?: {
+        silentDealBreakers?: string[];
+        recurringNeeds?: string;
+      };
+      behavioralInsights?: string;
+    };
     readiness_score: number;
   };
 }
