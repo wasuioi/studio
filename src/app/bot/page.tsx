@@ -50,16 +50,65 @@ export default function AIProfileBot() {
     return doc(db, 'users', user.uid, 'personality', 'personality_data');
   }, [db, user]);
 
-  const { data: personalityData } = useDoc<any>(personalityRef);
+  const { data: personalityData, isLoading: personalityLoading } = useDoc<any>(personalityRef);
 
   const [sessionMessages, setSessionMessages] = useState<any[]>([]);
+  // isRestoring: true until we've confirmed state from localStorage or Firestore.
+  // Prevents language-selection screen from flashing before data loads —
+  // which could be accidentally clicked and overwrite existing Firestore history.
+  const [isRestoring, setIsRestoring] = useState(true);
+  const initializedRef = useRef(false);
 
+  // 1. Restore from localStorage instantly (survives browser close).
+  //    Keys are namespaced by userId to prevent cross-user leaks on shared devices.
   useEffect(() => {
+    if (initializedRef.current || !user) return;
+    try {
+      const key = `vera_chat_${user.uid}`;
+      const cached = localStorage.getItem(key);
+      const cachedLang = localStorage.getItem(`${key}_lang`) as 'en' | 'th' | null;
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSessionMessages(parsed);
+          if (cachedLang) setSelectedLanguage(cachedLang);
+          initializedRef.current = true;
+          setIsRestoring(false);
+          return;
+        }
+      }
+    } catch {}
+    // No local cache — wait for Firestore below
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 2. Persist messages to localStorage on every change
+  useEffect(() => {
+    if (!user || sessionMessages.length === 0) return;
+    try {
+      localStorage.setItem(`vera_chat_${user.uid}`, JSON.stringify(sessionMessages));
+    } catch {}
+  }, [sessionMessages, user]);
+
+  // 3. Persist language to localStorage
+  useEffect(() => {
+    if (!user || !selectedLanguage) return;
+    try {
+      localStorage.setItem(`vera_chat_${user.uid}_lang`, selectedLanguage);
+    } catch {}
+  }, [selectedLanguage, user]);
+
+  // 4. Load from Firestore (fallback when localStorage has no cache)
+  useEffect(() => {
+    if (initializedRef.current) return;
+    if (!personalityRef) return;
+    if (personalityLoading) return;
     if (personalityData?.chatHistory && personalityData.chatHistory.length > 0) {
       setSessionMessages(personalityData.chatHistory);
       setSelectedLanguage(personalityData.preferredLanguage === 'Thai' ? 'th' : 'en');
     }
-  }, [personalityData]);
+    initializedRef.current = true;
+    setIsRestoring(false);
+  }, [personalityData, personalityLoading, personalityRef]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -125,9 +174,15 @@ export default function AIProfileBot() {
       snap2.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
       snap3.forEach(d => deleteDocumentNonBlocking(doc(db, 'conversations', d.id)));
 
+      initializedRef.current = false;
       setSessionMessages([]);
       setSelectedLanguage(null);
       setInput('');
+      setIsRestoring(false);
+      try {
+        localStorage.removeItem(`vera_chat_${user.uid}`);
+        localStorage.removeItem(`vera_chat_${user.uid}_lang`);
+      } catch {}
 
       toast({
         title: "Profile Reset",
@@ -270,7 +325,11 @@ export default function AIProfileBot() {
       </div>
 
       <div className="flex-1 glass-card rounded-[2.5rem] overflow-hidden flex flex-col mb-4 relative h-[calc(100vh-200px)] min-h-[500px]">
-        {!selectedLanguage ? (
+        {isRestoring || personalityLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : !selectedLanguage ? (
           <div className="flex-1 flex flex-col items-center justify-center p-10 text-center space-y-8 animate-in fade-in zoom-in-95">
             <div className="bg-primary/10 p-8 rounded-full shadow-[0_0_40px_rgba(106,92,255,0.1)]">
               <Globe className="w-12 h-12 text-primary" />
