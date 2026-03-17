@@ -38,14 +38,19 @@ export interface UserProfile {
       summary: string;
       tags: string[];
     };
-    weights: {
-      career: number;
-      lifestyle: number;
-      emotionalIntelligence: number;
-      humor: number;
-      physicalActivity: number;
-    };
     readiness_score: number;
+    psychological_insights?: {
+      attachmentStyle?: string;
+      coreValueVsSurfaceDesire?: {
+        surface?: string;
+        core?: string;
+      };
+      shadowSelf?: {
+        silentDealBreakers?: string[];
+        recurringNeeds?: string;
+      };
+      behavioralInsights?: string;
+    };
   };
 }
 
