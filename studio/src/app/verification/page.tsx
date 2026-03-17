@@ -11,7 +11,6 @@ import { useFirestore, updateDocumentNonBlocking, setDocumentNonBlocking } from 
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
-import { verifyIdentity } from '@/ai/flows/verify-identity-flow';
 import { cn } from '@/lib/utils';
 
 export default function VerificationPage() {
@@ -81,10 +80,16 @@ export default function VerificationPage() {
     setStep(3);
     
     try {
-      const result = await verifyIdentity({
-        idCardPhotoUri: idCardUrl,
-        selfiePhotoUri: selfieUrl,
+      const res = await fetch('/api/verify-identity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idCardPhotoUri: idCardUrl, selfiePhotoUri: selfieUrl }),
       });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error ?? `HTTP ${res.status}`);
+      }
+      const result = await res.json();
 
       setAiResult(result);
 
@@ -111,7 +116,9 @@ export default function VerificationPage() {
 
       setStep(4);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Verification failed.' });
+      console.error('[Verification error]', error);
+      const msg = error instanceof Error ? error.message : 'Verification failed. Please try again.';
+      toast({ variant: 'destructive', title: 'Error', description: msg.slice(0, 120) });
       setStep(2);
     } finally {
       setIsSubmitting(false);
@@ -230,12 +237,29 @@ export default function VerificationPage() {
                 </div>
                 <canvas ref={canvasRef} className="hidden" />
                 <Button className="w-full h-12 md:h-14 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-xs" onClick={handleCaptureSelfie}>Capture Photo</Button>
+                <Button variant="ghost" className="w-full h-10 rounded-xl font-bold text-xs text-muted-foreground" onClick={() => setIsCameraActive(false)}>Cancel</Button>
               </div>
             ) : (
-              <div className="border-2 border-dashed border-primary/20 rounded-xl md:rounded-2xl p-8 md:p-10 text-center cursor-pointer hover:bg-primary/5 transition-all group" onClick={() => setIsCameraActive(true)}>
-                <Camera className="w-8 h-8 md:w-10 md:h-10 mx-auto mb-3 text-primary/40 group-hover:text-primary transition-colors" />
-                <p className="font-black text-xs md:text-sm uppercase tracking-tight">Open Camera</p>
-                <p className="text-[9px] md:text-[10px] text-muted-foreground font-bold mt-1">WEBCAM REQUIRED</p>
+              <div className="space-y-3">
+                <div className="border-2 border-dashed border-primary/20 rounded-xl md:rounded-2xl p-6 md:p-8 text-center cursor-pointer hover:bg-primary/5 transition-all group" onClick={() => setIsCameraActive(true)}>
+                  <Camera className="w-8 h-8 md:w-10 md:h-10 mx-auto mb-3 text-primary/40 group-hover:text-primary transition-colors" />
+                  <p className="font-black text-xs md:text-sm uppercase tracking-tight">Open Camera</p>
+                  <p className="text-[9px] md:text-[10px] text-muted-foreground font-bold mt-1">Take a live selfie</p>
+                </div>
+                <div className="text-center text-[10px] text-muted-foreground font-bold uppercase tracking-widest">— or —</div>
+                <label className="border-2 border-dashed border-primary/10 rounded-xl md:rounded-2xl p-4 md:p-6 text-center cursor-pointer block hover:bg-primary/5 transition-all group">
+                  <input type="file" accept="image/*" capture="user" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => setSelfieUrl(reader.result as string);
+                      reader.readAsDataURL(file);
+                    }
+                  }} />
+                  <Upload className="w-6 h-6 mx-auto mb-2 text-primary/30 group-hover:text-primary transition-colors" />
+                  <p className="font-black text-[10px] md:text-xs uppercase tracking-tight">Upload Selfie Photo</p>
+                  <p className="text-[9px] text-muted-foreground font-bold mt-1">If camera is blocked</p>
+                </label>
               </div>
             )}
           </Card>

@@ -48,22 +48,20 @@ const prompt = ai.definePrompt({
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
     ],
   },
-  prompt: `You are an expert identity verification specialist. Your task is to compare two images: 
-1. An ID card (Passport, Driver's License, or National ID).
-2. A live selfie of the person who provided the ID.
+  prompt: `You are an identity document verification assistant. You will review two images submitted by a user during an account verification process.
 
-Your goal is to determine if the person in the selfie is the same person shown on the ID card.
+Image 1 - Government-issued ID document (Passport, Driver's License, or National ID):
+{{media url=idCardPhotoUri}}
 
-Guidelines:
-- Analyze facial features (eyes, nose, mouth, face shape) meticulously.
-- Account for differences in lighting, angles, and potential aging if the ID is old.
-- Check if the ID card looks like a legitimate government document.
-- If the faces do not match, or if the ID card appears fraudulent or unreadable, set isMatch to false.
+Image 2 - User selfie taken at time of submission:
+{{media url=selfiePhotoUri}}
 
-ID Card Photo: {{media url=idCardPhotoUri}}
-Selfie Photo: {{media url=selfiePhotoUri}}
+Please assess the following:
+1. Does Image 1 appear to be a legitimate government-issued ID document? (Is text readable? Does it have document features like a photo, name, and official markings?)
+2. Does Image 2 appear to be a real photo of a person (not a photo of a photo, not an illustration)?
+3. Based on visual appearance, do the person in Image 1 and Image 2 appear to be the same individual?
 
-Provide a detailed reason for your decision.`,
+Return your assessment with isMatch (true/false), a confidenceScore (0–1), and a clear reason.`,
 });
 
 const verifyIdentityFlow = ai.defineFlow(
