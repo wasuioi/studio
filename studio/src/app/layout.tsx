@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
 import { Toaster } from '@/components/ui/toaster';
@@ -9,6 +9,13 @@ import { BackgroundEffects } from '@/components/BackgroundEffects';
 export const metadata: Metadata = {
   title: 'TrueVibe - Real Connections, Real Vibes',
   description: 'AI-powered relationship companion helping you find meaningful connections through authentic vibe analysis.',
+};
+
+// Prevent iOS rubber-band overscroll showing white background
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

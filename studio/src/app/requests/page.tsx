@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
 import { Navigation } from '@/components/Navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,31 +24,42 @@ import { DatePlannerModal } from '@/components/DatePlannerModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 export default function RequestsPage() {
-  const { user, profile, loading } = useAuth();
+  // useUser() for fast auth gate (Firebase auth only, no Firestore round-trip)
+  const { user: authUser, isUserLoading } = useUser();
+  // useAuth() for profile data (verification check), but don't block full page on it
+  const { user, profile } = useAuth();
+  const router = useRouter();
   const db = useFirestore();
+
+  // Redirect unauthenticated users without blocking the whole page
+  useEffect(() => {
+    if (!isUserLoading && !authUser) {
+      router.push('/auth/login');
+    }
+  }, [isUserLoading, authUser, router]);
   const { toast } = useToast();
   const [planningRequest, setPlanningRequest] = useState<ChatRequest | null>(null);
   const [showVerifyGate, setShowVerifyGate] = useState(false);
 
-  // Pending invites (not yet accepted)
+  // Queries use authUser (fast) so they start as soon as Firebase auth resolves,
+  // without waiting for the Firestore profile round-trip.
   const requestsQuery = useMemoFirebase(() => {
-    if (!user?.emailVerified) return null;
+    if (!authUser?.emailVerified) return null;
     return query(
       collection(db, 'chat_requests'),
-      where('receiverId', '==', user.uid),
+      where('receiverId', '==', authUser.uid),
       where('status', '==', 'pending')
     );
-  }, [db, user]);
+  }, [db, authUser]);
 
-  // Accepted dates (waiting_sender or planned)
   const acceptedQuery = useMemoFirebase(() => {
-    if (!user?.emailVerified) return null;
+    if (!authUser?.emailVerified) return null;
     return query(
       collection(db, 'chat_requests'),
-      where('receiverId', '==', user.uid),
+      where('receiverId', '==', authUser.uid),
       where('status', '==', 'accepted')
     );
-  }, [db, user]);
+  }, [db, authUser]);
 
   const { data: incomingRequests, isLoading } = useCollection<ChatRequest>(requestsQuery);
   const { data: acceptedDates, isLoading: isLoadingAccepted } = useCollection<ChatRequest>(acceptedQuery);
@@ -81,12 +94,14 @@ export default function RequestsPage() {
     }
   };
 
-  if (loading || isLoading || isLoadingAccepted || (user && !user.emailVerified)) return (
+  // Only hard-block on auth state check (fast). Collection queries show inline loaders.
+  if (isUserLoading || (authUser && !authUser.emailVerified)) return (
     <div className="flex h-screen items-center justify-center">
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
     </div>
   );
 
+  const contentLoading = isLoading || isLoadingAccepted;
   const plannedDates = acceptedDates?.filter(d => d.dateStatus === 'planned') ?? [];
   const waitingSenderDates = acceptedDates?.filter(d => d.dateStatus === 'waiting_sender') ?? [];
 
@@ -103,8 +118,15 @@ export default function RequestsPage() {
         </p>
       </header>
 
+      {/* Inline loader while Firestore queries run — page shell visible immediately */}
+      {contentLoading && (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      )}
+
       {/* Confirmed planned dates */}
-      {plannedDates.length > 0 && (
+      {!contentLoading && plannedDates.length > 0 && (
         <div className="px-2 mb-8">
           <h2 className="text-white font-black text-lg mb-3 flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-green-400" /> Your Upcoming Dates
@@ -139,7 +161,7 @@ export default function RequestsPage() {
       )}
 
       {/* Waiting for sender to answer */}
-      {waitingSenderDates.length > 0 && (
+      {!contentLoading && waitingSenderDates.length > 0 && (
         <div className="px-2 mb-8">
           <h2 className="text-white font-black text-lg mb-3 flex items-center gap-2">
             <Hourglass className="w-5 h-5 text-primary animate-pulse" /> Waiting for them...
@@ -165,7 +187,7 @@ export default function RequestsPage() {
       )}
 
       {/* Pending invites */}
-      <div className="space-y-6 px-2">
+      {!contentLoading && <div className="space-y-6 px-2">
         {incomingRequests && incomingRequests.length > 0 ? (
           incomingRequests.map((req) => (
             <Card key={req.id} className="glass-card rounded-[2rem] overflow-hidden animate-in slide-in-from-bottom-4">
@@ -234,7 +256,7 @@ export default function RequestsPage() {
             </Card>
           </div>
         ) : null}
-      </div>
+      </div>}
 
       {/* Verification Gate Dialog */}
       <Dialog open={showVerifyGate} onOpenChange={setShowVerifyGate}>

@@ -1,21 +1,26 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
+import { Redis } from '@upstash/redis';
+import { Ratelimit } from '@upstash/ratelimit';
 
-// Simple in-memory rate limiter: max 3 emails per IP per 10 minutes
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 3;
-const RATE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+// Redis-backed rate limiter: max 3 emails per IP per 10 minutes
+// Works correctly across all serverless instances and survives restarts
+let ratelimit: Ratelimit | null = null;
 
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return false;
+function getRatelimit(): Ratelimit | null {
+  if (ratelimit) return ratelimit;
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return null; // fallback: skip rate limiting if Redis not configured
   }
-  if (entry.count >= RATE_LIMIT) return true;
-  entry.count++;
-  return false;
+  ratelimit = new Ratelimit({
+    redis: new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    }),
+    limiter: Ratelimit.slidingWindow(3, '10 m'), // 3 requests per 10 minutes
+    prefix: 'truevibe:send-verification',
+  });
+  return ratelimit;
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,11 +32,16 @@ export async function POST(request: Request) {
     request.headers.get('x-real-ip') ??
     'unknown';
 
-  if (isRateLimited(ip)) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please wait before requesting another verification email.' },
-      { status: 429 }
-    );
+  const limiter = getRatelimit();
+  if (limiter) {
+    const { success, reset } = await limiter.limit(ip);
+    if (!success) {
+      const retryAfterSec = Math.ceil((reset - Date.now()) / 1000);
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait before requesting another verification email.' },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSec) } }
+      );
+    }
   }
 
   let email: string, code: string, displayName: string;

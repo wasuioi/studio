@@ -1,26 +1,26 @@
 
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { useAuth } from '@/hooks/use-auth';
+// Allow up to 60s for Vercel serverless functions (AI flow can be slow)
+export const maxDuration = 60;
+
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
 import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card } from '@/components/ui/card';
-import { Sparkles, Send, Zap, Loader2, Star, Globe, RotateCcw } from 'lucide-react';
+import { Send, Zap, Loader2, Star, Globe, RotateCcw } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
 import { doc, collection, query, where, getDocs } from 'firebase/firestore';
-import { 
-  useFirestore, 
-  useDoc, 
-  useMemoFirebase, 
-  updateDocumentNonBlocking, 
+import {
+  useFirestore,
+  useDoc,
+  useMemoFirebase,
+  updateDocumentNonBlocking,
   setDocumentNonBlocking,
   addDocumentNonBlocking,
   deleteDocumentNonBlocking
 } from '@/firebase';
-import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -36,54 +36,86 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function AIProfileBot() {
-  const { user, loading } = useAuth();
-  const db = useFirestore();
+  // Use useUser() instead of useAuth() — bot page doesn't need the Firestore profile,
+  // so we only wait for the fast Firebase auth state check (not the extra Firestore round-trip).
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const db = useFirestore();
   const { toast } = useToast();
+
+  // Redirect unauthenticated users
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/auth/login');
+    }
+  }, [isUserLoading, user, router]);
+
   const [input, setInput] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [aiError, setAiError] = useState<'quota' | 'other' | null>(null);
   const [lastMessage, setLastMessage] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'th' | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Track whether we've already loaded history from Firestore (avoid race condition overwrite)
+  const initializedRef = useRef(false);
 
   const personalityRef = useMemoFirebase(() => {
     if (!user) return null;
     return doc(db, 'users', user.uid, 'personality', 'personality_data');
   }, [db, user]);
 
-  const { data: personalityData } = useDoc<any>(personalityRef);
+  const { data: personalityData, isLoading: personalityLoading } = useDoc<any>(personalityRef);
 
   const [sessionMessages, setSessionMessages] = useState<any[]>([]);
 
+  // Load chat history from Firestore only once on first mount.
+  // IMPORTANT: must check personalityRef !== null — when user=null, useDoc returns
+  // isLoading=false immediately, which would falsely trigger initialized=true before
+  // the real Firestore subscription even starts.
   useEffect(() => {
+    if (initializedRef.current) return;
+    if (!personalityRef) return;      // user not ready, subscription not started
+    if (personalityLoading) return;   // subscription started but hasn't responded yet
     if (personalityData?.chatHistory && personalityData.chatHistory.length > 0) {
       setSessionMessages(personalityData.chatHistory);
       setSelectedLanguage(personalityData.preferredLanguage === 'Thai' ? 'th' : 'en');
     }
-  }, [personalityData]);
+    initializedRef.current = true;
+  }, [personalityData, personalityLoading, personalityRef]);
 
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (scrollRef.current) {
-      const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [sessionMessages, isAiThinking]);
 
+  // Auto-resize textarea
+  const resizeTextarea = useCallback(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    resizeTextarea();
+  };
+
   const handleLanguageSelect = (lang: 'en' | 'th') => {
     if (!user || !personalityRef) return;
-    
+
     setSelectedLanguage(lang);
-    const initialMsg = lang === 'en' 
-      ? "Hi! I'm Vera, your TrueVibe companion. I'm here to understand your unique energy. Ready to begin our vibe check?" 
+    const initialMsg = lang === 'en'
+      ? "Hi! I'm Vera, your TrueVibe companion. I'm here to understand your unique energy. Ready to begin our vibe check?"
       : "สวัสดีค่ะ! ฉันคือ Vera เพื่อนคู่คิดของคุณ ฉันอยู่ที่นี่เพื่อทำความรู้จักพลังงานของคุณ พร้อมจะเริ่มกันหรือยังคะ?";
-    
-    const firstMsg = { 
-      role: 'model' as const, 
-      message: initialMsg, 
-      timestamp: new Date().toISOString() 
+
+    const firstMsg = {
+      role: 'model' as const,
+      message: initialMsg,
+      timestamp: new Date().toISOString()
     };
 
     setSessionMessages([firstMsg]);
@@ -110,7 +142,6 @@ export default function AIProfileBot() {
         updatedAt: new Date().toISOString()
       });
 
-      // Cleanup user's real requests and conversations to allow a fresh start
       const requestsRef = collection(db, 'chat_requests');
       const qSender = query(requestsRef, where('senderId', '==', user.uid));
       const qReceiver = query(requestsRef, where('receiverId', '==', user.uid));
@@ -127,6 +158,7 @@ export default function AIProfileBot() {
       snap2.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
       snap3.forEach(d => deleteDocumentNonBlocking(doc(db, 'conversations', d.id)));
 
+      initializedRef.current = false;
       setSessionMessages([]);
       setSelectedLanguage(null);
       setInput('');
@@ -141,9 +173,17 @@ export default function AIProfileBot() {
   };
 
   const handleRetry = () => {
+    // Remove the last user message (which was added before the failed AI call)
+    setSessionMessages(prev => {
+      const last = prev[prev.length - 1];
+      if (last?.role === 'user') return prev.slice(0, -1);
+      return prev;
+    });
     setAiError(null);
     if (lastMessage) {
       setInput(lastMessage);
+      // Restore textarea height
+      setTimeout(resizeTextarea, 0);
     }
   };
 
@@ -153,14 +193,18 @@ export default function AIProfileBot() {
     const currentMsg = input;
     const now = new Date().toISOString();
     setInput('');
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
     setLastMessage(currentMsg);
     setAiError(null);
     setIsAiThinking(true);
 
-    const newUserMsg = { 
-      role: 'user' as const, 
-      message: currentMsg, 
-      timestamp: now 
+    const newUserMsg = {
+      role: 'user' as const,
+      message: currentMsg,
+      timestamp: now
     };
 
     addDocumentNonBlocking(collection(db, 'bot_chats'), {
@@ -184,10 +228,10 @@ export default function AIProfileBot() {
         preferredLanguage: selectedLanguage === 'th' ? 'Thai' : 'English'
       });
 
-      const aiMsg = { 
-        role: 'model' as const, 
-        message: response.response, 
-        timestamp: new Date().toISOString() 
+      const aiMsg = {
+        role: 'model' as const,
+        message: response.response,
+        timestamp: new Date().toISOString()
       };
 
       addDocumentNonBlocking(collection(db, 'bot_chats'), {
@@ -231,7 +275,15 @@ export default function AIProfileBot() {
     }
   };
 
-  if (loading) return (
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  // Only block on the fast Firebase auth check, not on Firestore profile
+  if (isUserLoading) return (
     <div className="flex h-screen items-center justify-center">
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
     </div>
@@ -240,7 +292,7 @@ export default function AIProfileBot() {
   return (
     <div className="max-w-2xl mx-auto min-h-screen flex flex-col p-4 relative pt-20">
       <Navigation />
-      
+
       <div className="flex items-center justify-between mb-6 px-2">
         <div className="flex items-center gap-3">
           <div className="truevibe-gradient p-2.5 rounded-2xl shadow-xl">
@@ -281,7 +333,12 @@ export default function AIProfileBot() {
       </div>
 
       <div className="flex-1 glass-card rounded-[2.5rem] overflow-hidden flex flex-col mb-4 relative h-[calc(100vh-200px)] min-h-[500px]">
-        {!selectedLanguage ? (
+        {/* Loading state while Firestore resolves */}
+        {personalityLoading && !initializedRef.current ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : !selectedLanguage ? (
           <div className="flex-1 flex flex-col items-center justify-center p-10 text-center space-y-8 animate-in fade-in zoom-in-95">
             <div className="bg-primary/10 p-8 rounded-full shadow-[0_0_40px_rgba(106,92,255,0.1)]">
               <Globe className="w-12 h-12 text-primary" />
@@ -291,13 +348,13 @@ export default function AIProfileBot() {
               <p className="text-white/60 font-medium text-sm">Choose your language to begin the vibe check.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-sm">
-              <Button 
+              <Button
                 onClick={() => handleLanguageSelect('en')}
                 className="h-16 rounded-3xl text-lg font-black bg-white/5 border border-white/10 text-white hover:bg-primary/20 transition-all"
               >
                 🇺🇸 English
               </Button>
-              <Button 
+              <Button
                 onClick={() => handleLanguageSelect('th')}
                 className="h-16 rounded-3xl text-lg font-black bg-white/5 border border-white/10 text-white hover:bg-secondary/20 transition-all"
               >
@@ -307,17 +364,22 @@ export default function AIProfileBot() {
           </div>
         ) : (
           <>
-            <ScrollArea className="flex-1 p-6" ref={scrollRef}>
+            {/* Native scroll div — better mobile performance than Radix ScrollArea */}
+            <div
+              ref={scrollRef}
+              className="flex-1 overflow-y-auto overscroll-contain p-6"
+              style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+            >
               <div className="space-y-6 max-w-xl mx-auto pb-10">
                 {sessionMessages.map((m, i) => (
-                  <div key={i} className={cn(
-                    "flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-4 duration-500",
+                  <div key={`${m.role}-${i}`} className={cn(
+                    "flex flex-col max-w-[85%]",
                     m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
                   )}>
                     <div className={cn(
                       "p-4 md:p-5 rounded-[1.75rem] text-sm md:text-base leading-relaxed font-medium shadow-lg",
-                      m.role === 'user' 
-                        ? "truevibe-gradient text-white rounded-tr-none" 
+                      m.role === 'user'
+                        ? "truevibe-gradient text-white rounded-tr-none"
                         : "bg-white/10 text-white rounded-tl-none border border-white/10 backdrop-blur-md"
                     )}>
                       {m.message}
@@ -347,21 +409,23 @@ export default function AIProfileBot() {
                   </div>
                 )}
               </div>
-            </ScrollArea>
+            </div>
 
             <div className="p-4 md:p-6 bg-black/20 border-t border-white/10">
-              <div className="relative flex items-center gap-3 max-w-xl mx-auto">
-                <Input
-                  placeholder="Message Vera..."
+              <div className="relative flex items-end gap-3 max-w-xl mx-auto">
+                <textarea
+                  ref={textareaRef}
+                  placeholder="Message Vera... (Shift+Enter for new line)"
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  className="rounded-full h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-primary/40 px-6"
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                  className="flex-1 min-h-[48px] max-h-[120px] rounded-[1.5rem] bg-white/5 border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40 px-5 py-3 text-sm resize-none leading-relaxed overflow-y-auto"
                   disabled={isAiThinking}
                 />
                 <Button
                   size="icon"
-                  className="shrink-0 w-12 h-12 rounded-full truevibe-pill-button px-0"
+                  className="shrink-0 w-12 h-12 rounded-full truevibe-pill-button px-0 mb-0"
                   onClick={handleSend}
                   disabled={isAiThinking || !input.trim()}
                 >

@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { useUser } from '@/firebase';
 import { Navigation } from '@/components/Navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,8 @@ import { useRouter } from 'next/navigation';
 import { SenderDatePlannerModal } from '@/components/SenderDatePlannerModal';
 
 export default function MatchesPage() {
-  const { profile, user, loading } = useAuth();
+  const { isUserLoading, user: authUser } = useUser();
+  const { profile, user } = useAuth();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -48,12 +50,12 @@ export default function MatchesPage() {
   const [viewingPlan, setViewingPlan] = useState<ChatRequest | null>(null);
 
   const outgoingQuery = useMemoFirebase(() => {
-    if (!user?.emailVerified) return null;
+    if (!authUser?.emailVerified) return null;
     return query(
       collection(db, 'chat_requests'),
-      where('senderId', '==', user.uid)
+      where('senderId', '==', authUser.uid)
     );
-  }, [db, user]);
+  }, [db, authUser]);
 
   const { data: outgoingRequests } = useCollection<ChatRequest>(outgoingQuery);
 
@@ -187,7 +189,8 @@ export default function MatchesPage() {
     toast({ title: "Date Invite Sent! 🌹", description: "Sending your energy to " + match.name });
   };
 
-  if (loading || (user && !user.emailVerified)) return (
+  // Only block on Firebase auth state — much faster than waiting for Firestore profile too
+  if (isUserLoading || (authUser && !authUser.emailVerified)) return (
     <div className="flex h-screen items-center justify-center">
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
     </div>

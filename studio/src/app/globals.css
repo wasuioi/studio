@@ -42,19 +42,36 @@
     position: relative;
     min-height: 100vh;
     overflow-x: hidden;
+    /* Prevent iOS rubber-band white flash */
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: auto;
   }
 
-  /* Fix: background-attachment: fixed doesn't work on iOS Safari */
+  /* background-color: #2A004F ensures overscroll area shows dark purple, not white.
+     overscroll-behavior: none prevents pull-to-refresh bounce on iOS 16+. */
   html {
     background: linear-gradient(135deg, #2A004F 0%, #5E1B9A 35%, #C43A8F 70%, #FF7A6B 100%);
+    background-color: #2A004F;
     min-height: 100%;
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
   }
 }
 
 /* Glassmorphism utility */
 .glass-card {
-  @apply bg-white/10 backdrop-blur-xl border border-white/10 shadow-xl;
+  @apply bg-white/10 border border-white/10 shadow-xl;
+  /* Use backdrop-blur only on devices that can handle it smoothly */
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+@media (max-width: 640px) {
+  .glass-card {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
 }
 
 .glass-card-hover {
