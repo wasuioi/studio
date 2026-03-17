@@ -68,8 +68,52 @@ export default function AIProfileBot() {
   const { data: personalityData, isLoading: personalityLoading } = useDoc<any>(personalityRef);
 
   const [sessionMessages, setSessionMessages] = useState<any[]>([]);
+  // isRestoring: true while we haven't yet confirmed whether local cache or Firestore has data.
+  // Prevents the language-selection screen from flashing (and being accidentally clicked)
+  // before we know whether the user already has a chat history.
+  const [isRestoring, setIsRestoring] = useState(true);
 
-  // Load chat history from Firestore only once on first mount.
+  // --- localStorage cache: restore instantly on remount/tab-switch/browser-close ---
+  // Runs once on mount. localStorage survives browser close (unlike sessionStorage).
+  // Keys are namespaced by userId to prevent cross-user leaks on shared devices.
+  useEffect(() => {
+    if (initializedRef.current) return;
+    if (!user) return; // wait until auth is ready so we have the uid
+    try {
+      const key = `vera_chat_${user.uid}`;
+      const cached = localStorage.getItem(key);
+      const cachedLang = localStorage.getItem(`${key}_lang`) as 'en' | 'th' | null;
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSessionMessages(parsed);
+          if (cachedLang) setSelectedLanguage(cachedLang);
+          initializedRef.current = true;
+          setIsRestoring(false);
+          return;
+        }
+      }
+    } catch {}
+    // No local cache — let Firestore effect handle it (don't setIsRestoring yet)
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist messages to localStorage on every change
+  useEffect(() => {
+    if (!user || sessionMessages.length === 0) return;
+    try {
+      localStorage.setItem(`vera_chat_${user.uid}`, JSON.stringify(sessionMessages));
+    } catch {}
+  }, [sessionMessages, user]);
+
+  // Persist selected language to localStorage
+  useEffect(() => {
+    if (!user || !selectedLanguage) return;
+    try {
+      localStorage.setItem(`vera_chat_${user.uid}_lang`, selectedLanguage);
+    } catch {}
+  }, [selectedLanguage, user]);
+
+  // Load chat history from Firestore (fallback when localStorage has no cache).
   // IMPORTANT: must check personalityRef !== null — when user=null, useDoc returns
   // isLoading=false immediately, which would falsely trigger initialized=true before
   // the real Firestore subscription even starts.
@@ -82,6 +126,7 @@ export default function AIProfileBot() {
       setSelectedLanguage(personalityData.preferredLanguage === 'Thai' ? 'th' : 'en');
     }
     initializedRef.current = true;
+    setIsRestoring(false); // Firestore has confirmed state — safe to show UI
   }, [personalityData, personalityLoading, personalityRef]);
 
   // Auto-scroll to bottom when messages change
@@ -162,6 +207,13 @@ export default function AIProfileBot() {
       setSessionMessages([]);
       setSelectedLanguage(null);
       setInput('');
+      setIsRestoring(false);
+      try {
+        if (user) {
+          localStorage.removeItem(`vera_chat_${user.uid}`);
+          localStorage.removeItem(`vera_chat_${user.uid}_lang`);
+        }
+      } catch {}
 
       toast({
         title: "Profile Reset",
@@ -333,8 +385,10 @@ export default function AIProfileBot() {
       </div>
 
       <div className="flex-1 glass-card rounded-[2.5rem] overflow-hidden flex flex-col mb-4 relative h-[calc(100vh-200px)] min-h-[500px]">
-        {/* Loading state while Firestore resolves */}
-        {personalityLoading && !initializedRef.current ? (
+        {/* Loading state: show spinner while restoring from cache or waiting for Firestore.
+            This prevents the language-selection screen from briefly flashing and being
+            accidentally clicked, which would overwrite existing Firestore chat history. */}
+        {isRestoring || personalityLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
