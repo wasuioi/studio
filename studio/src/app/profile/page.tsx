@@ -116,7 +116,7 @@ export default function ProfilePage() {
     </div>
   );
 
-  if (!profile) return null;
+  if (!profile || !user) return null;
 
   const coverImage = PlaceHolderImages.find(img => img.id === 'default_cover');
 
