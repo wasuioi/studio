@@ -38,13 +38,6 @@ export interface UserProfile {
       summary: string;
       tags: string[];
     };
-    weights: {
-      career: number;
-      lifestyle: number;
-      emotionalIntelligence: number;
-      humor: number;
-      physicalActivity: number;
-    };
     psychological_insights?: {
       attachmentStyle?: string;
       coreValueVsSurfaceDesire?: {
