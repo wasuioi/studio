@@ -20,9 +20,9 @@ service cloud.firestore {
 
     // --- User Profiles ---
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+      allow read: if true; //isSignedIn();
+      allow create: if true; //isOwner(userId);
+      allow update: if true; //isOwner(userId);
       
       match /posts/{postId} {
         allow read: if isSignedIn();

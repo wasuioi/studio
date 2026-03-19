@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { RequestNotificationListener } from '@/components/RequestNotificationListener';
 import { DateReminderListener } from '@/components/DateReminderListener';
 import { BackgroundEffects } from '@/components/BackgroundEffects';
+import { UserProfileInitializer } from '@/components/UserProfileInitializer';
 
 export const metadata: Metadata = {
   title: 'TrueVibe - Real Connections, Real Vibes',
@@ -33,6 +34,7 @@ export default function RootLayout({
       <body className="font-body antialiased min-h-screen relative pb-20 md:pb-0">
         <FirebaseClientProvider>
           <BackgroundEffects />
+          <UserProfileInitializer />
           <RequestNotificationListener />
           <DateReminderListener />
           {children}
