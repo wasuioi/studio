@@ -119,20 +119,28 @@ export default function AIProfileBot() {
     } catch {}
   }, [selectedLanguage, user]);
 
-  // Load chat history from Firestore (fallback when localStorage has no cache).
+  // Load chat history from Firestore.
+  // Always runs — even if localStorage loaded first — so Firestore can override
+  // when it has more messages (e.g. history from another browser/device).
   // IMPORTANT: must check personalityRef !== null — when user=null, useDoc returns
   // isLoading=false immediately, which would falsely trigger initialized=true before
   // the real Firestore subscription even starts.
   useEffect(() => {
-    if (initializedRef.current) return;
     if (!personalityRef) return;      // user not ready, subscription not started
     if (personalityLoading) return;   // subscription started but hasn't responded yet
     if (personalityData?.chatHistory && personalityData.chatHistory.length > 0) {
-      setSessionMessages(personalityData.chatHistory);
+      // Use Firestore data if it has more messages than what localStorage loaded
+      setSessionMessages(prev =>
+        personalityData.chatHistory.length > prev.length
+          ? personalityData.chatHistory
+          : prev
+      );
       setSelectedLanguage(personalityData.preferredLanguage === 'Thai' ? 'th' : 'en');
     }
-    initializedRef.current = true;
-    setIsRestoring(false); // Firestore has confirmed state — safe to show UI
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      setIsRestoring(false); // Firestore has confirmed state — safe to show UI
+    }
   }, [personalityData, personalityLoading, personalityRef]);
 
   // Auto-scroll to bottom when messages change
