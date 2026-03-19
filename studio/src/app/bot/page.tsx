@@ -79,6 +79,7 @@ export default function AIProfileBot() {
   useEffect(() => {
     if (initializedRef.current) return;
     if (!user) return; // wait until auth is ready so we have the uid
+    if (!personalityRef) return; // wait until ref is ready
     try {
       const key = `vera_chat_${user.uid}`;
       const cached = localStorage.getItem(key);
@@ -90,12 +91,17 @@ export default function AIProfileBot() {
           if (cachedLang) setSelectedLanguage(cachedLang);
           initializedRef.current = true;
           setIsRestoring(false);
+          // Sync to Firestore so other browsers/devices can restore this history
+          setDocumentNonBlocking(personalityRef, {
+            chatHistory: parsed,
+            ...(cachedLang ? { preferredLanguage: cachedLang === 'th' ? 'Thai' : 'English' } : {}),
+          }, { merge: true });
           return;
         }
       }
     } catch {}
     // No local cache — let Firestore effect handle it (don't setIsRestoring yet)
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, personalityRef]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist messages to localStorage on every change
   useEffect(() => {
@@ -268,10 +274,10 @@ export default function AIProfileBot() {
     const updatedHistory = [...sessionMessages, newUserMsg];
     setSessionMessages(updatedHistory);
 
-    updateDocumentNonBlocking(personalityRef, {
+    setDocumentNonBlocking(personalityRef, {
       chatHistory: updatedHistory,
       lastAnalysisDate: now
-    });
+    }, { merge: true });
 
     try {
       const response = await aiPersonalityInterview({
@@ -315,7 +321,7 @@ export default function AIProfileBot() {
         });
       }
 
-      updateDocumentNonBlocking(personalityRef, updatePayload);
+      setDocumentNonBlocking(personalityRef, updatePayload, { merge: true });
     } catch (error: any) {
       console.error("Vera AI error:", error);
       const msg = String(error?.message || error || '');

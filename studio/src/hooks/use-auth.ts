@@ -10,6 +10,8 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { useRouter, usePathname } from 'next/navigation';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
+const PROFILE_CACHE_KEY = (uid: string) => `profile_cache_${uid}`;
+
 export function useAuth() {
   const { user, isUserLoading: authLoading } = useUser();
   const db = useFirestore();
@@ -44,22 +46,40 @@ export function useAuth() {
       return;
     }
 
-    // 3. Authenticated & Verified profile sync
-    setLoading(true);
+    // 3. Load cached profile instantly (eliminates spinner on repeat visits)
+    try {
+      const cached = localStorage.getItem(PROFILE_CACHE_KEY(user.uid));
+      if (cached) {
+        setProfile(JSON.parse(cached) as UserProfile);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+    } catch {
+      setLoading(true);
+    }
+
+    // 4. Authenticated & Verified profile sync (updates cache in background)
     const userRef = doc(db, 'users', user.uid);
-    
+
     const unsubscribe = onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as UserProfile;
-        
+
         // Sync firestore flag if needed
         if (data.emailVerified !== user.emailVerified) {
           updateDoc(userRef, { emailVerified: true });
         }
 
-        setProfile({ ...data, emailVerified: true });
+        const profileData = { ...data, emailVerified: true };
+        setProfile(profileData);
         setLoading(false);
-        
+
+        // Update localStorage cache for next visit
+        try {
+          localStorage.setItem(PROFILE_CACHE_KEY(user.uid), JSON.stringify(profileData));
+        } catch {}
+
         // If they are on verify page but now verified, move them along
         if (pathname === '/auth/verify') {
           router.push('/bot');
