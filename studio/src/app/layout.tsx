@@ -10,6 +10,9 @@ import { UserProfileInitializer } from '@/components/UserProfileInitializer';
 export const metadata: Metadata = {
   title: 'TrueVibe - Real Connections, Real Vibes',
   description: 'AI-powered relationship companion helping you find meaningful connections through authentic vibe analysis.',
+  icons: {
+    icon: '/superlogo2.png',
+  },
 };
 
 // Prevent iOS rubber-band overscroll showing white background

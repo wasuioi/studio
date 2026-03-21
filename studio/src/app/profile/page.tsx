@@ -26,6 +26,27 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
+function PartnerVisionText({ summary }: { summary?: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const text = summary || "Awaiting AI analysis...";
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-[10px] font-black text-white/40 uppercase mb-1">Partner Vision</p>
+        <p className={`text-sm font-medium text-white/90 ${expanded ? '' : 'line-clamp-3'}`}>{text}</p>
+        {summary && (
+          <button
+            onClick={() => setExpanded(e => !e)}
+            className="mt-1 text-[11px] font-bold text-accent/70 hover:text-accent transition-colors"
+          >
+            {expanded ? 'Show less' : 'Read more'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { profile, user, loading } = useProfileAuth();
   const db = useFirestore();
@@ -224,14 +245,7 @@ export default function ProfilePage() {
           <h3 className="text-xs font-black uppercase tracking-widest text-accent flex items-center gap-2">
             <Heart className="w-4 h-4" /> Ideal Frequency
           </h3>
-          <div className="space-y-4">
-            <div>
-              <p className="text-[10px] font-black text-white/40 uppercase mb-1">Partner Vision</p>
-              <p className="text-sm font-medium text-white/90 line-clamp-3">
-                {profile.personalityProfile?.ideal_partner.summary || "Awaiting AI analysis..."}
-              </p>
-            </div>
-          </div>
+          <PartnerVisionText summary={profile.personalityProfile?.ideal_partner.summary} />
         </Card>
       </div>
 
