@@ -46,16 +46,22 @@ export function useAuth() {
       return;
     }
 
-    // 3. Load cached profile instantly (eliminates spinner on repeat visits)
-    try {
-      const cached = localStorage.getItem(PROFILE_CACHE_KEY(user.uid));
-      if (cached) {
-        setProfile(JSON.parse(cached) as UserProfile);
-        setLoading(false);
-      } else {
+    // 3. Load cached profile instantly only for non-profile pages (eliminates spinner)
+    // For profile page, we want fresh data from Firestore
+    const isProfilePage = pathname === '/profile';
+    if (!isProfilePage) {
+      try {
+        const cached = localStorage.getItem(PROFILE_CACHE_KEY(user.uid));
+        if (cached) {
+          setProfile(JSON.parse(cached) as UserProfile);
+          setLoading(false);
+        } else {
+          setLoading(true);
+        }
+      } catch {
         setLoading(true);
       }
-    } catch {
+    } else {
       setLoading(true);
     }
 
