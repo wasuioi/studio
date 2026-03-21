@@ -13,9 +13,10 @@ import { Edit3, X, Save, Camera, Trash2, Image as ImageIcon, Loader2, Heart, Use
 import Image from 'next/image';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { 
-  useFirestore, 
-  updateDocumentNonBlocking, 
+import {
+  useFirestore,
+  updateDocumentNonBlocking,
+  setDocumentNonBlocking,
   addDocumentNonBlocking,
   deleteDocumentNonBlocking,
   useCollection,
@@ -79,12 +80,12 @@ export default function ProfilePage() {
   const handleSaveProfile = () => {
     if (!user || !profile) return;
     const userRef = doc(db, 'users', user.uid);
-    updateDocumentNonBlocking(userRef, {
+    setDocumentNonBlocking(userRef, {
       name: editedName,
       displayName: editedName,
       bio: editedBio,
       updatedAt: new Date().toISOString(),
-    });
+    }, { merge: true });
     setIsEditing(false);
     toast({ title: "Profile Updated", description: "Your vibe has been saved." });
   };
