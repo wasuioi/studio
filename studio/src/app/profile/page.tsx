@@ -80,15 +80,19 @@ export default function ProfilePage() {
     if (!user || !profile) return;
     try {
       const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, {
+      const updateData = {
         name: editedName,
         displayName: editedName,
         bio: editedBio,
         updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      };
+      console.log('Saving profile:', updateData);
+      await setDoc(userRef, updateData, { merge: true });
+      console.log('Profile saved successfully');
       setIsEditing(false);
       toast({ title: "Profile Updated", description: "Your vibe has been saved." });
     } catch (error: any) {
+      console.error('Save profile error:', error);
       toast({
         variant: "destructive",
         title: "Save Failed",
