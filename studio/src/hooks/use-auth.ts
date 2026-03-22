@@ -72,7 +72,6 @@ export function useAuth() {
       .then((docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data() as UserProfile;
-          console.log('Firestore profile loaded:', data);
 
           // Sync firestore flag if needed
           if (data.emailVerified !== user.emailVerified) {
@@ -86,7 +85,6 @@ export function useAuth() {
           // Update localStorage cache for next visit
           try {
             localStorage.setItem(PROFILE_CACHE_KEY(user.uid), JSON.stringify(profileData));
-            console.log('LocalStorage cache updated');
           } catch {}
         } else {
           // Initialize profile with stable human placeholder
