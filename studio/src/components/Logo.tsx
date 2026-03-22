@@ -1,0 +1,63 @@
+"use client";
+import Image from "next/image";
+import { cn } from "@/lib/utils";
+
+interface LogoProps {
+  className?: string;
+  size?: "sm" | "md" | "lg";
+  showText?: boolean;
+}
+
+export function Logo({ className, size = "md", showText = false }: LogoProps) {
+  // 💡 ปรับสัดส่วนให้เป็นผืนผ้า (กว้างกว่าสูง) เพื่อให้แสงและดาวขยับเข้ามาแนบชิดกับตัว V พอดี
+  const iconSizes = {
+    sm: "w-[140px] h-[110px]",
+    md: "w-[280px] h-[200px]",
+    lg: "w-[180px] h-[140px]",
+  };
+
+  return (
+    <div className={cn("flex flex-col items-center justify-center", className)}>
+      
+      <div className={cn("relative flex items-center justify-center", iconSizes[size])}>
+
+        {/* --- 🌟 LAYER 1: รัศมีแสงวงกว้างด้านหลังสุด (Cosmic Aura) --- */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[140%] bg-purple-600/30 blur-[60px] rounded-full z-0 pointer-events-none"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] bg-pink-500/20 blur-[40px] rounded-full z-0 pointer-events-none"></div>
+
+        {/* --- 💥 LAYER 2: แสงสว่างจ้าที่ฐาน (Bottom Flare) — subtle --- */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[60%] h-4 bg-pink-300/30 blur-[12px] rounded-full z-0 pointer-events-none"></div>
+
+        {/* --- ✨ LAYER 3: ดวงดาว (Stars) --- */}
+        {/* ดาวดวงใหญ่ด้านบน เลื่อนลงมาให้แนบชิดร่องตัว V และขยายขนาดให้เด่นขึ้น */}
+        <div className="absolute top-[-10px] left-1/2 -translate-x-1/2 text-[#FFF3D3] z-20 animate-pulse drop-shadow-[0_0_20px_rgba(255,255,255,1)] pointer-events-none">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 0L13.5 8.5L22 10L13.5 11.5L12 20L10.5 11.5L2 10L10.5 8.5L12 0Z" />
+          </svg>
+        </div>
+        {/* ดาวดวงเล็กประดับ (ซ้าย-ขวา) ขยับเข้ามาแนบตัวโลโก้ */}
+        <div className="absolute top-[10%] left-0 text-white/70 animate-pulse delay-75 w-6 h-6 pointer-events-none">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L13 9L20 10L13 11L12 18L11 11L4 10L11 9L12 2Z"/></svg>
+        </div>
+        <div className="absolute bottom-[20%] right-[-10px] text-white/50 animate-pulse delay-150 w-4 h-4 pointer-events-none">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L13 9L20 10L13 11L12 18L11 11L4 10L11 9L12 2Z"/></svg>
+        </div>
+
+        {/* --- 🦋 LAYER 4: ตัวโลโก้หลัก --- */}
+        <Image
+          src="/superlogo2.png"
+          alt="Truevibe Logo"
+          fill
+          className="object-contain relative z-10 drop-shadow-[0_0_40px_rgba(168,85,247,0.8)] drop-shadow-[0_10px_30px_rgba(236,72,153,0.6)]"
+          priority
+        />
+      </div>
+
+      {showText && (
+        <span className="font-black tracking-tight text-white text-4xl z-10 mt-2">
+          Truevibe
+        </span>
+      )}
+    </div>
+  );
+}
