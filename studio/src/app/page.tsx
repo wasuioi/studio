@@ -89,7 +89,7 @@ export default function LandingPage() {
               Find Your <span className="truevibe-text-gradient">True Vibe</span>
             </h1>
             <p className="text-white/50 text-sm font-medium">
-              We sell guarantees.
+              haha
             </p>
           </div>
         </div>

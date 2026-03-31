@@ -27,7 +27,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       // Images: self + placeholder hosts used in config
-      "img-src 'self' data: blob: https://placehold.co https://images.unsplash.com https://picsum.photos https://firebasestorage.googleapis.com",
+      "img-src 'self' data: blob: https://placehold.co https://images.unsplash.com https://picsum.photos https://fastly.picsum.photos https://firebasestorage.googleapis.com",
       // API calls: own origin + Firebase + Stripe + Google AI
       "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://api.stripe.com https://generativelanguage.googleapis.com wss://*.firebaseio.com",
     ].join('; '),
@@ -58,6 +58,12 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'picsum.photos',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'fastly.picsum.photos',
         port: '',
         pathname: '/**',
       },

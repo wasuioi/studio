@@ -11,11 +11,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Edit3, X, Save, Camera, Trash2, Image as ImageIcon, Loader2, Heart, User, Upload } from 'lucide-react';
 import Image from 'next/image';
-import { doc, collection, query, orderBy } from 'firebase/firestore';
+import { doc, collection, query, orderBy, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { 
-  useFirestore, 
-  updateDocumentNonBlocking, 
+import {
+  useFirestore,
+  updateDocumentNonBlocking,
   addDocumentNonBlocking,
   deleteDocumentNonBlocking,
   useCollection,
@@ -76,17 +76,26 @@ export default function ProfilePage() {
     }
   }, [profile]);
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!user || !profile) return;
-    const userRef = doc(db, 'users', user.uid);
-    updateDocumentNonBlocking(userRef, {
-      name: editedName,
-      displayName: editedName,
-      bio: editedBio,
-      updatedAt: new Date().toISOString(),
-    });
-    setIsEditing(false);
-    toast({ title: "Profile Updated", description: "Your vibe has been saved." });
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const updateData = {
+        name: editedName,
+        displayName: editedName,
+        bio: editedBio,
+        updatedAt: new Date().toISOString(),
+      };
+      await setDoc(userRef, updateData, { merge: true });
+      setIsEditing(false);
+      toast({ title: "Profile Updated", description: "Your vibe has been saved." });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: error.message || "Could not save profile."
+      });
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
