@@ -6,7 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 All project files live at the git repository root. The Next.js app, Supabase config, and tooling are all at the top level — run every command below from the repo root.
 
-**History note:** This repo is a clone of `wasuioi/studio`, which nests the app under an inner `studio/` subdirectory. On 2026-04-10 the inner `studio/` was flattened into the repo root to simplify the layout. Later on 2026-04-10 the entire Firebase data layer was replaced with Supabase (Auth, Postgres, Storage, Realtime). Expect heavy divergence from upstream.
+**History note:** This codebase originated from `wasuioi/studio` (which nested the Next.js app under an inner `studio/` subdirectory and used a Firebase data layer). On 2026-04-10 two large rewrites landed together: the inner `studio/` directory was flattened into the repo root, and the entire Firebase stack (Auth, Firestore, Storage, Hosting) was replaced with Supabase (Auth, Postgres, Storage, Realtime). Stripe payments and the `UpgradeModal` flow were removed in the same pass. This repo is now a standalone project — there is no upstream to merge from. Use `git log` for the authoritative change history.
+
+## Security
+- Never put any important API keys, secrets, or credentials in frontend/client-side code, as they will be easily leaked to users. Always keep them on the server side only (e.g., environment variables accessed in API routes or server components). 
 
 ## Commands
 
@@ -36,7 +39,7 @@ There is no test runner wired up in `package.json`. Verification is manual.
 
 ## High-level architecture
 
-TrueVibe is a Next.js 15 (App Router) + React 19 + TypeScript dating app. The core stack is **Supabase (Auth / Postgres / Storage / Realtime) on both client and server, Genkit (Google Gemini) for AI flows on the server, Stripe for payments, and Resend for email.** It deploys to Vercel only.
+TrueVibe is a Next.js 15 (App Router) + React 19 + TypeScript dating app. The core stack is **Supabase (Auth / Postgres / Storage / Realtime) on both client and server, Genkit (Google Gemini) for AI flows on the server, and Resend for email.** It deploys to Vercel only. Payments (previously Stripe) were removed on 2026-04-10 — feature may be reintroduced later; use `git log --follow -- src/components/UpgradeModal.tsx src/app/api/stripe` to find the pre-removal implementation.
 
 ### Client ⇄ server boundary
 
@@ -46,15 +49,22 @@ Three Supabase client surfaces — pick the right one for each use case:
 
 - **Server-as-user client (`src/supabase/server.ts`)** — `createSupabaseServerClient()` is for Route Handlers, Server Actions, and Server Components. It reads the user's session from cookies so RLS runs **as that user**, not with elevated privileges. Use `verifyAuth()` from `src/lib/verify-auth.ts` to confirm the caller is authenticated before reading/writing.
 
-- **Service-role admin client (`src/lib/supabase-admin.ts`)** — Bypasses RLS. Only import from server-only files: Route Handlers, AI flows under `src/ai/flows/`, or Server Actions with `'use server'`. Reserved for trusted admin operations (setting verification status after AI review, Stripe webhook handlers). **NEVER import from `src/app/` or `src/components/` client code.** Service role key comes from `SUPABASE_SERVICE_ROLE_KEY`.
+- **Service-role admin client (`src/lib/supabase-admin.ts`)** — Bypasses RLS. Only import from server-only files: Route Handlers, AI flows under `src/ai/flows/`, or Server Actions with `'use server'`. Reserved for trusted admin operations (setting verification status after AI review). **NEVER import from `src/app/` or `src/components/` client code.** Service role key comes from `SUPABASE_SERVICE_ROLE_KEY`.
 
 ### Database and security
 
-- Postgres schema lives in `supabase/migrations/` as versioned SQL files. Run them in the Supabase SQL Editor (or via `supabase db push` if using the CLI). See `supabase/README.md`.
+- Postgres schema lives in `supabase/migrations/` as seven versioned SQL files. Run them in the Supabase SQL Editor (or via `supabase db push` if using the CLI) in numeric order. See `supabase/README.md`.
+  - `001_initial_schema.sql` — seven core tables and baseline columns
+  - `002_rls_policies.sql` — Row Level Security policies on every table
+  - `003_storage_buckets.sql` — `profile-photos` and `post-photos` buckets + policies
+  - `004_handle_new_user.sql` — `auth.users` insert trigger that auto-creates a `profiles` row
+  - `005_application_extensions.sql` — denormalized extras discovered during feature-page migration: `profiles.location`, `profiles.personality_profile` (legacy embedded JSON), `profiles.top_matches` (cached match list), plus rich `chat_requests` date-invite fields (`match_score`, `reason`, `date_status`, `sender_name/photo_url`, `receiver_name/photo_url`, etc.)
+  - `006_conversation_last_message.sql` — adds `conversations.last_message` preview column so the `/messages` sidebar can render a snippet without an extra query
+  - `007_lock_profile_privileged_columns.sql` — **security hardening**: revokes column-level UPDATE privilege on `profiles.identity_verified`, `verification_status`, `tier`, and `email` from the `authenticated` and `anon` roles, closing a hole where a user could self-verify via the browser client. After this migration, those columns can only be written via the service-role client from trusted server code (Route Handlers, Server Actions, AI flows).
 - Seven core tables under `public`: `profiles`, `posts`, `personality_profiles`, `bot_chats`, `chat_requests`, `conversations`, `messages`. Every table has **Row Level Security (RLS) enabled** and explicit allow policies — default is deny.
 - Helper functions `is_email_verified()` and `is_conversation_participant(conv_id)` encapsulate common security checks used by multiple policies.
 - A `handle_new_user()` trigger on `auth.users` insert auto-creates the matching `profiles` row. This replaces the old `UserProfileInitializer` component and eliminates the race condition where profile rows could be missing.
-- TypeScript types live in `src/lib/database.types.ts` — currently hand-written to match the SQL schema. Regenerate with `npx supabase gen types typescript --project-id <ref> --schema public > src/lib/database.types.ts` after any schema change.
+- TypeScript types live in two places: `src/lib/database.types.ts` — hand-written snake_case types matching the SQL schema, used by Supabase clients; and `src/types/index.ts` — legacy camelCase `UserProfile` type used by most UI components (see `MergedProfile` in `src/hooks/use-auth.ts` for how the two coexist). Regenerate the first with `npx supabase gen types typescript --project-id <ref> --schema public > src/lib/database.types.ts` after any schema change.
 
 ### AI (Genkit + Gemini)
 
@@ -77,7 +87,7 @@ Supabase Realtime replaces Firestore `onSnapshot`. The `useCollection` and `useR
 
 ### App Router structure
 
-`src/app/` is organized by feature: `auth/` (login/signup/verify), `bot/` (Vera chat), `matches/`, `messages/`, `profile/`, `requests/`, `verification/`, `admin/` (cleanup / reset-user tools), plus API routes under `api/` for `stripe/create-payment-intent`, `stripe/refund`, `verify-identity`, `ping`. `src/app/layout.tsx` mounts `SupabaseProvider`, global listeners (`RequestNotificationListener`, `DateReminderListener`), `BackgroundEffects`, and `Toaster` once.
+`src/app/` is organized by feature: `auth/` (login/signup/verify), `bot/` (Vera chat), `matches/`, `messages/`, `profile/`, `requests/`, `verification/`, `admin/` (cleanup / reset-user tools), plus API routes under `api/` for `verify-identity` and `ping`. `src/app/layout.tsx` mounts `SupabaseProvider`, global listeners (`RequestNotificationListener`, `DateReminderListener`), `BackgroundEffects`, and `Toaster` once.
 
 ### UI system
 
@@ -87,7 +97,7 @@ Path alias: `@/*` → `src/*`.
 
 ### Security model
 
-- **`next.config.ts`** sets a strict set of security headers + a CSP on `/(.*)`. Any new third-party origin (API host, image CDN, script) must be added to the relevant CSP directive (`script-src` / `frame-src` / `img-src` / `connect-src`) **and** to `images.remotePatterns` if it serves images. Current allowlist: Stripe JS/hooks, Google Fonts, `placehold.co`, `images.unsplash.com`, `picsum.photos`/`fastly.picsum.photos`, `*.supabase.co` (both `https://` and `wss://` for Realtime websocket), `generativelanguage.googleapis.com` (Gemini).
+- **`next.config.ts`** sets a strict set of security headers + a CSP on `/(.*)`. Any new third-party origin (API host, image CDN, script) must be added to the relevant CSP directive (`script-src` / `frame-src` / `img-src` / `connect-src`) **and** to `images.remotePatterns` if it serves images. Current allowlist: Google Fonts, `placehold.co`, `images.unsplash.com`, `picsum.photos`/`fastly.picsum.photos`, `*.supabase.co` (both `https://` and `wss://` for Realtime websocket), `generativelanguage.googleapis.com` (Gemini).
 - **RLS policies** replace the old `firestore.rules`. Every table enforces owner-only or participant-only access server-side. Messages are immutable — no UPDATE or DELETE policies, matching the old Firestore rules but made explicit.
 - **Storage policies** enforce that uploaded files land in a `{auth.uid()}/...` folder in each bucket; cross-user writes are blocked by Storage RLS.
 - **Server Actions body limit** is raised to `20mb` in `next.config.ts` (`experimental.serverActions.bodySizeLimit`) for legacy reasons — can likely be reduced now that verification photos don't flow through Server Actions.
@@ -98,20 +108,18 @@ Server-only (do not expose to the client):
 
 - `GOOGLE_GENAI_API_KEY` — Genkit / Gemini
 - `SUPABASE_SERVICE_ROLE_KEY` — bypasses all RLS. Only imported from `src/lib/supabase-admin.ts`. Never put in any `NEXT_PUBLIC_*` variable.
-- `STRIPE_SECRET_KEY` — used under `src/app/api/stripe/**`
 - `RESEND_API_KEY` — reserved for future custom email templates (Supabase Auth currently sends verification emails natively)
 
 Public (exposed to the browser — safe because RLS gates all queries):
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `NEXT_PUBLIC_APP_URL`
 
 ### Deployment
 
 - **Vercel only.** Firebase App Hosting has been removed. `.claude/settings.local.json` grants `vercel logs/inspect/env` and `vercel --prod` permissions.
-- After cloning, run the four SQL migration files under `supabase/migrations/` in the Supabase SQL Editor in numeric order, then populate `.env.local` with the Supabase URL + keys.
+- After cloning, run the seven SQL migration files under `supabase/migrations/` (`001` through `007`) in the Supabase SQL Editor in numeric order, then populate `.env.local` with the Supabase URL + keys.
 
 ## Conventions worth preserving
 

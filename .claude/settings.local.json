@@ -38,7 +38,14 @@
       "Bash(vercel logs:*)",
       "Bash(vercel inspect:*)",
       "Bash(vercel env:*)",
-      "Bash(vercel --prod)"
+      "Bash(vercel --prod)",
+      "Skill(security)",
+      "Bash(git check-ignore:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo:*)",
+      "Bash(git diff:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
