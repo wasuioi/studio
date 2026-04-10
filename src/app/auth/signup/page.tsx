@@ -1,13 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { useAuth as useFirebaseAuth, useFirestore, setDocumentNonBlocking } from '@/firebase';
-import { 
-  createUserWithEmailAndPassword, 
-  sendEmailVerification,
-  updateProfile
-} from 'firebase/auth';
-import { doc } from 'firebase/firestore';
+import { supabase } from '@/supabase/client';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +11,6 @@ import { Loader2, ShieldCheck, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/Logo';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -27,9 +20,7 @@ export default function SignupPage() {
   const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const auth = useFirebaseAuth();
-  const db = useFirestore();
+
   const router = useRouter();
   const { toast } = useToast();
 
@@ -56,45 +47,34 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/verify`,
+          data: {
+            display_name: displayName,
+          },
+        },
+      });
 
-      // Set display name in Auth
-      await updateProfile(user, { displayName });
-      
-      // Send verification email
-      await sendEmailVerification(user);
-
-      // Initialize Firestore document (NON-BLOCKING)
-      const defaultAvatar = PlaceHolderImages.find(img => img.id === 'user1')?.imageUrl || '';
-      const userRef = doc(db, 'users', user.uid);
-      
-      setDocumentNonBlocking(userRef, {
-        id: user.uid,
-        uid: user.uid,
-        email: user.email,
-        displayName: displayName || 'Viber',
-        name: displayName || 'Viber',
-        photoURL: defaultAvatar,
-        emailVerified: false,
-        identityVerified: false,
-        profileCompleted: false,
-        verificationStatus: 'not_verified',
-        tier: 'free',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      if (signUpError) {
+        const msg = signUpError.message.toLowerCase().includes('already')
+          ? "This email is already registered."
+          : signUpError.message || "Could not create account.";
+        setError(msg);
+        toast({ variant: "destructive", title: "Signup Error", description: msg });
+        return;
+      }
 
       toast({
         title: "Account Created!",
         description: "Please check your email to verify your account.",
       });
-      
+
       router.push('/auth/verify');
     } catch (err: any) {
-      const msg = err.code === 'auth/email-already-in-use' 
-        ? "This email is already registered." 
-        : err.message || "Could not create account.";
+      const msg = err.message || "Could not create account.";
       setError(msg);
       toast({ variant: "destructive", title: "Signup Error", description: msg });
     } finally {
@@ -149,13 +129,13 @@ export default function SignupPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="email" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="you@vibe.com" 
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@vibe.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required 
+                required
                 className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 font-medium focus-visible:ring-primary/40"
               />
             </div>
@@ -182,8 +162,8 @@ export default function SignupPage() {
                 className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 font-medium focus-visible:ring-primary/40"
               />
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none mt-4 transition-all active:scale-95 text-white"
               disabled={loading}
             >

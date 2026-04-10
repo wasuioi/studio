@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { useAuth as useFirebaseAuth } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { supabase } from '@/supabase/client';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +16,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const auth = useFirebaseAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -25,12 +23,25 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      await user.reload();
-      
-      if (!user.emailVerified) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        const msg = error.message.toLowerCase().includes('invalid')
+          ? "Invalid email or password."
+          : error.message || "An unexpected error occurred.";
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: msg,
+        });
+        return;
+      }
+
+      const user = data.user;
+      if (!user?.email_confirmed_at) {
         toast({
           title: "Account Unverified",
           description: "Please check your inbox to verify your email address.",
@@ -44,14 +55,10 @@ export default function LoginPage() {
         router.push('/bot');
       }
     } catch (error: any) {
-      const msg = error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential'
-        ? "Invalid email or password."
-        : error.message || "An unexpected error occurred.";
-      
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: msg,
+        description: error.message || "An unexpected error occurred.",
       });
     } finally {
       setLoading(false);
@@ -77,29 +84,29 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-1.5">
               <Label htmlFor="email" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">Email Address</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="name@example.com" 
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required 
+                required
                 className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-300 font-medium focus-visible:ring-primary/40"
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password" title="password" className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 ml-1">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
+              <Input
+                id="password"
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required 
+                required
                 className="rounded-2xl h-14 bg-slate-50 border-slate-200 text-slate-900 font-medium focus-visible:ring-primary/40"
               />
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20 truevibe-gradient border-none mt-4 transition-all active:scale-95 text-white"
               disabled={loading}
             >

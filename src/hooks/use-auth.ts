@@ -1,32 +1,37 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
-import { doc, onSnapshot, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { useUser, useFirestore } from '@/firebase';
-import { UserProfile } from '@/types';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { useRouter, usePathname } from 'next/navigation';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { supabase } from '@/supabase/client';
+import { useSupabaseAuth } from '@/supabase/provider';
+import type { Tables } from '@/supabase/types';
+
+type Profile = Tables<'profiles'>;
 
 const PROFILE_CACHE_KEY = (uid: string) => `profile_cache_${uid}`;
 
+/**
+ * useAuth — Supabase version. Reads the auth user from SupabaseProvider,
+ * fetches the profiles row from Postgres, gates on email verification, and
+ * redirects unauthenticated users as before.
+ *
+ * Return shape matches the old Firebase hook so call sites don't break:
+ *   { user, profile, loading }
+ */
 export function useAuth() {
-  const { user, isUserLoading: authLoading } = useUser();
-  const db = useFirestore();
+  const { user, isUserLoading: authLoading } = useSupabaseAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (authLoading) return;
 
     const publicPaths = ['/', '/auth/login', '/auth/signup'];
-    const isPublicPath = publicPaths.includes(pathname);
+    const isPublicPath = publicPaths.includes(pathname ?? '');
 
-    // 1. Unauthenticated handling
+    // 1. Unauthenticated
     if (!user) {
       setProfile(null);
       setLoading(false);
@@ -36,8 +41,10 @@ export function useAuth() {
       return;
     }
 
-    // 2. Email Verification Gate
-    if (!user.emailVerified) {
+    // 2. Email verification gate — Supabase sets email_confirmed_at when
+    //    the user clicks the confirmation link.
+    const emailVerified = Boolean(user.email_confirmed_at);
+    if (!emailVerified) {
       setProfile(null);
       setLoading(false);
       if (!isPublicPath && pathname !== '/auth/verify') {
@@ -46,14 +53,13 @@ export function useAuth() {
       return;
     }
 
-    // 3. Load cached profile instantly only for non-profile pages (eliminates spinner)
-    // For profile page, we want fresh data from Firestore
+    // 3. Load cached profile instantly (except on /profile where we want fresh data)
     const isProfilePage = pathname === '/profile';
     if (!isProfilePage) {
       try {
-        const cached = localStorage.getItem(PROFILE_CACHE_KEY(user.uid));
+        const cached = localStorage.getItem(PROFILE_CACHE_KEY(user.id));
         if (cached) {
-          setProfile(JSON.parse(cached) as UserProfile);
+          setProfile(JSON.parse(cached) as Profile);
           setLoading(false);
         } else {
           setLoading(true);
@@ -65,77 +71,35 @@ export function useAuth() {
       setLoading(true);
     }
 
-    // 4. Authenticated & Verified profile sync
-    const userRef = doc(db, 'users', user.uid);
-
-    getDoc(userRef)
-      .then((docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data() as UserProfile;
-
-          // Sync firestore flag if needed
-          if (data.emailVerified !== user.emailVerified) {
-            updateDoc(userRef, { emailVerified: true });
-          }
-
-          const profileData = { ...data, emailVerified: true };
-          setProfile(profileData);
+    // 4. Fetch fresh profile from Postgres
+    let cancelled = false;
+    supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error('[useAuth] failed to load profile', error);
           setLoading(false);
-
-          // Update localStorage cache for next visit
-          try {
-            localStorage.setItem(PROFILE_CACHE_KEY(user.uid), JSON.stringify(profileData));
-          } catch {}
-        } else {
-          // Initialize profile with stable human placeholder
-          const defaultAvatar = PlaceHolderImages.find(img => img.id === 'user1')?.imageUrl || '';
-          const now = new Date().toISOString();
-          const newProfile: UserProfile = {
-            id: user.uid,
-            uid: user.uid,
-            email: user.email || '',
-            displayName: user.displayName || 'Your Name',
-            name: user.displayName || 'Your Name',
-            photoURL: user.photoURL || defaultAvatar,
-            profilePhotoUrl: user.photoURL || defaultAvatar,
-            bio: "Just joined Truevibe! Looking for real vibes.",
-            emailVerified: true,
-            identityVerified: false,
-            verificationStatus: 'not_verified',
-            profileCompleted: false,
-            tier: 'free',
-            lastLogin: now,
-            createdAt: now,
-            updatedAt: now,
-          };
-
-          setDoc(userRef, newProfile, { merge: true })
-            .then(() => {
-              setProfile(newProfile);
-              setLoading(false);
-            })
-            .catch(() => {
-              const permissionError = new FirestorePermissionError({
-                path: userRef.path,
-                operation: 'create',
-                requestResourceData: newProfile,
-              });
-              errorEmitter.emit('permission-error', permissionError);
-              setLoading(false);
-            });
+          return;
         }
-      })
-      .catch(() => {
-        if (!isPublicPath && pathname !== '/auth/verify') {
-          const permissionError = new FirestorePermissionError({
-            path: userRef.path,
-            operation: 'get',
-          });
-          errorEmitter.emit('permission-error', permissionError);
+        if (data) {
+          setProfile(data);
+          try {
+            localStorage.setItem(PROFILE_CACHE_KEY(user.id), JSON.stringify(data));
+          } catch {
+            // Ignore localStorage quota / private-mode errors
+          }
         }
         setLoading(false);
       });
-  }, [user, authLoading, db, pathname, router]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authLoading, pathname, router]);
 
   return { user, profile, loading: authLoading || loading };
 }

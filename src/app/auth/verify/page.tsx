@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useAuth as useFirebaseAuth, useUser } from '@/firebase';
-import { signOut, sendEmailVerification } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { supabase } from '@/supabase/client';
+import { useSupabaseAuth } from '@/supabase/provider';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Loader2, ArrowLeft, RefreshCw, ShieldCheck, Mail, AlertCircle } from 'lucide-react';
@@ -11,22 +11,50 @@ import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/Logo';
 
 export default function VerifyPage() {
-  const { user, isUserLoading } = useUser();
-  const auth = useFirebaseAuth();
+  const { user, isUserLoading } = useSupabaseAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
-  
+
   const [resending, setResending] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [verifying, setVerifying] = useState(false);
+
+  // Handle click-through from Supabase verification email (token_hash in URL)
+  useEffect(() => {
+    const tokenHash = searchParams?.get('token_hash');
+    const type = searchParams?.get('type');
+    if (!tokenHash || !type) return;
+
+    setVerifying(true);
+    supabase.auth
+      .verifyOtp({ token_hash: tokenHash, type: type as 'email' | 'signup' | 'invite' | 'recovery' | 'email_change' })
+      .then(({ error }) => {
+        setVerifying(false);
+        if (error) {
+          toast({
+            variant: "destructive",
+            title: "Verification Failed",
+            description: error.message,
+          });
+          return;
+        }
+        toast({
+          title: "Account Activated!",
+          description: "Welcome to the TrueVibe community.",
+        });
+        router.push('/bot');
+      });
+  }, [searchParams, router, toast]);
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
+    if (!isUserLoading && !user && !verifying) {
       router.push('/auth/login');
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, verifying]);
 
   useEffect(() => {
-    if (user?.emailVerified) {
+    if (user?.email_confirmed_at) {
       router.push('/bot');
     }
   }, [user, router]);
@@ -39,10 +67,24 @@ export default function VerifyPage() {
   }, [countdown]);
 
   const handleResend = async () => {
-    if (!user || countdown > 0) return;
+    if (!user?.email || countdown > 0) return;
     setResending(true);
     try {
-      await sendEmailVerification(user);
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: user.email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/verify`,
+        },
+      });
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message || "Failed to resend email.",
+        });
+        return;
+      }
       toast({
         title: "Verification Sent",
         description: "Check your inbox (and spam) for a new verification link.",
@@ -62,11 +104,9 @@ export default function VerifyPage() {
   const handleCheckStatus = async () => {
     if (!user) return;
     try {
-      await user.reload();
-      if (user.emailVerified) {
-        // CRITICAL: Force refresh the ID token so Firestore picks up the 'email_verified' claim immediately
-        await user.getIdToken(true);
-        
+      const { data, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      if (data.user?.email_confirmed_at) {
         toast({
           title: "Account Activated!",
           description: "Welcome to the TrueVibe community.",
@@ -87,11 +127,11 @@ export default function VerifyPage() {
   };
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
     router.push('/auth/login');
   };
 
-  if (isUserLoading) return (
+  if (isUserLoading || verifying) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
     </div>
@@ -99,7 +139,6 @@ export default function VerifyPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Background Luminous Spots */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-primary/20 rounded-full blur-[120px] opacity-40" />
       </div>
@@ -121,7 +160,6 @@ export default function VerifyPage() {
         </CardHeader>
 
         <CardContent className="space-y-4 px-6 pb-6">
-          {/* Enhanced Warning Box */}
           <div className="bg-amber-100/80 p-4 rounded-2xl border border-amber-200 flex items-start gap-3 shadow-sm">
             <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
             <div className="space-y-1">
@@ -133,15 +171,15 @@ export default function VerifyPage() {
               </p>
             </div>
           </div>
-          
-          <Button 
+
+          <Button
             className="w-full h-14 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 truevibe-gradient border-none transition-all active:scale-95 text-white"
             onClick={handleCheckStatus}
           >
             I&apos;ve Verified
           </Button>
 
-          <Button 
+          <Button
             variant="ghost"
             className="w-full h-10 rounded-xl gap-2 font-black text-slate-400 hover:text-primary transition-all uppercase tracking-widest text-[9px]"
             onClick={handleResend}
