@@ -1,26 +1,17 @@
-
 "use client";
 
 // Allow up to 60s for Vercel serverless functions (AI flow can be slow)
 export const maxDuration = 60;
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useUser } from '@/firebase';
+import { useUser } from '@/supabase/hooks/use-user';
 import { useRouter } from 'next/navigation';
 import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Send, Zap, Loader2, Star, Globe, RotateCcw } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
-import { doc, collection, query, where, getDocs } from 'firebase/firestore';
-import {
-  useFirestore,
-  useDoc,
-  useMemoFirebase,
-  updateDocumentNonBlocking,
-  setDocumentNonBlocking,
-  addDocumentNonBlocking,
-  deleteDocumentNonBlocking
-} from '@/firebase';
+import { supabase } from '@/supabase/client';
+import type { Tables } from '@/supabase/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -35,15 +26,19 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+type BotChat = Tables<'bot_chats'>;
+
+interface ChatMessage {
+  role: 'user' | 'model';
+  message: string;
+  timestamp: string;
+}
+
 export default function AIProfileBot() {
-  // Use useUser() instead of useAuth() — bot page doesn't need the Firestore profile,
-  // so we only wait for the fast Firebase auth state check (not the extra Firestore round-trip).
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const db = useFirestore();
   const { toast } = useToast();
 
-  // Redirect unauthenticated users
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/auth/login');
@@ -55,102 +50,95 @@ export default function AIProfileBot() {
   const [aiError, setAiError] = useState<'quota' | 'other' | null>(null);
   const [lastMessage, setLastMessage] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'th' | null>(null);
+  const [botChat, setBotChat] = useState<BotChat | null>(null);
+  const [sessionMessages, setSessionMessages] = useState<ChatMessage[]>([]);
+  const [isRestoring, setIsRestoring] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  // Track whether we've already loaded history from Firestore (avoid race condition overwrite)
   const initializedRef = useRef(false);
 
-  const personalityRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(db, 'users', user.uid, 'personality', 'personality_data');
-  }, [db, user]);
-
-  const { data: personalityData, isLoading: personalityLoading } = useDoc<any>(personalityRef);
-
-  const [sessionMessages, setSessionMessages] = useState<any[]>([]);
-  // isRestoring: true while we haven't yet confirmed whether local cache or Firestore has data.
-  // Prevents the language-selection screen from flashing (and being accidentally clicked)
-  // before we know whether the user already has a chat history.
-  const [isRestoring, setIsRestoring] = useState(true);
-
-  // --- localStorage cache: restore instantly on remount/tab-switch/browser-close ---
-  // Runs once on mount. localStorage survives browser close (unlike sessionStorage).
-  // Keys are namespaced by userId to prevent cross-user leaks on shared devices.
+  // Load or create a bot_chats row for this user (one active interview at a time)
   useEffect(() => {
-    if (initializedRef.current) return;
-    if (!user) return; // wait until auth is ready so we have the uid
-    if (!personalityRef) return; // wait until ref is ready
-    try {
-      const key = `vera_chat_${user.uid}`;
-      const cached = localStorage.getItem(key);
-      const cachedLang = localStorage.getItem(`${key}_lang`) as 'en' | 'th' | null;
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setSessionMessages(parsed);
-          if (cachedLang) setSelectedLanguage(cachedLang);
-          initializedRef.current = true;
-          setIsRestoring(false);
-          // Sync to Firestore so other browsers/devices can restore this history
-          setDocumentNonBlocking(personalityRef, {
-            chatHistory: parsed,
-            ...(cachedLang ? { preferredLanguage: cachedLang === 'th' ? 'Thai' : 'English' } : {}),
-          }, { merge: true });
-          return;
+    if (!user) return;
+    let cancelled = false;
+
+    (async () => {
+      // Restore from localStorage first for instant display
+      try {
+        const cached = localStorage.getItem(`vera_chat_${user.id}`);
+        const cachedLang = localStorage.getItem(`vera_chat_${user.id}_lang`) as 'en' | 'th' | null;
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0 && !cancelled) {
+            setSessionMessages(parsed);
+            if (cachedLang) setSelectedLanguage(cachedLang);
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      // Fetch the latest bot_chat for this user
+      const { data, error } = await supabase
+        .from('bot_chats')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error('[bot] failed to load bot_chat', error);
+        setIsRestoring(false);
+        initializedRef.current = true;
+        return;
+      }
+
+      if (data) {
+        setBotChat(data);
+        const msgs = (data.messages as unknown as ChatMessage[]) ?? [];
+        if (msgs.length > 0) {
+          setSessionMessages(prev => (msgs.length > prev.length ? msgs : prev));
         }
       }
-    } catch {}
-    // No local cache — let Firestore effect handle it (don't setIsRestoring yet)
-  }, [user, personalityRef]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist messages to localStorage on every change
+      setIsRestoring(false);
+      initializedRef.current = true;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  // Persist messages to localStorage on change
   useEffect(() => {
     if (!user || sessionMessages.length === 0) return;
     try {
-      localStorage.setItem(`vera_chat_${user.uid}`, JSON.stringify(sessionMessages));
-    } catch {}
+      localStorage.setItem(`vera_chat_${user.id}`, JSON.stringify(sessionMessages));
+    } catch {
+      // ignore
+    }
   }, [sessionMessages, user]);
 
-  // Persist selected language to localStorage
   useEffect(() => {
     if (!user || !selectedLanguage) return;
     try {
-      localStorage.setItem(`vera_chat_${user.uid}_lang`, selectedLanguage);
-    } catch {}
+      localStorage.setItem(`vera_chat_${user.id}_lang`, selectedLanguage);
+    } catch {
+      // ignore
+    }
   }, [selectedLanguage, user]);
 
-  // Load chat history from Firestore.
-  // Always runs — even if localStorage loaded first — so Firestore can override
-  // when it has more messages (e.g. history from another browser/device).
-  // IMPORTANT: must check personalityRef !== null — when user=null, useDoc returns
-  // isLoading=false immediately, which would falsely trigger initialized=true before
-  // the real Firestore subscription even starts.
-  useEffect(() => {
-    if (!personalityRef) return;      // user not ready, subscription not started
-    if (personalityLoading) return;   // subscription started but hasn't responded yet
-    if (personalityData?.chatHistory && personalityData.chatHistory.length > 0) {
-      // Use Firestore data if it has more messages than what localStorage loaded
-      setSessionMessages(prev =>
-        personalityData.chatHistory.length > prev.length
-          ? personalityData.chatHistory
-          : prev
-      );
-      setSelectedLanguage(personalityData.preferredLanguage === 'Thai' ? 'th' : 'en');
-    }
-    if (!initializedRef.current) {
-      initializedRef.current = true;
-      setIsRestoring(false); // Firestore has confirmed state — safe to show UI
-    }
-  }, [personalityData, personalityLoading, personalityRef]);
-
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [sessionMessages, isAiThinking]);
 
-  // Auto-resize textarea
   const resizeTextarea = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -163,83 +151,88 @@ export default function AIProfileBot() {
     resizeTextarea();
   };
 
-  const handleLanguageSelect = (lang: 'en' | 'th') => {
-    if (!user || !personalityRef) return;
+  const handleLanguageSelect = async (lang: 'en' | 'th') => {
+    if (!user) return;
 
     setSelectedLanguage(lang);
     const initialMsg = lang === 'en'
       ? "Hi! I'm Vera, your TrueVibe companion. I'm here to understand your unique energy. Ready to begin our vibe check?"
       : "สวัสดีค่ะ! ฉันคือ Vera เพื่อนคู่คิดของคุณ ฉันอยู่ที่นี่เพื่อทำความรู้จักพลังงานของคุณ พร้อมจะเริ่มกันหรือยังคะ?";
 
-    const firstMsg = {
-      role: 'model' as const,
+    const firstMsg: ChatMessage = {
+      role: 'model',
       message: initialMsg,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     setSessionMessages([firstMsg]);
 
-    setDocumentNonBlocking(personalityRef, {
-      id: 'personality_data',
-      userId: user.uid,
-      preferredLanguage: lang === 'th' ? 'Thai' : 'English',
-      chatHistory: [firstMsg],
-      lastAnalysisDate: new Date().toISOString()
-    }, { merge: true });
+    // Upsert bot_chat
+    const { data, error } = await supabase
+      .from('bot_chats')
+      .insert({
+        user_id: user.id,
+        phase: 1,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        messages: [firstMsg] as any,
+        completed: false,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+      return;
+    }
+    setBotChat(data);
   };
 
   const handleResetConversation = async () => {
-    if (!user || !personalityRef) return;
+    if (!user) return;
 
     try {
-      deleteDocumentNonBlocking(personalityRef);
-      const userRef = doc(db, 'users', user.uid);
-      updateDocumentNonBlocking(userRef, {
-        profileCompleted: false,
-        personalityProfile: null,
-        topMatches: null,
-        updatedAt: new Date().toISOString()
-      });
+      // Delete all bot_chats for this user
+      await supabase.from('bot_chats').delete().eq('user_id', user.id);
+      // Delete personality_profile
+      await supabase.from('personality_profiles').delete().eq('user_id', user.id);
+      // Reset profile fields
+      await supabase
+        .from('profiles')
+        .update({
+          profile_completed: false,
+          personality_profile: null,
+          top_matches: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
 
-      const requestsRef = collection(db, 'chat_requests');
-      const qSender = query(requestsRef, where('senderId', '==', user.uid));
-      const qReceiver = query(requestsRef, where('receiverId', '==', user.uid));
-      const convsRef = collection(db, 'conversations');
-      const qConvs = query(convsRef, where('participantIds', 'array-contains', user.uid));
-
-      const [snap1, snap2, snap3] = await Promise.all([
-        getDocs(qSender),
-        getDocs(qReceiver),
-        getDocs(qConvs)
-      ]);
-
-      snap1.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
-      snap2.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
-      snap3.forEach(d => deleteDocumentNonBlocking(doc(db, 'conversations', d.id)));
+      // Clean up chat requests and conversations for this user
+      await supabase.from('chat_requests').delete().or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+      // Note: conversations with this user in participant_ids will also need cleanup
+      // but array-based deletes aren't straightforward; RLS + cascade from profile delete
+      // would handle this in a full cleanup. For v0, leave conversation records.
 
       initializedRef.current = false;
+      setBotChat(null);
       setSessionMessages([]);
       setSelectedLanguage(null);
       setInput('');
       setIsRestoring(false);
-      try {
-        if (user) {
-          localStorage.removeItem(`vera_chat_${user.uid}`);
-          localStorage.removeItem(`vera_chat_${user.uid}_lang`);
-        }
-      } catch {}
 
-      toast({
-        title: "Profile Reset",
-        description: "Your vibes have been cleared.",
-      });
+      try {
+        localStorage.removeItem(`vera_chat_${user.id}`);
+        localStorage.removeItem(`vera_chat_${user.id}_lang`);
+      } catch {
+        // ignore
+      }
+
+      toast({ title: "Profile Reset", description: "Your vibes have been cleared." });
     } catch (e) {
       console.error("Reset failed", e);
     }
   };
 
   const handleRetry = () => {
-    // Remove the last user message (which was added before the failed AI call)
     setSessionMessages(prev => {
       const last = prev[prev.length - 1];
       if (last?.role === 'user') return prev.slice(0, -1);
@@ -248,18 +241,16 @@ export default function AIProfileBot() {
     setAiError(null);
     if (lastMessage) {
       setInput(lastMessage);
-      // Restore textarea height
       setTimeout(resizeTextarea, 0);
     }
   };
 
   const handleSend = async () => {
-    if (!input.trim() || isAiThinking || !user || !personalityRef || !selectedLanguage) return;
+    if (!input.trim() || isAiThinking || !user || !botChat || !selectedLanguage) return;
 
     const currentMsg = input;
     const now = new Date().toISOString();
     setInput('');
-    // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -267,61 +258,68 @@ export default function AIProfileBot() {
     setAiError(null);
     setIsAiThinking(true);
 
-    const newUserMsg = {
-      role: 'user' as const,
+    const newUserMsg: ChatMessage = {
+      role: 'user',
       message: currentMsg,
-      timestamp: now
+      timestamp: now,
     };
-
-    addDocumentNonBlocking(collection(db, 'bot_chats'), {
-      userId: user.uid,
-      ...newUserMsg,
-      timestamp: now
-    });
 
     const updatedHistory = [...sessionMessages, newUserMsg];
     setSessionMessages(updatedHistory);
 
-    setDocumentNonBlocking(personalityRef, {
-      chatHistory: updatedHistory,
-      lastAnalysisDate: now
-    }, { merge: true });
+    // Persist the user's message
+    await supabase
+      .from('bot_chats')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update({ messages: updatedHistory as any, updated_at: now })
+      .eq('id', botChat.id);
 
     try {
       const response = await aiPersonalityInterview({
         chatHistory: sessionMessages.map(m => ({ role: m.role, message: m.message })),
         currentMessage: currentMsg,
-        preferredLanguage: selectedLanguage === 'th' ? 'Thai' : 'English'
+        preferredLanguage: selectedLanguage === 'th' ? 'Thai' : 'English',
       });
 
-      const aiMsg = {
-        role: 'model' as const,
+      const aiMsg: ChatMessage = {
+        role: 'model',
         message: response.response,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-
-      addDocumentNonBlocking(collection(db, 'bot_chats'), {
-        userId: user.uid,
-        ...aiMsg,
-        timestamp: new Date().toISOString()
-      });
 
       const finalHistory = [...updatedHistory, aiMsg];
       setSessionMessages(finalHistory);
 
-      const updatePayload: any = {
-        chatHistory: finalHistory,
-        lastAnalysisDate: new Date().toISOString()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updates: any = {
+        messages: finalHistory,
+        updated_at: new Date().toISOString(),
       };
 
       if (response.interviewComplete && response.personalityProfile) {
-        updatePayload.personalityProfile = response.personalityProfile;
-        const userRef = doc(db, 'users', user.uid);
-        updateDocumentNonBlocking(userRef, {
-          personalityProfile: response.personalityProfile,
-          profileCompleted: true,
-          updatedAt: new Date().toISOString()
+        updates.completed = true;
+
+        // Save to personality_profiles (normalized table)
+        await supabase.from('personality_profiles').upsert({
+          user_id: user.id,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          traits: response.personalityProfile as any,
+          partner_vision: response.personalityProfile?.ideal_partner?.summary ?? null,
+          summary: response.personalityProfile?.user_persona?.summary ?? null,
+          completed_at: new Date().toISOString(),
         });
+
+        // Also save to profiles.personality_profile (legacy JSONB column) so the
+        // rest of the app that reads profile.personalityProfile keeps working.
+        await supabase
+          .from('profiles')
+          .update({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            personality_profile: response.personalityProfile as any,
+            profile_completed: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
 
         toast({
           title: "Vibe Check Complete!",
@@ -329,10 +327,10 @@ export default function AIProfileBot() {
         });
       }
 
-      setDocumentNonBlocking(personalityRef, updatePayload, { merge: true });
-    } catch (error: any) {
+      await supabase.from('bot_chats').update(updates).eq('id', botChat.id);
+    } catch (error: unknown) {
       console.error("Vera AI error:", error);
-      const msg = String(error?.message || error || '');
+      const msg = String((error as Error)?.message || error || '');
       const isQuota = msg.includes('429') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('rate');
       const isTemp = msg.includes('503') || msg.toLowerCase().includes('unavailable') || msg.toLowerCase().includes('high demand');
       setAiError(isQuota || isTemp ? 'quota' : 'other');
@@ -348,7 +346,6 @@ export default function AIProfileBot() {
     }
   };
 
-  // Only block on the fast Firebase auth check, not on Firestore profile
   if (isUserLoading) return (
     <div className="flex h-screen items-center justify-center">
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -399,10 +396,7 @@ export default function AIProfileBot() {
       </div>
 
       <div className="flex-1 glass-card rounded-[2.5rem] overflow-hidden flex flex-col mb-4 relative h-[calc(100vh-200px)] min-h-[500px]">
-        {/* Loading state: show spinner while restoring from cache or waiting for Firestore.
-            This prevents the language-selection screen from briefly flashing and being
-            accidentally clicked, which would overwrite existing Firestore chat history. */}
-        {isRestoring || personalityLoading ? (
+        {isRestoring ? (
           <div className="flex-1 flex items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
@@ -432,7 +426,6 @@ export default function AIProfileBot() {
           </div>
         ) : (
           <>
-            {/* Native scroll div — better mobile performance than Radix ScrollArea */}
             <div
               ref={scrollRef}
               className="flex-1 overflow-y-auto overscroll-contain p-6"

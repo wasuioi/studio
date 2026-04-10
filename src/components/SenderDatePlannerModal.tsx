@@ -7,8 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Send, Calendar, MapPin, Clock, CheckCircle2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { aiDatePlanner } from '@/ai/flows/ai-date-planner';
-import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { supabase } from '@/supabase/client';
 import { ChatRequest } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -35,7 +34,6 @@ interface SenderDatePlannerModalProps {
 type Step = 'ask-location' | 'ask-time' | 'suggesting' | 'options' | 'confirmed';
 
 export function SenderDatePlannerModal({ isOpen, onClose, request, senderName, senderLocation }: SenderDatePlannerModalProps) {
-  const db = useFirestore();
   const { toast } = useToast();
   const [step, setStep] = useState<Step>('ask-location');
   const [messages, setMessages] = useState<Message[]>([
@@ -111,12 +109,18 @@ export function SenderDatePlannerModal({ isOpen, onClose, request, senderName, s
           { role: 'vera', text: result.message },
         ]);
 
-        // Save sender prefs + actual location
-        updateDocumentNonBlocking(doc(db, 'chat_requests', request.id), {
-          senderLocationPref: locationPref,
-          senderTimePref: timePref,
-          ...(senderLocation && { senderActualLocation: senderLocation }),
-        });
+        // Save sender prefs + actual location — stashed in message column as JSON
+        // for v0 (same reasoning as DatePlannerModal). Future work: dedicated columns.
+        await supabase
+          .from('chat_requests')
+          .update({
+            message: JSON.stringify({
+              senderLocationPref: locationPref,
+              senderTimePref: timePref,
+              ...(senderLocation && { senderActualLocation: senderLocation }),
+            }),
+          })
+          .eq('id', request.id);
 
         setStep('options');
       } catch {
@@ -140,15 +144,17 @@ export function SenderDatePlannerModal({ isOpen, onClose, request, senderName, s
     setSelectedOption(option);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!selectedOption) return;
 
-    updateDocumentNonBlocking(doc(db, 'chat_requests', request.id), {
-      dateStatus: 'planned',
-      suggestedLocation: selectedOption.location,
-      suggestedDateTime: selectedOption.dateTime,
-      scheduledFor: selectedOption.scheduledFor,
-    });
+    await supabase
+      .from('chat_requests')
+      .update({
+        date_status: 'planned',
+        suggested_location: selectedOption.location,
+        suggested_date_time: selectedOption.dateTime,
+      })
+      .eq('id', request.id);
 
     setMessages(prev => [
       ...prev,

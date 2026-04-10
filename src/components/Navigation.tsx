@@ -4,34 +4,29 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { User, CalendarHeart, Heart, ShieldCheck, LogOut, Zap, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth as useFirebaseAuth, useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { signOut } from 'firebase/auth';
+import { useUser } from '@/supabase/hooks/use-user';
+import { useCollection } from '@/supabase/hooks/use-collection';
+import { supabase } from '@/supabase/client';
 import { Button } from '@/components/ui/button';
-import { collection, query, where } from 'firebase/firestore';
 import Image from 'next/image';
 
 export function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
-  const auth = useFirebaseAuth();
   const { user } = useUser();
-  const db = useFirestore();
+  const emailVerified = Boolean(user?.email_confirmed_at);
 
-  const requestsQuery = useMemoFirebase(() => {
-    // Guard against unverified users querying protected collections
-    if (!user || !user.emailVerified) return null;
-    return query(
-      collection(db, 'chat_requests'),
-      where('receiverId', '==', user.uid),
-      where('status', '==', 'pending')
-    );
-  }, [db, user]);
+  const { data: incomingRequests } = useCollection<'chat_requests'>({
+    table: 'chat_requests',
+    query: (q) => (emailVerified && user ? q.eq('receiver_id', user.id).eq('status', 'pending') : q),
+    realtime: user ? { column: 'receiver_id', value: user.id } : undefined,
+    deps: [user?.id, emailVerified],
+  });
 
-  const { data: incomingRequests } = useCollection(requestsQuery);
   const pendingCount = incomingRequests?.length || 0;
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
     router.push('/auth/login');
   };
 

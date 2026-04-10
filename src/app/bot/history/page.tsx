@@ -5,24 +5,26 @@ import { Navigation } from '@/components/Navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { BrainCircuit, Calendar, Loader2 } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useCollection } from '@/supabase/hooks/use-collection';
 import { cn } from '@/lib/utils';
+
+interface FlatChatEntry {
+  id: string;
+  role: 'user' | 'model';
+  message: string;
+  timestamp: string;
+}
 
 export default function BotHistoryPage() {
   const { user, loading } = useAuth();
-  const db = useFirestore();
 
-  const historyQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-      collection(db, 'bot_chats'),
-      where('userId', '==', user.uid),
-      orderBy('timestamp', 'desc')
-    );
-  }, [db, user]);
-
-  const { data: history, isLoading } = useCollection(historyQuery);
+  // Fetch all bot_chats for this user. Each row has a `messages` jsonb array —
+  // we flatten them for the list view.
+  const { data: botChats, isLoading } = useCollection<'bot_chats'>({
+    table: 'bot_chats',
+    query: (q) => (user ? q.eq('user_id', user.id).order('updated_at', { ascending: false }) : q),
+    deps: [user?.id],
+  });
 
   if (loading || isLoading) return (
     <div className="flex h-screen items-center justify-center">
@@ -30,10 +32,22 @@ export default function BotHistoryPage() {
     </div>
   );
 
+  // Flatten all messages across all bot_chats into a single list
+  const history: FlatChatEntry[] = (botChats ?? []).flatMap(bc => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const msgs = (bc.messages as any[]) ?? [];
+    return msgs.map((m, idx) => ({
+      id: `${bc.id}-${idx}`,
+      role: m.role,
+      message: m.message,
+      timestamp: m.timestamp ?? bc.updated_at,
+    }));
+  }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
   return (
     <div className="max-w-2xl mx-auto h-screen flex flex-col p-4 relative pt-20">
       <Navigation />
-      
+
       <div className="flex items-center gap-3 mb-8 px-2">
         <div className="bg-primary/20 p-2 rounded-2xl">
           <BrainCircuit className="text-primary w-6 h-6" />
@@ -46,12 +60,12 @@ export default function BotHistoryPage() {
 
       <ScrollArea className="flex-1">
         <div className="space-y-6 pb-10 px-2">
-          {history?.length === 0 ? (
+          {history.length === 0 ? (
             <div className="text-center py-20 glass-card rounded-[3rem]">
               <p className="text-white/40 font-bold">No chat history yet.</p>
             </div>
           ) : (
-            history?.map((chat) => (
+            history.map((chat) => (
               <Card key={chat.id} className="p-6 rounded-[2rem] border-none shadow-sm bg-white/5 backdrop-blur-md overflow-hidden">
                 <div className="flex items-center gap-2 mb-3 text-[10px] text-white/30 font-medium uppercase tracking-wider">
                   <Calendar className="w-3 h-3" />
@@ -59,8 +73,8 @@ export default function BotHistoryPage() {
                 </div>
                 <div className={cn(
                   "p-4 rounded-2xl text-sm leading-relaxed",
-                  chat.role === 'user' 
-                    ? "truevibe-gradient text-white border-none" 
+                  chat.role === 'user'
+                    ? "truevibe-gradient text-white border-none"
                     : "bg-white/10 text-white border border-white/10"
                 )}>
                   <span className="font-black text-[10px] block mb-1 uppercase opacity-50">

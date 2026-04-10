@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
-import { verifyIdToken } from '@/lib/firebaseAdmin';
+import { verifyAuth } from '@/lib/verify-auth';
 
 const PRICES: Record<string, number> = {
   insight: 299,     // $2.99
@@ -13,11 +13,11 @@ export async function POST(request: Request) {
   }
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-  // 1. Verify the caller is authenticated — uid comes from the token, never the body
+  // 1. Verify the caller is authenticated — uid comes from the session cookie, never the body
   let uid: string;
   try {
-    const token = await verifyIdToken(request);
-    uid = token.uid;
+    const authedUser = await verifyAuth();
+    uid = authedUser.id;
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

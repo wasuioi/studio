@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
-import { verifyIdToken } from '@/lib/firebaseAdmin';
+import { verifyAuth } from '@/lib/verify-auth';
 
 export async function POST(request: Request) {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -11,8 +11,8 @@ export async function POST(request: Request) {
   // 1. Verify the caller is authenticated
   let uid: string;
   try {
-    const token = await verifyIdToken(request);
-    uid = token.uid;
+    const authedUser = await verifyAuth();
+    uid = authedUser.id;
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

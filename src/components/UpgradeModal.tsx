@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Zap, MessageCircle, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth } from 'firebase/auth';
+import { supabase } from '@/supabase/client';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -148,15 +148,15 @@ export function UpgradeModal({
     setIsLoading(true);
     setSelectedType(type);
     try {
-      const currentUser = getAuth().currentUser;
-      if (!currentUser) throw new Error('Not signed in');
-      const idToken = await currentUser.getIdToken();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error('Not signed in');
 
       const res = await fetch('/api/stripe/create-payment-intent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ type, targetMatchId, targetMatchName, receiverId: targetMatchId }),
       });

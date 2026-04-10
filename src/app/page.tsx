@@ -2,7 +2,7 @@
 "use client";
 
 import { Button } from '@/components/ui/button';
-import { useUser } from '@/firebase';
+import { useUser } from '@/supabase/hooks/use-user';
 import { useRouter } from 'next/navigation';
 import { Logo } from '@/components/Logo';
 import { ShieldCheck } from 'lucide-react';
@@ -14,7 +14,7 @@ export default function LandingPage() {
 
   const handleStart = () => {
     if (user) {
-      if (!user.emailVerified) {
+      if (!user.email_confirmed_at) {
         router.push('/auth/verify');
       } else {
         router.push('/bot');

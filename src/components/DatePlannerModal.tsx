@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Sparkles, Clock, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { supabase } from '@/supabase/client';
 import { ChatRequest } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,7 +26,6 @@ interface DatePlannerModalProps {
 type Step = 'ask-location' | 'ask-time' | 'waiting';
 
 export function DatePlannerModal({ isOpen, onClose, request, receiverName, receiverLocation }: DatePlannerModalProps) {
-  const db = useFirestore();
   const { toast } = useToast();
   const [step, setStep] = useState<Step>('ask-location');
   const [messages, setMessages] = useState<Message[]>([
@@ -80,13 +78,22 @@ export function DatePlannerModal({ isOpen, onClose, request, receiverName, recei
       ]);
       setStep('waiting');
 
-      updateDocumentNonBlocking(doc(db, 'chat_requests', request.id), {
-        status: 'accepted',
-        dateStatus: 'waiting_sender',
-        receiverLocationPref: locationPref,
-        receiverTimePref: timePref,
-        ...(receiverLocation && { receiverActualLocation: receiverLocation }),
-      });
+      // Note: receiverLocationPref / receiverTimePref / receiverActualLocation
+      // are app-level planning fields. For v0 we stash them inside the `message`
+      // column as JSON so we don't need another migration. A future iteration
+      // should give each of these their own column or move to a date_plans table.
+      await supabase
+        .from('chat_requests')
+        .update({
+          status: 'accepted',
+          date_status: 'waiting_sender',
+          message: JSON.stringify({
+            receiverLocationPref: locationPref,
+            receiverTimePref: timePref,
+            ...(receiverLocation && { receiverActualLocation: receiverLocation }),
+          }),
+        })
+        .eq('id', request.id);
 
       toast({
         title: "Preferences Saved! 🎉",

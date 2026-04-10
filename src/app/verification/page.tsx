@@ -6,8 +6,7 @@ import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Upload, Camera, CheckCircle, ShieldCheck, FileText, X, Sparkles, Loader2, AlertCircle } from 'lucide-react';
-import { doc } from 'firebase/firestore';
-import { useFirestore, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { supabase } from '@/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
@@ -15,7 +14,6 @@ import { cn } from '@/lib/utils';
 
 export default function VerificationPage() {
   const { profile, loading } = useAuth();
-  const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -93,26 +91,18 @@ export default function VerificationPage() {
 
       setAiResult(result);
 
-      const requestId = crypto.randomUUID();
-      const requestRef = doc(db, 'users', profile.uid, 'verification_requests', requestId);
-      const userRef = doc(db, 'users', profile.uid);
+      // No verification_requests table in the new schema — the ID photos were
+      // never persisted anyway. Just update the profile row with the outcome.
+      const status: 'verified' | 'rejected' = result.isMatch ? 'verified' : 'rejected';
 
-      const status = result.isMatch ? 'verified' : 'rejected';
-      
-      setDocumentNonBlocking(requestRef, {
-        id: requestId,
-        userId: profile.uid,
-        status,
-        aiScore: result.confidenceScore,
-        aiReason: result.reason,
-        submittedAt: new Date().toISOString(),
-      }, { merge: true });
-
-      updateDocumentNonBlocking(userRef, {
-        verificationStatus: status,
-        identityVerified: result.isMatch,
-        updatedAt: new Date().toISOString(),
-      });
+      await supabase
+        .from('profiles')
+        .update({
+          verification_status: status,
+          identity_verified: Boolean(result.isMatch),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', profile.id);
 
       setStep(4);
     } catch (error) {
@@ -138,7 +128,7 @@ export default function VerificationPage() {
     </div>
   );
 
-  if (profile?.identityVerified && step !== 4) {
+  if (profile?.identity_verified && step !== 4) {
     return (
       <div className="max-w-md mx-auto p-4 text-center pt-20">
         <Navigation />
@@ -161,7 +151,7 @@ export default function VerificationPage() {
         <p className="text-muted-foreground font-medium text-sm md:text-base">Keep TrueVibe safe and genuine for everyone.</p>
       </header>
 
-      {profile?.verificationStatus === 'rejected' && step === 1 && (
+      {profile?.verification_status === 'rejected' && step === 1 && (
         <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-xl bg-destructive/5 mb-6 overflow-hidden animate-in fade-in slide-in-from-top-4 mx-2">
           <div className="p-5 md:p-6 flex items-start gap-4">
             <div className="bg-destructive/10 p-2 rounded-xl text-destructive flex-shrink-0"><AlertCircle className="w-5 h-5" /></div>
