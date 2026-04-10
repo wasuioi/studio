@@ -27,6 +27,9 @@ export interface Database {
           last_login: string | null;
           created_at: string;
           updated_at: string;
+          location: string | null;
+          personality_profile: Json | null;
+          top_matches: Json | null;
         };
         Insert: {
           id: string;
@@ -41,6 +44,9 @@ export interface Database {
           last_login?: string | null;
           created_at?: string;
           updated_at?: string;
+          location?: string | null;
+          personality_profile?: Json | null;
+          top_matches?: Json | null;
         };
         Update: {
           id?: string;
@@ -55,6 +61,9 @@ export interface Database {
           last_login?: string | null;
           created_at?: string;
           updated_at?: string;
+          location?: string | null;
+          personality_profile?: Json | null;
+          top_matches?: Json | null;
         };
       };
       posts: {
@@ -141,6 +150,16 @@ export interface Database {
           message: string | null;
           created_at: string;
           updated_at: string;
+          match_score: number | null;
+          reason: string | null;
+          date_status: string | null;
+          sender_name: string | null;
+          sender_photo_url: string | null;
+          receiver_name: string | null;
+          expires_at: string | null;
+          payment_intent_id: string | null;
+          suggested_date_time: string | null;
+          suggested_location: string | null;
         };
         Insert: {
           id?: string;
@@ -150,6 +169,16 @@ export interface Database {
           message?: string | null;
           created_at?: string;
           updated_at?: string;
+          match_score?: number | null;
+          reason?: string | null;
+          date_status?: string | null;
+          sender_name?: string | null;
+          sender_photo_url?: string | null;
+          receiver_name?: string | null;
+          expires_at?: string | null;
+          payment_intent_id?: string | null;
+          suggested_date_time?: string | null;
+          suggested_location?: string | null;
         };
         Update: {
           id?: string;
@@ -159,6 +188,16 @@ export interface Database {
           message?: string | null;
           created_at?: string;
           updated_at?: string;
+          match_score?: number | null;
+          reason?: string | null;
+          date_status?: string | null;
+          sender_name?: string | null;
+          sender_photo_url?: string | null;
+          receiver_name?: string | null;
+          expires_at?: string | null;
+          payment_intent_id?: string | null;
+          suggested_date_time?: string | null;
+          suggested_location?: string | null;
         };
       };
       conversations: {

@@ -2,69 +2,57 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { useUser } from '@/firebase';
+import { useSupabaseAuth } from '@/supabase/provider';
 import { useRouter } from 'next/navigation';
 import { Navigation } from '@/components/Navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import {
-  useFirestore,
-  updateDocumentNonBlocking,
-  useCollection,
-  useMemoFirebase,
-} from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { supabase } from '@/supabase/client';
+import { useCollection } from '@/supabase/hooks/use-collection';
+import { rowToChatRequest } from '@/supabase/adapters';
 import { CalendarHeart, Loader2, Inbox, Heart, MapPin, Clock, CheckCircle2, Hourglass, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { ChatRequest } from '@/types';
+import type { ChatRequest } from '@/types';
 import Link from 'next/link';
 import { DatePlannerModal } from '@/components/DatePlannerModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 export default function RequestsPage() {
-  // useUser() for fast auth gate (Firebase auth only, no Firestore round-trip)
-  const { user: authUser, isUserLoading } = useUser();
-  // useAuth() for profile data (verification check), but don't block full page on it
+  const { user: authUser, isUserLoading } = useSupabaseAuth();
   const { user, profile } = useAuth();
   const router = useRouter();
-  const db = useFirestore();
+  const { toast } = useToast();
+  const [planningRequest, setPlanningRequest] = useState<ChatRequest | null>(null);
+  const [showVerifyGate, setShowVerifyGate] = useState(false);
 
-  // Redirect unauthenticated users without blocking the whole page
+  const emailVerified = Boolean(authUser?.email_confirmed_at);
+
   useEffect(() => {
     if (!isUserLoading && !authUser) {
       router.push('/auth/login');
     }
   }, [isUserLoading, authUser, router]);
-  const { toast } = useToast();
-  const [planningRequest, setPlanningRequest] = useState<ChatRequest | null>(null);
-  const [showVerifyGate, setShowVerifyGate] = useState(false);
 
-  // Queries use authUser (fast) so they start as soon as Firebase auth resolves,
-  // without waiting for the Firestore profile round-trip.
-  const requestsQuery = useMemoFirebase(() => {
-    if (!authUser?.emailVerified) return null;
-    return query(
-      collection(db, 'chat_requests'),
-      where('receiverId', '==', authUser.uid),
-      where('status', '==', 'pending')
-    );
-  }, [db, authUser]);
+  const { data: incomingRows, isLoading } = useCollection<'chat_requests'>({
+    table: 'chat_requests',
+    query: (q) => (emailVerified && authUser ? q.eq('receiver_id', authUser.id).eq('status', 'pending') : q),
+    realtime: authUser ? { column: 'receiver_id', value: authUser.id } : undefined,
+    deps: [authUser?.id, emailVerified],
+  });
 
-  const acceptedQuery = useMemoFirebase(() => {
-    if (!authUser?.emailVerified) return null;
-    return query(
-      collection(db, 'chat_requests'),
-      where('receiverId', '==', authUser.uid),
-      where('status', '==', 'accepted')
-    );
-  }, [db, authUser]);
+  const { data: acceptedRows, isLoading: isLoadingAccepted } = useCollection<'chat_requests'>({
+    table: 'chat_requests',
+    query: (q) => (emailVerified && authUser ? q.eq('receiver_id', authUser.id).eq('status', 'accepted') : q),
+    realtime: authUser ? { column: 'receiver_id', value: authUser.id } : undefined,
+    deps: [authUser?.id, emailVerified],
+  });
 
-  const { data: incomingRequests, isLoading } = useCollection<ChatRequest>(requestsQuery);
-  const { data: acceptedDates, isLoading: isLoadingAccepted } = useCollection<ChatRequest>(acceptedQuery);
+  const incomingRequests: ChatRequest[] = (incomingRows ?? []).map(rowToChatRequest);
+  const acceptedDates: ChatRequest[] = (acceptedRows ?? []).map(rowToChatRequest);
 
-  const isVerified = profile?.identityVerified || profile?.verificationStatus === 'verified';
+  const isVerified = profile?.identity_verified || profile?.verification_status === 'verified';
 
   const handleAcceptRequest = (request: ChatRequest) => {
     if (!user) return;
@@ -73,17 +61,26 @@ export default function RequestsPage() {
   };
 
   const handleDeclineRequest = async (request: ChatRequest) => {
-    updateDocumentNonBlocking(doc(db, 'chat_requests', request.id), { status: 'rejected' });
+    const { error } = await supabase
+      .from('chat_requests')
+      .update({ status: 'rejected' })
+      .eq('id', request.id);
+
+    if (error) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+      return;
+    }
     toast({ description: "Date invite declined." });
 
     if (request.paymentIntentId && user) {
       try {
-        const idToken = await user.getIdToken();
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
         await fetch('/api/stripe/refund', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`,
+            ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
           },
           body: JSON.stringify({ paymentIntentId: request.paymentIntentId }),
         });
@@ -94,16 +91,15 @@ export default function RequestsPage() {
     }
   };
 
-  // Only hard-block on auth state check (fast). Collection queries show inline loaders.
-  if (isUserLoading || (authUser && !authUser.emailVerified)) return (
+  if (isUserLoading || (authUser && !emailVerified)) return (
     <div className="flex h-screen items-center justify-center">
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
     </div>
   );
 
   const contentLoading = isLoading || isLoadingAccepted;
-  const plannedDates = acceptedDates?.filter(d => d.dateStatus === 'planned') ?? [];
-  const waitingSenderDates = acceptedDates?.filter(d => d.dateStatus === 'waiting_sender') ?? [];
+  const plannedDates = acceptedDates.filter(d => d.dateStatus === 'planned');
+  const waitingSenderDates = acceptedDates.filter(d => d.dateStatus === 'waiting_sender');
 
   return (
     <div className="max-w-4xl mx-auto p-4 mb-24 min-h-screen pt-20">
@@ -118,14 +114,12 @@ export default function RequestsPage() {
         </p>
       </header>
 
-      {/* Inline loader while Firestore queries run — page shell visible immediately */}
       {contentLoading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       )}
 
-      {/* Confirmed planned dates */}
       {!contentLoading && plannedDates.length > 0 && (
         <div className="px-2 mb-8">
           <h2 className="text-white font-black text-lg mb-3 flex items-center gap-2">
@@ -160,7 +154,6 @@ export default function RequestsPage() {
         </div>
       )}
 
-      {/* Waiting for sender to answer */}
       {!contentLoading && waitingSenderDates.length > 0 && (
         <div className="px-2 mb-8">
           <h2 className="text-white font-black text-lg mb-3 flex items-center gap-2">
@@ -186,9 +179,8 @@ export default function RequestsPage() {
         </div>
       )}
 
-      {/* Pending invites */}
       {!contentLoading && <div className="space-y-6 px-2">
-        {incomingRequests && incomingRequests.length > 0 ? (
+        {incomingRequests.length > 0 ? (
           incomingRequests.map((req) => (
             <Card key={req.id} className="glass-card rounded-[2rem] overflow-hidden animate-in slide-in-from-bottom-4">
               <div className="flex flex-col md:flex-row p-6 md:p-8 gap-6 items-center">
@@ -207,7 +199,7 @@ export default function RequestsPage() {
                     </Badge>
                   </div>
                   <p className="text-sm text-white/70 font-medium leading-relaxed italic line-clamp-2">
-                    "{req.reason}"
+                    &quot;{req.reason}&quot;
                   </p>
                   <p className="text-xs text-primary/80 font-bold uppercase tracking-wider">
                     🌹 Wants to go on a date with you
@@ -258,7 +250,6 @@ export default function RequestsPage() {
         ) : null}
       </div>}
 
-      {/* Verification Gate Dialog */}
       <Dialog open={showVerifyGate} onOpenChange={setShowVerifyGate}>
         <DialogContent className="glass-card rounded-[2.5rem] border-white/10 max-w-md p-8 bg-[#0F0819]/90">
           <DialogHeader className="items-center text-center space-y-4">
@@ -268,14 +259,14 @@ export default function RequestsPage() {
             <div>
               <DialogTitle className="text-2xl font-black tracking-tight text-white">Verify First</DialogTitle>
               <DialogDescription className="text-white/60 mt-2 leading-relaxed">
-                {profile?.verificationStatus === 'pending'
+                {profile?.verification_status === 'pending'
                   ? "Your identity verification is under review. You'll be able to accept date invites once approved."
                   : "TrueVibe requires identity verification before accepting date invites. It only takes a minute!"}
               </DialogDescription>
             </div>
           </DialogHeader>
           <DialogFooter className="flex flex-col gap-2 mt-2">
-            {profile?.verificationStatus !== 'pending' && (
+            {profile?.verification_status !== 'pending' && (
               <Link href="/verification" className="w-full">
                 <Button className="truevibe-pill-button w-full" onClick={() => setShowVerifyGate(false)}>
                   <ShieldCheck className="w-4 h-4 mr-2" /> Verify My Identity
@@ -294,8 +285,8 @@ export default function RequestsPage() {
           isOpen={!!planningRequest}
           onClose={() => setPlanningRequest(null)}
           request={planningRequest}
-          receiverName={profile.displayName || profile.name}
-          receiverLocation={profile.location}
+          receiverName={profile.display_name ?? ''}
+          receiverLocation={profile.location ?? undefined}
         />
       )}
     </div>

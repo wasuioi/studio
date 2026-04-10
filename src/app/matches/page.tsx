@@ -1,65 +1,62 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { useUser } from '@/firebase';
+import { useSupabaseAuth } from '@/supabase/provider';
 import { Navigation } from '@/components/Navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
 import { Sparkles, BrainCircuit, Check, CalendarHeart, Loader2, Info, Zap, Heart, RefreshCw, Star, UserPlus, Bell, Clock, MapPin, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
-import { 
-  useFirestore, 
-  updateDocumentNonBlocking,
-  useCollection,
-  useMemoFirebase,
-  setDocumentNonBlocking
-} from '@/firebase';
+import { supabase } from '@/supabase/client';
+import { useCollection } from '@/supabase/hooks/use-collection';
+import { rowToChatRequest, chatRequestToRow } from '@/supabase/adapters';
 import { cn } from '@/lib/utils';
 import { findMatches } from '@/ai/flows/find-matches-flow';
 import { useToast } from '@/hooks/use-toast';
 import { UpgradeModal } from '@/components/UpgradeModal';
-import { doc, collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { ChatRequest } from '@/types';
+import type { ChatRequest } from '@/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SenderDatePlannerModal } from '@/components/SenderDatePlannerModal';
 
 export default function MatchesPage() {
-  const { isUserLoading, user: authUser } = useUser();
+  const { user: authUser, isUserLoading } = useSupabaseAuth();
   const { profile, user } = useAuth();
-  const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   const [isScanning, setIsScanning] = useState(false);
   const [showVerifyGate, setShowVerifyGate] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [matches, setMatches] = useState<any[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [activeMatchForPayment, setActiveMatchForPayment] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedAnalysis, setSelectedAnalysis] = useState<any>(null);
   const [senderPlanningRequest, setSenderPlanningRequest] = useState<ChatRequest | null>(null);
   const [viewingPlan, setViewingPlan] = useState<ChatRequest | null>(null);
 
-  const outgoingQuery = useMemoFirebase(() => {
-    if (!authUser?.emailVerified) return null;
-    return query(
-      collection(db, 'chat_requests'),
-      where('senderId', '==', authUser.uid)
-    );
-  }, [db, authUser]);
+  const emailVerified = Boolean(authUser?.email_confirmed_at);
 
-  const { data: outgoingRequests } = useCollection<ChatRequest>(outgoingQuery);
+  // Outgoing chat requests from this user
+  const { data: outgoingRows } = useCollection<'chat_requests'>({
+    table: 'chat_requests',
+    query: (q) => (authUser ? q.eq('sender_id', authUser.id) : q),
+    realtime: authUser ? { column: 'sender_id', value: authUser.id } : undefined,
+    deps: [authUser?.id],
+  });
 
-  const pendingSenderRequests = outgoingRequests?.filter(r => r.dateStatus === 'waiting_sender') ?? [];
+  const outgoingRequests: ChatRequest[] = (outgoingRows ?? []).map(rowToChatRequest);
+  const pendingSenderRequests = outgoingRequests.filter(r => r.dateStatus === 'waiting_sender');
 
   useEffect(() => {
     if (profile?.topMatches) {
@@ -72,25 +69,22 @@ export default function MatchesPage() {
     setIsScanning(true);
     try {
       // Query real users who have completed their profile, excluding self
-      const usersRef = collection(db, 'users');
-      const q = query(
-        usersRef, 
-        where('profileCompleted', '==', true),
-        limit(20)
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const potentialMatches = querySnapshot.docs
-        .filter(doc => doc.id !== user.uid)
-        .map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            name: data.displayName || data.name,
-            photoURL: data.photoURL,
-            summary: data.personalityProfile?.user_persona?.summary || "No summary available."
-          };
-        });
+      const { data: potentialRows, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('profile_completed', true)
+        .neq('id', user.id)
+        .limit(20);
+
+      if (error) throw error;
+
+      const potentialMatches = (potentialRows ?? []).map(row => ({
+        id: row.id,
+        name: row.display_name ?? '',
+        photoURL: row.photo_url ?? '',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        summary: (row.personality_profile as any)?.user_persona?.summary || "No summary available.",
+      }));
 
       if (potentialMatches.length === 0) {
         toast({ title: "Sync Failed", description: "No other active vibes found in the universe yet." });
@@ -101,8 +95,8 @@ export default function MatchesPage() {
 
       const results = await findMatches({
         currentUser: {
-          id: user.uid,
-          name: profile.displayName || profile.name,
+          id: user.id,
+          name: profile.display_name ?? '',
           persona: profile.personalityProfile.user_persona,
           ideal_partner: profile.personalityProfile.ideal_partner,
           psychological_insights: profile.personalityProfile.psychological_insights
@@ -114,7 +108,6 @@ export default function MatchesPage() {
         }))
       });
 
-      
       const processedMatches = results.matches
         .map(m => {
           const fullProfile = potentialMatches.find(p => p.id === m.targetUserId);
@@ -127,11 +120,13 @@ export default function MatchesPage() {
         .sort((a, b) => b.score - a.score)
         .slice(0, 5);
 
-      const userRef = doc(db, 'users', user.uid);
-      updateDocumentNonBlocking(userRef, {
-        topMatches: processedMatches,
-        updatedAt: new Date().toISOString()
-      });
+      const { error: updateError } = await supabase
+        .from('profiles')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .update({ top_matches: processedMatches as any, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
 
       setMatches(processedMatches);
       toast({ title: "Vibe Check Complete", description: "Your cosmic matches are ready." });
@@ -142,13 +137,14 @@ export default function MatchesPage() {
     }
   };
 
-  const isVerified = profile?.identityVerified || profile?.verificationStatus === 'verified';
+  const isVerified = profile?.identity_verified || profile?.verification_status === 'verified';
 
   const requireVerification = () => {
     setShowVerifyGate(true);
     return false;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleActionInitiated = (match: any) => {
     if (!profile || !user) return;
     if (!isVerified) { requireVerification(); return; }
@@ -166,32 +162,33 @@ export default function MatchesPage() {
     }
   };
 
-  const sendDateInvite = (match: any, paymentIntentId?: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sendDateInvite = async (match: any, paymentIntentId?: string) => {
     if (!user || !profile || !match) return;
-    const requestId = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 3);
-    const requestData: ChatRequest = {
-      id: requestId,
-      senderId: user.uid,
-      senderName: profile.displayName || profile.name,
-      senderPhotoURL: profile.photoURL,
+    const row = chatRequestToRow({
+      senderId: user.id,
+      senderName: profile.display_name ?? '',
+      senderPhotoURL: profile.photo_url ?? '',
       receiverId: match.id,
       receiverName: match.name,
       matchScore: match.score,
       status: 'pending',
       dateStatus: 'pending',
       reason: match.reason,
-      createdAt: new Date().toISOString(),
       expiresAt: expiresAt.toISOString(),
-      ...(paymentIntentId && { paymentIntentId }),
-    };
-    setDocumentNonBlocking(doc(db, 'chat_requests', requestId), requestData, { merge: true });
+      ...(paymentIntentId ? { paymentIntentId } : {}),
+    });
+    const { error } = await supabase.from('chat_requests').insert(row as never);
+    if (error) {
+      toast({ variant: "destructive", title: "Could not send", description: error.message });
+      return;
+    }
     toast({ title: "Date Invite Sent! 🌹", description: "Sending your energy to " + match.name });
   };
 
-  // Only block on Firebase auth state — much faster than waiting for Firestore profile too
-  if (isUserLoading || (authUser && !authUser.emailVerified)) return (
+  if (isUserLoading || (authUser && !emailVerified)) return (
     <div className="flex h-screen items-center justify-center">
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
     </div>
@@ -200,7 +197,7 @@ export default function MatchesPage() {
   return (
     <div className="max-w-6xl mx-auto p-4 min-h-screen pt-20">
       <Navigation />
-      
+
       <header className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-2">
         <div className="space-y-1">
           <h1 className="text-3xl md:text-5xl font-black tracking-tight flex items-center gap-3 text-white">
@@ -210,11 +207,11 @@ export default function MatchesPage() {
             Vera has synced with your frequency.
           </p>
         </div>
-        
+
         {profile?.personalityProfile && (
-          <Button 
-            onClick={handleScanForMatches} 
-            disabled={isScanning} 
+          <Button
+            onClick={handleScanForMatches}
+            disabled={isScanning}
             className="truevibe-pill-button sm:w-auto"
           >
             {isScanning ? (
@@ -226,7 +223,6 @@ export default function MatchesPage() {
         )}
       </header>
 
-      {/* Sender notification banners */}
       {pendingSenderRequests.length > 0 && (
         <div className="px-2 mb-6 space-y-3">
           {pendingSenderRequests.map(req => (
@@ -269,18 +265,18 @@ export default function MatchesPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-2">
           {matches.map((match) => {
-            const hasSentRequest = outgoingRequests?.some(r => r.receiverId === match.id && r.status === 'pending' && r.dateStatus !== 'waiting_sender');
-            const hasPlannedDate = outgoingRequests?.some(r => r.receiverId === match.id && r.dateStatus === 'planned');
-            const waitingForSender = outgoingRequests?.some(r => r.receiverId === match.id && r.dateStatus === 'waiting_sender');
+            const hasSentRequest = outgoingRequests.some(r => r.receiverId === match.id && r.status === 'pending' && r.dateStatus !== 'waiting_sender');
+            const hasPlannedDate = outgoingRequests.some(r => r.receiverId === match.id && r.dateStatus === 'planned');
+            const waitingForSender = outgoingRequests.some(r => r.receiverId === match.id && r.dateStatus === 'waiting_sender');
 
             return (
               <Card key={match.id} className="glass-card glass-card-hover group relative rounded-[2rem] overflow-hidden flex flex-col h-full shadow-lg bg-white/5 border-white/10">
                 <div className="relative aspect-[4/5] w-full">
                   {match.photoURL ? (
-                    <Image 
-                      src={match.photoURL} 
-                      alt={match.name} 
-                      fill 
+                    <Image
+                      src={match.photoURL}
+                      alt={match.name}
+                      fill
                       data-ai-hint="portrait person"
                       className="object-cover transition-all duration-700 group-hover:scale-105"
                     />
@@ -289,9 +285,9 @@ export default function MatchesPage() {
                       <Sparkles className="w-10 h-10 text-white/20" />
                     </div>
                   )}
-                  
+
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
-                  
+
                   <div className="absolute top-4 right-4 bg-gradient-to-r from-[#FF4DA6] to-[#FF8A8A] px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg z-10">
                     <span className="text-white font-black text-xs">{match.score}% Match</span>
                     <Star className="w-3 h-3 text-white fill-current" />
@@ -302,11 +298,11 @@ export default function MatchesPage() {
                       <h3 className="text-2xl font-black tracking-tight">{match.name}</h3>
                       <Check className="w-4 h-4 bg-verified text-white rounded-full p-1" />
                     </div>
-                    
+
                     <p className="text-white/70 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-4">
                       Frequency: {match.score >= 90 ? 'Perfect Harmony' : 'High Vibe'}
                     </p>
-                    
+
                     <div className="flex gap-2">
                       <Button
                         size="sm"
@@ -316,8 +312,8 @@ export default function MatchesPage() {
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
-                          const plannedReq = outgoingRequests?.find(r => r.receiverId === match.id && r.dateStatus === 'planned');
-                          const waitingReq = outgoingRequests?.find(r => r.receiverId === match.id && r.dateStatus === 'waiting_sender');
+                          const plannedReq = outgoingRequests.find(r => r.receiverId === match.id && r.dateStatus === 'planned');
+                          const waitingReq = outgoingRequests.find(r => r.receiverId === match.id && r.dateStatus === 'waiting_sender');
                           if (plannedReq) {
                             setViewingPlan(plannedReq);
                           } else if (waitingReq) {
@@ -338,9 +334,9 @@ export default function MatchesPage() {
                           <><UserPlus className="w-4 h-4 mr-1.5" /> Date Invite</>
                         )}
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white border-white/10"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -358,7 +354,6 @@ export default function MatchesPage() {
         </div>
       )}
 
-      {/* Verification Gate Dialog */}
       <Dialog open={showVerifyGate} onOpenChange={setShowVerifyGate}>
         <DialogContent className="glass-card rounded-[2.5rem] border-white/10 max-w-md p-8 bg-[#0F0819]/90">
           <DialogHeader className="items-center text-center space-y-4">
@@ -368,14 +363,14 @@ export default function MatchesPage() {
             <div>
               <DialogTitle className="text-2xl font-black tracking-tight text-white">Verify First</DialogTitle>
               <DialogDescription className="text-white/60 mt-2 leading-relaxed">
-                {profile?.verificationStatus === 'pending'
+                {profile?.verification_status === 'pending'
                   ? "Your identity verification is under review. You'll be able to connect with matches once approved."
                   : "TrueVibe requires identity verification before you can view match reports or send date invites. It only takes a minute!"}
               </DialogDescription>
             </div>
           </DialogHeader>
           <DialogFooter className="flex flex-col gap-2 mt-2">
-            {profile?.verificationStatus !== 'pending' && (
+            {profile?.verification_status !== 'pending' && (
               <Link href="/verification" className="w-full">
                 <Button className="truevibe-pill-button w-full" onClick={() => setShowVerifyGate(false)}>
                   <ShieldCheck className="w-4 h-4 mr-2" /> Verify My Identity
@@ -389,7 +384,6 @@ export default function MatchesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Analysis Details */}
       <Dialog open={!!selectedAnalysis} onOpenChange={() => setSelectedAnalysis(null)}>
         <DialogContent className="glass-card rounded-[2.5rem] border-white/10 max-w-md p-8 bg-[#0F0819]/90">
           <DialogHeader className="items-center text-center space-y-4">
@@ -400,17 +394,17 @@ export default function MatchesPage() {
               <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight text-white">Soul Insight</DialogTitle>
             </div>
           </DialogHeader>
-          
+
           <div className="py-6">
             <div className="bg-white/5 p-6 rounded-2xl border-l-4 border-accent italic">
               <p className="text-sm md:text-base text-white/90 leading-relaxed font-medium">
-                "{selectedAnalysis?.reason}"
+                &quot;{selectedAnalysis?.reason}&quot;
               </p>
             </div>
           </div>
 
           <DialogFooter>
-            <Button 
+            <Button
               className="truevibe-pill-button w-full"
               onClick={() => setSelectedAnalysis(null)}
             >
@@ -420,7 +414,6 @@ export default function MatchesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* View Planned Date Dialog */}
       <Dialog open={!!viewingPlan} onOpenChange={() => setViewingPlan(null)}>
         <DialogContent className="glass-card rounded-[2.5rem] border-white/10 max-w-md p-8 bg-[#0F0819]/90">
           <DialogHeader className="items-center text-center space-y-4">
@@ -470,7 +463,7 @@ export default function MatchesPage() {
         <UpgradeModal
           isOpen={showUpgradeModal}
           onClose={() => setShowUpgradeModal(false)}
-          userId={profile.uid}
+          userId={profile.id}
           featureName="Exclusive Content"
           targetMatchName={activeMatchForPayment?.name}
           targetMatchId={activeMatchForPayment?.id}
@@ -483,8 +476,8 @@ export default function MatchesPage() {
           isOpen={!!senderPlanningRequest}
           onClose={() => setSenderPlanningRequest(null)}
           request={senderPlanningRequest}
-          senderName={profile.displayName || profile.name}
-          senderLocation={profile.location}
+          senderName={profile.display_name ?? ''}
+          senderLocation={profile.location ?? undefined}
         />
       )}
     </div>
