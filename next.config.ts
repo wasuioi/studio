@@ -19,17 +19,16 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      // Next.js inline scripts + Stripe JS
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
-      // Stripe iframes
-      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+      // Next.js inline scripts
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "frame-src 'self'",
       // Styles: allow inline (Tailwind) + Google Fonts
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       // Images: self + placeholder hosts + Supabase Storage public URLs
       "img-src 'self' data: blob: https://placehold.co https://images.unsplash.com https://picsum.photos https://fastly.picsum.photos https://*.supabase.co",
-      // API calls: own origin + Supabase (REST + Realtime websocket) + Stripe + Google AI
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://generativelanguage.googleapis.com",
+      // API calls: own origin + Supabase (REST + Realtime websocket) + Google AI
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com",
     ].join('; '),
   },
 ];
