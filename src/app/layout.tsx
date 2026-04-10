@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import { FirebaseClientProvider } from '@/firebase';
+import { SupabaseProvider } from '@/supabase/provider';
 import { Toaster } from '@/components/ui/toaster';
 import { RequestNotificationListener } from '@/components/RequestNotificationListener';
 import { DateReminderListener } from '@/components/DateReminderListener';
 import { BackgroundEffects } from '@/components/BackgroundEffects';
-import { UserProfileInitializer } from '@/components/UserProfileInitializer';
 
 export const metadata: Metadata = {
   title: 'TrueVibe - Real Connections, Real Vibes',
@@ -35,14 +34,13 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased min-h-screen relative pb-20 md:pb-0">
-        <FirebaseClientProvider>
+        <SupabaseProvider>
           <BackgroundEffects />
-          <UserProfileInitializer />
           <RequestNotificationListener />
           <DateReminderListener />
           {children}
           <Toaster />
-        </FirebaseClientProvider>
+        </SupabaseProvider>
       </body>
     </html>
   );
