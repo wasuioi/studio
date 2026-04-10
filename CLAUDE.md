@@ -36,7 +36,7 @@ There is no test runner wired up in `package.json`.
 
 ## High-level architecture
 
-TrueVibe is a Next.js 15 (App Router) + React 19 + TypeScript dating app. The core stack is **Firebase (Auth / Firestore / Storage) on the client, Firebase Admin + Genkit (Google Gemini) on the server, Stripe for payments, Resend for email, and Upstash Redis for rate limiting.** It deploys both to Firebase App Hosting (`apphosting.yaml`) and Vercel.
+TrueVibe is a Next.js 15 (App Router) + React 19 + TypeScript dating app. The core stack is **Firebase (Auth / Firestore / Storage) on the client, Firebase Admin + Genkit (Google Gemini) on the server, Stripe for payments, and Resend for email.** It deploys both to Firebase App Hosting (`apphosting.yaml`) and Vercel.
 
 ### Client ⇄ server boundary
 
@@ -75,7 +75,6 @@ Server-only (do not expose to the client):
 - `GOOGLE_GENAI_API_KEY` — Genkit / Gemini
 - `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY` — Admin SDK
 - Stripe secret key (used under `src/app/api/stripe/**`)
-- Upstash Redis URL/token (used with `@upstash/ratelimit` + `@upstash/redis`)
 - Resend API key (used for verification emails)
 
 Client Firebase config is hardcoded in `src/firebase/config.ts` on purpose — see the comment in `initializeFirebase()`.

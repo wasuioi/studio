@@ -1,49 +1,9 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
-import { Redis } from '@upstash/redis';
-import { Ratelimit } from '@upstash/ratelimit';
-
-// Redis-backed rate limiter: max 3 emails per IP per 10 minutes
-// Works correctly across all serverless instances and survives restarts
-let ratelimit: Ratelimit | null = null;
-
-function getRatelimit(): Ratelimit | null {
-  if (ratelimit) return ratelimit;
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    return null; // fallback: skip rate limiting if Redis not configured
-  }
-  ratelimit = new Ratelimit({
-    redis: new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    }),
-    limiter: Ratelimit.slidingWindow(3, '10 m'), // 3 requests per 10 minutes
-    prefix: 'truevibe:send-verification',
-  });
-  return ratelimit;
-}
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {
-  // Rate limit by IP
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
-    request.headers.get('x-real-ip') ??
-    'unknown';
-
-  const limiter = getRatelimit();
-  if (limiter) {
-    const { success, reset } = await limiter.limit(ip);
-    if (!success) {
-      const retryAfterSec = Math.ceil((reset - Date.now()) / 1000);
-      return NextResponse.json(
-        { error: 'Too many requests. Please wait before requesting another verification email.' },
-        { status: 429, headers: { 'Retry-After': String(retryAfterSec) } }
-      );
-    }
-  }
-
   let email: string, code: string, displayName: string;
   try {
     const body = await request.json();
