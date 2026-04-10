@@ -1,13 +1,5 @@
 import 'server-only';
-
-// Inlined from the deleted src/lib/eval/types.ts (Phase A clean slate).
-// Task 2 will re-introduce shared errors; this client will re-import from there.
-export class EvalConfigError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'EvalConfigError';
-  }
-}
+import { EvalConfigError } from '@/lib/eval/types';
 
 export interface OpenRouterCallParams {
   model: string;
