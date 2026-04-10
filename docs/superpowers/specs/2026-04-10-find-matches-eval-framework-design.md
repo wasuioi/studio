@@ -158,15 +158,18 @@ export interface EvalStore {
 }
 ```
 
-`LocalStorageEvalStore` uses three keys: `eval.pairs`, `eval.strategies`, `eval.results`. On first load, if any key is empty, it seeds defaults from `seed-data.ts`: 4 pairs + 3 strategies. The seeded strategies are:
+`LocalStorageEvalStore` uses three keys: `eval.pairs`, `eval.strategies`, `eval.results`. On first load, if any key is empty, it seeds defaults from `seed-data.ts`: 4 pairs + 4 strategies. The seeded strategies are:
 
 | Strategy ID | Display name | Model (OpenRouter) | Prompt variant | Run count |
 |---|---|---|---|---|
 | `gemini-flash-default` | Gemini 2.5 Flash (default) | `google/gemini-2.5-flash` | `default` | 1 |
 | `claude-sonnet-default` | Claude 3.5 Sonnet (default) | `anthropic/claude-3.5-sonnet` | `default` | 1 |
 | `gpt-4o-mini-default` | GPT-4o mini (default) | `openai/gpt-4o-mini` | `default` | 1 |
+| `llama-3-8b-budget` | Llama 3 8B (budget) | `meta-llama/llama-3-8b-instruct` | `default` | 1 |
 
-All three seeded model IDs are keys in the `modelPrices` table so cost calculation works out of the box.
+All four seeded model IDs are keys in the `modelPrices` table so cost calculation works out of the box. The llama strategy acts as a low-cost open-source baseline: if it performs acceptably, it may be the cost-effective winner; if it fails (e.g. can't follow the complex rubric), that's itself a useful data point.
+
+**SSR safety**: `LocalStorageEvalStore` must never touch `localStorage` during SSR (Next.js would crash with `ReferenceError: localStorage is not defined`). The store methods all guard with `if (typeof window === 'undefined') return <empty default>`, and `page.tsx` fetches data inside a `useEffect` after mount, not during render.
 
 Catches `QuotaExceededError` on `saveResult` and rethrows as a friendly `EvalStorageFullError`.
 
@@ -188,9 +191,11 @@ export function compareToLabels(
 function spearman(a: number[], b: number[]): number;
 ```
 
-**Invariants** (throws on violation):
+**Invariants** (throws a typed `MetricsInvariantError` on violation):
 - `output.matches` and `expected` must have the same set of candidate IDs
 - `expected` must not be empty
+
+The first invariant is a normal LLM failure mode (weak models may silently drop candidates), not a programming bug — `run-strategy.ts` catches the error, records the missing candidate IDs in the `error` string, and the UI surfaces it as "incomplete output" rather than a crash. This is how we discover that e.g. Llama 8B can't handle a 6-candidate batch without dropping some.
 
 ### `prompts.ts`
 
@@ -222,6 +227,7 @@ export const modelPrices: Record<string, { inputPerM: number; outputPerM: number
   'google/gemini-2.5-flash': { inputPerM: 0.075, outputPerM: 0.30 },
   'anthropic/claude-3.5-sonnet': { inputPerM: 3.00, outputPerM: 15.00 },
   'openai/gpt-4o-mini': { inputPerM: 0.15, outputPerM: 0.60 },
+  'meta-llama/llama-3-8b-instruct': { inputPerM: 0.05, outputPerM: 0.08 },
   // Extend as needed
 };
 ```
@@ -324,7 +330,7 @@ Every error either surfaces to the UI with enough context to debug, or is an act
 | OpenRouter API error (rate limit, 500, timeout) | `run-strategy.ts` | Catches, returns `RunResult` with `error` string and `metrics: null`. Sweep continues. UI shows red "failed" badge on that row. |
 | Malformed LLM output | `run-strategy.ts` via `safeParse` | Returns `RunResult` with `error`, `rawOutput` (raw string for debugging), `metrics: null`. |
 | Empty LLM content | Same as malformed | Error message distinguishes: `"LLM returned empty content"`. |
-| Metrics computation error (invariant violation) | `run-strategy.ts` catches `compareToLabels` throw | Returns `RunResult` with `error`, `output` preserved for inspection, `metrics: null`. |
+| Metrics computation error (invariant violation) | `run-strategy.ts` catches `compareToLabels` throw | Returns `RunResult` with `error`, `output` preserved for inspection, `metrics: null`. The common case here is the LLM omitting one of the candidates from its `matches` array — the error message identifies which candidate IDs are missing so you can see whether to tune the prompt or switch models. UI renders a red "incomplete output" badge and makes the missing candidate IDs visible in the details dialog. |
 | `localStorage` full (`QuotaExceededError`) | `LocalStorageEvalStore.saveResult` | Rethrows as `EvalStorageFullError`. UI shows toast + prompts user to clear old results. |
 
 **Explicitly not done**:
@@ -341,7 +347,7 @@ Every error either surfaces to the UI with enough context to debug, or is an act
 
 | File | Type | Why |
 |---|---|---|
-| `metrics.test.ts` | Unit | Highest-value module. If metrics are wrong, every quality number lies. Tests: perfect match = 0 delta, reversed ranking = -1 correlation, tied rankings, edge cases, invariant throws. |
+| `metrics.test.ts` | Unit | Highest-value module. If metrics are wrong, every quality number lies. Tests: perfect match = 0 delta, reversed ranking = -1 correlation, tied rankings, `MetricsInvariantError` thrown when output drops a candidate, `MetricsInvariantError` thrown on empty expected. Write these **before** implementing the functions (TDD). |
 | `store.test.ts` | Unit with mocked localStorage | Round-trip save/get, seeding on empty storage, `QuotaExceededError` handled. |
 | `prompts.test.ts` | Snapshot | Renders `default` variant against a fixed input and snapshots it. Catches accidental drift if someone edits the variant later. |
 | `run-strategy.test.ts` | Integration with mocked `callOpenRouter` | Happy path, malformed JSON, empty content, cost calculation. |
