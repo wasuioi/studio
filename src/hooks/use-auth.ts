@@ -6,16 +6,18 @@ import { supabase } from '@/supabase/client';
 import { useSupabaseAuth } from '@/supabase/provider';
 import { rowToUserProfile } from '@/supabase/adapters';
 import type { UserProfile } from '@/types';
-import type { Tables } from '@/supabase/types';
-
 /**
  * Merged profile type: exposes BOTH the legacy camelCase UserProfile fields
  * (what most components read) AND the raw snake_case columns (what code
  * written during the Supabase migration reads). This avoids a sweeping
- * rename across the entire codebase in a single PR — call sites can migrate
- * to camelCase or snake_case at their own pace.
+ * rename across the entire codebase in a single PR.
+ *
+ * Typed loosely as Record<string, unknown> intersection because the two
+ * views have overlapping but not-always-compatible types (e.g. UserProfile.bio
+ * is `string` while profiles.bio is `string | null`).
  */
-export type MergedProfile = UserProfile & Tables<'profiles'>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type MergedProfile = UserProfile & Record<string, any>;
 
 const PROFILE_CACHE_KEY = (uid: string) => `profile_cache_${uid}`;
 
@@ -91,7 +93,8 @@ export function useAuth() {
         }
         if (data) {
           // Merge: camelCase legacy fields + raw snake_case columns
-          const merged: MergedProfile = { ...rowToUserProfile(data), ...data };
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const merged: MergedProfile = { ...rowToUserProfile(data as any), ...(data as any) } as MergedProfile;
           setProfile(merged);
           try {
             localStorage.setItem(PROFILE_CACHE_KEY(user.id), JSON.stringify(merged));

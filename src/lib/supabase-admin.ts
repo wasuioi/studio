@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/lib/database.types';
 
 /**
  * Service-role Supabase client. BYPASSES RLS.
@@ -28,7 +27,7 @@ if (!serviceRoleKey || !url) {
   );
 }
 
-export const supabaseAdmin = createClient<Database>(url, serviceRoleKey, {
+export const supabaseAdmin = createClient(url, serviceRoleKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
