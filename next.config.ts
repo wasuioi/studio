@@ -26,10 +26,10 @@ const securityHeaders = [
       // Styles: allow inline (Tailwind) + Google Fonts
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      // Images: self + placeholder hosts used in config
-      "img-src 'self' data: blob: https://placehold.co https://images.unsplash.com https://picsum.photos https://fastly.picsum.photos https://firebasestorage.googleapis.com",
-      // API calls: own origin + Firebase + Stripe + Google AI
-      "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://api.stripe.com https://generativelanguage.googleapis.com wss://*.firebaseio.com",
+      // Images: self + placeholder hosts + Supabase Storage public URLs
+      "img-src 'self' data: blob: https://placehold.co https://images.unsplash.com https://picsum.photos https://fastly.picsum.photos https://*.supabase.co",
+      // API calls: own origin + Supabase (REST + Realtime websocket) + Stripe + Google AI
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://generativelanguage.googleapis.com",
     ].join('; '),
   },
 ];
@@ -66,6 +66,12 @@ const nextConfig: NextConfig = {
         hostname: 'fastly.picsum.photos',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
       },
     ],
   },
