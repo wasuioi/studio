@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Navigation } from '@/components/Navigation';
 import { Card } from '@/components/ui/card';
@@ -9,18 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Lock, Send, MessageCircle, ArrowLeft, Loader2, Crown, Sparkles, Trash2 } from 'lucide-react';
+import { Lock, Send, MessageCircle, ArrowLeft, Loader2, Crown, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { 
-  useFirestore, 
-  useCollection, 
-  useDoc,
-  useMemoFirebase, 
-  addDocumentNonBlocking, 
-  updateDocumentNonBlocking,
-  deleteDocumentNonBlocking
-} from '@/firebase';
-import { collection, query, where, orderBy, doc, limit, getDocs } from 'firebase/firestore';
+import { supabase } from '@/supabase/client';
+import { useCollection } from '@/supabase/hooks/use-collection';
+import type { Tables } from '@/supabase/types';
 import { cn } from '@/lib/utils';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { useToast } from '@/hooks/use-toast';
@@ -36,29 +28,42 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-function ConversationListItem({ conversation, currentUserId, isActive, onClick }: { 
-  conversation: any, 
-  currentUserId: string, 
-  isActive: boolean,
-  onClick: () => void 
+type Conversation = Tables<'conversations'>;
+type Message = Tables<'messages'>;
+type Profile = Tables<'profiles'>;
+
+function ConversationListItem({
+  conversation,
+  currentUserId,
+  isActive,
+  onClick,
+}: {
+  conversation: Conversation;
+  currentUserId: string;
+  isActive: boolean;
+  onClick: () => void;
 }) {
-  const db = useFirestore();
-  const otherParticipantId = conversation.participantIds.find((id: string) => id !== currentUserId);
-  
-  const profileRef = useMemoFirebase(() => {
-    if (!otherParticipantId) return null;
-    return doc(db, 'users', otherParticipantId);
-  }, [db, otherParticipantId]);
-  
-  const { data: profile } = useDoc<any>(profileRef);
-  const displayName = profile?.displayName || profile?.name || 'Viber';
-  const photoURL = profile?.photoURL || '';
+  const otherParticipantId = conversation.participant_ids.find(id => id !== currentUserId);
+  const [profile, setProfile] = useState<Profile | null>(null);
+
+  useEffect(() => {
+    if (!otherParticipantId) return;
+    supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', otherParticipantId)
+      .maybeSingle()
+      .then(({ data }) => setProfile(data));
+  }, [otherParticipantId]);
+
+  const displayName = profile?.display_name || 'Viber';
+  const photoURL = profile?.photo_url || '';
 
   return (
-    <button 
-      onClick={onClick} 
+    <button
+      onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-4 p-4 rounded-[1.5rem] transition-all duration-300", 
+        "w-full flex items-center gap-4 p-4 rounded-[1.5rem] transition-all duration-300",
         isActive ? "bg-white/10 text-white" : "text-white/40 hover:bg-white/5"
       )}
     >
@@ -68,7 +73,7 @@ function ConversationListItem({ conversation, currentUserId, isActive, onClick }
       </Avatar>
       <div className="flex-1 text-left overflow-hidden">
         <p className="font-black text-sm truncate">{displayName}</p>
-        <p className="text-[10px] truncate text-white/30 font-medium">{conversation.lastMessage || "Syncing frequency..."}</p>
+        <p className="text-[10px] truncate text-white/30 font-medium">{conversation.last_message || "Syncing frequency..."}</p>
       </div>
     </button>
   );
@@ -76,47 +81,57 @@ function ConversationListItem({ conversation, currentUserId, isActive, onClick }
 
 export default function MessagesPage() {
   const { profile, user, loading } = useAuth();
-  const db = useFirestore();
   const { toast } = useToast();
-  const [activeConversation, setActiveConversation] = useState<any>(null);
+  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [messageText, setMessageText] = useState('');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [activeChatProfile, setActiveChatProfile] = useState<Profile | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const isVerified = profile?.identityVerified;
-  const isPremium = profile?.tier === 'premium' || profile?.tier === 'lite';
+  const emailVerified = Boolean(user?.email_confirmed_at);
+  const isVerified = profile?.identity_verified;
+  const isPremium = profile?.tier === 'premium';
 
-  const convQuery = useMemoFirebase(() => {
-    if (!user?.uid || !user.emailVerified || !profile?.identityVerified) return null;
-    return query(
-      collection(db, 'conversations'),
-      where('participantIds', 'array-contains', user.uid),
-      orderBy('updatedAt', 'desc')
-    );
-  }, [db, user?.uid, user?.emailVerified, profile?.identityVerified]);
+  // Conversations: rows where participant_ids contains current user
+  const { data: conversations, isLoading: convLoading } = useCollection<'conversations'>({
+    table: 'conversations',
+    query: (q) => {
+      if (!user) return q;
+      return q.contains('participant_ids', [user.id]).order('last_message_at', { ascending: false, nullsFirst: false });
+    },
+    realtime: user ? { column: 'id', value: user.id } : undefined, // realtime triggers on any change; handled via refetch
+    deps: [user?.id],
+  });
 
-  const { data: conversations, isLoading: convLoading } = useCollection(convQuery);
+  // Messages for active conversation
+  const { data: messages } = useCollection<'messages'>({
+    table: 'messages',
+    query: (q) => {
+      if (!activeConversation) return q;
+      return q.eq('conversation_id', activeConversation.id).order('created_at', { ascending: true }).limit(100);
+    },
+    realtime: activeConversation ? { column: 'conversation_id', value: activeConversation.id } : undefined,
+    deps: [activeConversation?.id],
+  });
 
-  const messagesQuery = useMemoFirebase(() => {
-    if (!activeConversation?.id) return null;
-    return query(
-      collection(db, 'conversations', activeConversation.id, 'messages'), 
-      orderBy('createdAt', 'asc'), 
-      limit(100)
-    );
-  }, [db, activeConversation?.id]);
+  const otherParticipantId = activeConversation?.participant_ids.find(id => id !== user?.id);
 
-  const { data: messages } = useCollection(messagesQuery);
-  const otherParticipantId = activeConversation?.participantIds.find((id: string) => id !== user?.uid);
-  
-  const activeChatProfileRef = useMemoFirebase(() => {
-    if (!otherParticipantId) return null;
-    return doc(db, 'users', otherParticipantId);
-  }, [db, otherParticipantId]);
-  
-  const { data: activeChatProfile } = useDoc<any>(activeChatProfileRef);
-  const activeDisplayName = activeChatProfile?.displayName || activeChatProfile?.name || 'Viber';
-  const activePhotoURL = activeChatProfile?.photoURL || '';
+  // Load other participant's profile
+  useEffect(() => {
+    if (!otherParticipantId) {
+      setActiveChatProfile(null);
+      return;
+    }
+    supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', otherParticipantId)
+      .maybeSingle()
+      .then(({ data }) => setActiveChatProfile(data));
+  }, [otherParticipantId]);
+
+  const activeDisplayName = activeChatProfile?.display_name || 'Viber';
+  const activePhotoURL = activeChatProfile?.photo_url || '';
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -127,39 +142,57 @@ export default function MessagesPage() {
     }
   }, [messages]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!messageText.trim() || !user || !activeConversation || !isVerified || !isPremium) return;
-    const msgData = { 
-      senderId: user.uid, 
-      text: messageText, 
-      createdAt: new Date().toISOString() 
-    };
-    addDocumentNonBlocking(collection(db, 'conversations', activeConversation.id, 'messages'), msgData);
-    updateDocumentNonBlocking(doc(db, 'conversations', activeConversation.id), { 
-      lastMessage: messageText, 
-      updatedAt: new Date().toISOString() 
+
+    const { error: insertError } = await supabase.from('messages').insert({
+      conversation_id: activeConversation.id,
+      sender_id: user.id,
+      content: messageText,
     });
+
+    if (insertError) {
+      toast({ variant: "destructive", title: "Send failed", description: insertError.message });
+      return;
+    }
+
+    // Update conversation's last_message + last_message_at
+    await supabase
+      .from('conversations')
+      .update({
+        last_message: messageText,
+        last_message_at: new Date().toISOString(),
+      })
+      .eq('id', activeConversation.id);
+
     setMessageText('');
   };
 
   const handleDeleteConversation = async () => {
     if (!activeConversation || !user || !otherParticipantId) return;
-    const requestsRef = collection(db, 'chat_requests');
-    const qSender = query(requestsRef, where('senderId', '==', user.uid), where('receiverId', '==', otherParticipantId));
-    const qReceiver = query(requestsRef, where('senderId', '==', otherParticipantId), where('receiverId', '==', user.uid));
-    try {
-      const [snap1, snap2] = await Promise.all([getDocs(qSender), getDocs(qReceiver)]);
-      snap1.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
-      snap2.forEach(d => deleteDocumentNonBlocking(doc(db, 'chat_requests', d.id)));
-    } catch (e) {
-      console.error("Cleanup failed", e);
+
+    // Clean up chat_requests between the two users (bidirectional)
+    await supabase
+      .from('chat_requests')
+      .delete()
+      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherParticipantId}),and(sender_id.eq.${otherParticipantId},receiver_id.eq.${user.id})`);
+
+    // Delete the conversation (cascades to messages)
+    const { error } = await supabase
+      .from('conversations')
+      .delete()
+      .eq('id', activeConversation.id);
+
+    if (error) {
+      toast({ variant: "destructive", title: "Delete failed", description: error.message });
+      return;
     }
-    deleteDocumentNonBlocking(doc(db, 'conversations', activeConversation.id));
+
     setActiveConversation(null);
     toast({ title: "Frequency Severed", description: "Chat removed." });
   };
 
-  if (loading || convLoading || (user && !user.emailVerified)) return (
+  if (loading || convLoading || (user && !emailVerified)) return (
     <div className="h-screen flex items-center justify-center">
       <Loader2 className="animate-spin text-primary w-10 h-10" />
     </div>
@@ -188,10 +221,10 @@ export default function MessagesPage() {
   return (
     <div className="flex flex-col h-screen w-full bg-background overflow-hidden relative max-w-[1920px] mx-auto pt-16">
       <Navigation />
-      
+
       <div className="flex flex-1 overflow-hidden h-full">
         <div className={cn(
-          "w-full md:w-[320px] lg:w-[400px] border-r border-white/5 flex flex-col bg-black/10 backdrop-blur-2xl transition-all duration-300", 
+          "w-full md:w-[320px] lg:w-[400px] border-r border-white/5 flex flex-col bg-black/10 backdrop-blur-2xl transition-all duration-300",
           activeConversation && "hidden md:flex"
         )}>
           <div className="p-6 pb-4">
@@ -201,12 +234,12 @@ export default function MessagesPage() {
           <ScrollArea className="flex-1 px-4">
             <div className="space-y-2 pb-10 mt-2">
               {conversations?.map(conv => (
-                <ConversationListItem 
-                  key={conv.id} 
-                  conversation={conv} 
-                  currentUserId={user?.uid || ''} 
-                  isActive={activeConversation?.id === conv.id} 
-                  onClick={() => setActiveConversation(conv)} 
+                <ConversationListItem
+                  key={conv.id}
+                  conversation={conv}
+                  currentUserId={user?.id || ''}
+                  isActive={activeConversation?.id === conv.id}
+                  onClick={() => setActiveConversation(conv)}
                 />
               ))}
               {conversations?.length === 0 && (
@@ -220,7 +253,7 @@ export default function MessagesPage() {
         </div>
 
         <div className={cn(
-          "flex-1 flex flex-col bg-black/5 backdrop-blur-3xl h-full relative", 
+          "flex-1 flex flex-col bg-black/5 backdrop-blur-3xl h-full relative",
           !activeConversation && "hidden md:flex items-center justify-center text-center"
         )}>
           {!activeConversation ? (
@@ -276,26 +309,26 @@ export default function MessagesPage() {
 
               <ScrollArea className="flex-1 p-6" ref={scrollRef}>
                 <div className="space-y-6 max-w-2xl mx-auto pb-10">
-                  {messages?.map((m, idx) => {
-                    const isMe = m.senderId === user?.uid;
+                  {messages?.map((m: Message, idx) => {
+                    const isMe = m.sender_id === user?.id;
                     return (
-                      <div 
-                        key={m.id || idx} 
+                      <div
+                        key={m.id || idx}
                         className={cn(
-                          "flex flex-col max-w-[85%] animate-in slide-in-from-bottom-2 duration-300", 
+                          "flex flex-col max-w-[85%] animate-in slide-in-from-bottom-2 duration-300",
                           isMe ? "ml-auto items-end" : "mr-auto items-start"
                         )}
                       >
                         <div className={cn(
-                          "p-4 px-5 rounded-[1.75rem] text-sm font-medium shadow-md", 
-                          isMe 
-                            ? "truevibe-gradient text-white rounded-tr-none" 
+                          "p-4 px-5 rounded-[1.75rem] text-sm font-medium shadow-md",
+                          isMe
+                            ? "truevibe-gradient text-white rounded-tr-none"
                             : "bg-white/10 text-white rounded-tl-none border border-white/5 backdrop-blur-md"
                         )}>
-                          {m.text}
+                          {m.content}
                         </div>
                         <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-1.5 px-2">
-                          {m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
+                          {m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
                         </span>
                       </div>
                     );
@@ -310,8 +343,8 @@ export default function MessagesPage() {
                   </div>
                   <h3 className="text-xl font-black text-white">Deepen the Connection</h3>
                   <p className="text-xs text-white/50 max-w-xs mx-auto font-medium">Upgrade to send unlimited messages and unblur your vibe future.</p>
-                  <Button 
-                    onClick={() => setShowUpgradeModal(true)} 
+                  <Button
+                    onClick={() => setShowUpgradeModal(true)}
                     className="truevibe-pill-button h-10 px-10 text-xs"
                   >
                     Unlock Viber
@@ -320,16 +353,16 @@ export default function MessagesPage() {
               ) : (
                 <div className="p-4 md:p-6 bg-black/20 border-t border-white/5">
                   <div className="max-w-2xl mx-auto relative flex items-center gap-3">
-                    <Input 
-                      placeholder="Share your frequency..." 
-                      value={messageText} 
-                      onChange={e => setMessageText(e.target.value)} 
-                      onKeyDown={e => e.key === 'Enter' && handleSendMessage()} 
-                      className="rounded-full h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-primary/40 px-6" 
+                    <Input
+                      placeholder="Share your frequency..."
+                      value={messageText}
+                      onChange={e => setMessageText(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                      className="rounded-full h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-primary/40 px-6"
                     />
-                    <Button 
-                      size="icon" 
-                      onClick={handleSendMessage} 
+                    <Button
+                      size="icon"
+                      onClick={handleSendMessage}
                       disabled={!messageText.trim()}
                       className="shrink-0 w-12 h-12 rounded-full truevibe-pill-button px-0 shadow-lg"
                     >
@@ -346,7 +379,7 @@ export default function MessagesPage() {
       <UpgradeModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        userId={user?.uid || ''}
+        userId={user?.id || ''}
         featureName="Direct Messaging"
         onPaymentSuccess={() => setShowUpgradeModal(false)}
       />

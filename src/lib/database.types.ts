@@ -205,18 +205,21 @@ export interface Database {
           id: string;
           participant_ids: string[];
           last_message_at: string | null;
+          last_message: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           participant_ids: string[];
           last_message_at?: string | null;
+          last_message?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
           participant_ids?: string[];
           last_message_at?: string | null;
+          last_message?: string | null;
           created_at?: string;
         };
       };
