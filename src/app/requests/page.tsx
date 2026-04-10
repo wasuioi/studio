@@ -71,24 +71,6 @@ export default function RequestsPage() {
       return;
     }
     toast({ description: "Date invite declined." });
-
-    if (request.paymentIntentId && user) {
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData.session?.access_token;
-        await fetch('/api/stripe/refund', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
-          },
-          body: JSON.stringify({ paymentIntentId: request.paymentIntentId }),
-        });
-        toast({ title: "Refund Issued", description: "The sender's $29.99 will be refunded automatically." });
-      } catch {
-        // Refund failed silently
-      }
-    }
   };
 
   if (isUserLoading || (authUser && !emailVerified)) return (

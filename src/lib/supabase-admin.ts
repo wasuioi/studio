@@ -9,7 +9,6 @@ import { createClient } from '@supabase/supabase-js';
  *
  * Use this ONLY for:
  *   - Trusted admin operations (setting verification_status after AI review)
- *   - Stripe webhook handlers (no user session available)
  *   - Genkit flows that need to read/write data across users
  *
  * For anything that should act "as the user," use createSupabaseServerClient

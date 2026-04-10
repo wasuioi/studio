@@ -6,7 +6,6 @@ import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Upload, Camera, CheckCircle, ShieldCheck, FileText, X, Sparkles, Loader2, AlertCircle } from 'lucide-react';
-import { supabase } from '@/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
@@ -91,18 +90,17 @@ export default function VerificationPage() {
 
       setAiResult(result);
 
-      // No verification_requests table in the new schema — the ID photos were
-      // never persisted anyway. Just update the profile row with the outcome.
-      const status: 'verified' | 'rejected' = result.isMatch ? 'verified' : 'rejected';
-
-      await supabase
-        .from('profiles')
-        .update({
-          verification_status: status,
-          identity_verified: Boolean(result.isMatch),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', profile.id);
+      // The /api/verify-identity route handler performs the profiles row
+      // update server-side using the service-role client. The browser client
+      // no longer has column-level UPDATE privilege on identity_verified /
+      // verification_status (see supabase/migrations/007), so doing the write
+      // here would both fail and be a trust-model regression. We just need to
+      // drop the cached profile so useAuth refetches the fresh row.
+      try {
+        localStorage.removeItem(`profile_cache_${profile.id}`);
+      } catch {
+        // Ignore localStorage quota / private-mode errors.
+      }
 
       setStep(4);
     } catch (error) {

@@ -22,7 +22,6 @@ import { rowToChatRequest, chatRequestToRow } from '@/supabase/adapters';
 import { cn } from '@/lib/utils';
 import { findMatches } from '@/ai/flows/find-matches-flow';
 import { useToast } from '@/hooks/use-toast';
-import { UpgradeModal } from '@/components/UpgradeModal';
 import type { ChatRequest } from '@/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -37,9 +36,6 @@ export default function MatchesPage() {
   const [showVerifyGate, setShowVerifyGate] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [matches, setMatches] = useState<any[]>([]);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [activeMatchForPayment, setActiveMatchForPayment] = useState<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedAnalysis, setSelectedAnalysis] = useState<any>(null);
   const [senderPlanningRequest, setSenderPlanningRequest] = useState<ChatRequest | null>(null);
@@ -145,25 +141,21 @@ export default function MatchesPage() {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleActionInitiated = (match: any) => {
+  const handleSendInvite = (match: any) => {
     if (!profile || !user) return;
     if (!isVerified) { requireVerification(); return; }
-    setActiveMatchForPayment(match);
-    setShowUpgradeModal(true);
-  };
-
-  const executeActionAfterPayment = (type: 'insight' | 'connection', paymentIntentId: string) => {
-    if (!activeMatchForPayment || !user || !profile) return;
-
-    if (type === 'insight') {
-      setSelectedAnalysis(activeMatchForPayment);
-    } else if (type === 'connection') {
-      sendDateInvite(activeMatchForPayment, paymentIntentId);
-    }
+    sendDateInvite(match);
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sendDateInvite = async (match: any, paymentIntentId?: string) => {
+  const handleViewInsight = (match: any) => {
+    if (!profile || !user) return;
+    if (!isVerified) { requireVerification(); return; }
+    setSelectedAnalysis(match);
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sendDateInvite = async (match: any) => {
     if (!user || !profile || !match) return;
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 3);
@@ -178,7 +170,6 @@ export default function MatchesPage() {
       dateStatus: 'pending',
       reason: match.reason,
       expiresAt: expiresAt.toISOString(),
-      ...(paymentIntentId ? { paymentIntentId } : {}),
     });
     const { error } = await supabase.from('chat_requests').insert(row as never);
     if (error) {
@@ -319,7 +310,7 @@ export default function MatchesPage() {
                           } else if (waitingReq) {
                             setSenderPlanningRequest(waitingReq);
                           } else if (!hasSentRequest) {
-                            handleActionInitiated(match);
+                            handleSendInvite(match);
                           }
                         }}
                         disabled={isScanning || hasSentRequest}
@@ -340,7 +331,7 @@ export default function MatchesPage() {
                         className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white border-white/10"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleActionInitiated(match);
+                          handleViewInsight(match);
                         }}
                       >
                         <Info className="w-5 h-5" />
@@ -458,18 +449,6 @@ export default function MatchesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {profile && (
-        <UpgradeModal
-          isOpen={showUpgradeModal}
-          onClose={() => setShowUpgradeModal(false)}
-          userId={profile.id}
-          featureName="Exclusive Content"
-          targetMatchName={activeMatchForPayment?.name}
-          targetMatchId={activeMatchForPayment?.id}
-          onPaymentSuccess={executeActionAfterPayment}
-        />
-      )}
 
       {senderPlanningRequest && profile && (
         <SenderDatePlannerModal

@@ -8,13 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Lock, Send, MessageCircle, ArrowLeft, Loader2, Crown, Trash2 } from 'lucide-react';
+import { Lock, Send, MessageCircle, ArrowLeft, Loader2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/supabase/client';
 import { useCollection } from '@/supabase/hooks/use-collection';
 import type { Tables } from '@/supabase/types';
 import { cn } from '@/lib/utils';
-import { UpgradeModal } from '@/components/UpgradeModal';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -84,13 +83,11 @@ export default function MessagesPage() {
   const { toast } = useToast();
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [messageText, setMessageText] = useState('');
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [activeChatProfile, setActiveChatProfile] = useState<Profile | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const emailVerified = Boolean(user?.email_confirmed_at);
   const isVerified = profile?.identity_verified;
-  const isPremium = profile?.tier === 'premium';
 
   // Conversations: rows where participant_ids contains current user
   const { data: conversations, isLoading: convLoading } = useCollection<'conversations'>({
@@ -143,7 +140,7 @@ export default function MessagesPage() {
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!messageText.trim() || !user || !activeConversation || !isVerified || !isPremium) return;
+    if (!messageText.trim() || !user || !activeConversation || !isVerified) return;
 
     const { error: insertError } = await supabase.from('messages').insert({
       conversation_id: activeConversation.id,
@@ -336,53 +333,29 @@ export default function MessagesPage() {
                 </div>
               </ScrollArea>
 
-              {!isPremium ? (
-                <div className="p-8 border-t border-white/5 bg-accent/5 backdrop-blur-3xl text-center space-y-4">
-                  <div className="inline-flex items-center gap-1.5 bg-accent/20 text-accent px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
-                    <Crown className="w-3 h-3 fill-current" /> Premium Required
-                  </div>
-                  <h3 className="text-xl font-black text-white">Deepen the Connection</h3>
-                  <p className="text-xs text-white/50 max-w-xs mx-auto font-medium">Upgrade to send unlimited messages and unblur your vibe future.</p>
+              <div className="p-4 md:p-6 bg-black/20 border-t border-white/5">
+                <div className="max-w-2xl mx-auto relative flex items-center gap-3">
+                  <Input
+                    placeholder="Share your frequency..."
+                    value={messageText}
+                    onChange={e => setMessageText(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                    className="rounded-full h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-primary/40 px-6"
+                  />
                   <Button
-                    onClick={() => setShowUpgradeModal(true)}
-                    className="truevibe-pill-button h-10 px-10 text-xs"
+                    size="icon"
+                    onClick={handleSendMessage}
+                    disabled={!messageText.trim()}
+                    className="shrink-0 w-12 h-12 rounded-full truevibe-pill-button px-0 shadow-lg"
                   >
-                    Unlock Viber
+                    <Send className="w-4 h-4 text-white" />
                   </Button>
                 </div>
-              ) : (
-                <div className="p-4 md:p-6 bg-black/20 border-t border-white/5">
-                  <div className="max-w-2xl mx-auto relative flex items-center gap-3">
-                    <Input
-                      placeholder="Share your frequency..."
-                      value={messageText}
-                      onChange={e => setMessageText(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                      className="rounded-full h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-primary/40 px-6"
-                    />
-                    <Button
-                      size="icon"
-                      onClick={handleSendMessage}
-                      disabled={!messageText.trim()}
-                      className="shrink-0 w-12 h-12 rounded-full truevibe-pill-button px-0 shadow-lg"
-                    >
-                      <Send className="w-4 h-4 text-white" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+              </div>
             </>
           )}
         </div>
       </div>
-
-      <UpgradeModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        userId={user?.id || ''}
-        featureName="Direct Messaging"
-        onPaymentSuccess={() => setShowUpgradeModal(false)}
-      />
     </div>
   );
 }

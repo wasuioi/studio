@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
+import { verifyAuth } from '@/lib/verify-auth';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export const maxDuration = 30;
 
@@ -51,6 +53,17 @@ Return isMatch (true/false), confidenceScore (0–1), and a clear reason.`,
 });
 
 export async function POST(req: NextRequest) {
+  // 1. Identify the caller. The user id is taken from the authenticated
+  //    session cookie ONLY — never from the request body — so a caller
+  //    cannot mark a different user as verified.
+  let userId: string;
+  try {
+    const user = await verifyAuth();
+    userId = user.id;
+  } catch {
+    return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { idCardPhotoUri, selfiePhotoUri } = body;
@@ -59,18 +72,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing images' }, { status: 400 });
     }
 
+    // 2. Run the AI check. The photos are only held in memory for this call
+    //    and are intentionally NOT persisted to storage.
     const { output } = await verifyPrompt({ idCardPhotoUri, selfiePhotoUri });
 
     if (!output) {
       return NextResponse.json({ error: 'AI returned no output' }, { status: 500 });
     }
 
+    // 3. Persist the verification outcome server-side using the service-role
+    //    client (bypasses RLS). Column-level REVOKE in migration 007 prevents
+    //    the browser client from writing these columns directly, so this
+    //    route handler is now the only path that can set a user's
+    //    identity_verified / verification_status.
+    const status: 'verified' | 'rejected' = output.isMatch ? 'verified' : 'rejected';
+    const { error: updateError } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        verification_status: status,
+        identity_verified: Boolean(output.isMatch),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error('[verify-identity] profile update failed', updateError);
+      return NextResponse.json(
+        { error: 'Failed to persist verification result' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(output);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[verify-identity API error]', err);
-    return NextResponse.json(
-      { error: err?.message ?? 'Verification failed' },
-      { status: 500 }
-    );
+    const message = err instanceof Error ? err.message : 'Verification failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
