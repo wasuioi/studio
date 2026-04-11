@@ -97,14 +97,16 @@ describe('planSweep', () => {
   });
 
   it('estimates cost using token heuristic', () => {
-    // One small row, one strategy, one run. gemini flash: 0.075 in, 0.30 out per 1M.
-    // Profile A+B each 100 chars = 200 chars. Plus prompt boilerplate ~600 chars.
-    // Total ~800 chars / 4 = ~200 input tokens. +500 output = ~0.075*200 + 0.30*500 = 15 + 150 = 165 per million = 0.000165 USD.
+    // profileA+B each 100 chars => estimateTokens = 25 each
+    // boilerplate (default) = 150 tokens
+    // input = 25 + 25 + 150 = 200 tokens
+    // completion reserve = 500 tokens
+    // gemini-2.5-flash: 0.075 input / 0.30 output per 1M
+    // cost = (200 * 0.075 + 500 * 0.30) / 1_000_000 = 0.000165
     const rows = [makeRow('r1', 100, 100)];
     const strategies = [makeStrategy('s1', 'google/gemini-2.5-flash')];
     const plan = planSweep(rows, strategies, 1);
     expect(plan.runnable).toHaveLength(1);
-    expect(plan.estimatedUsd).toBeGreaterThan(0);
-    expect(plan.estimatedUsd).toBeLessThan(0.01); // sanity check: not hundreds of dollars
+    expect(plan.estimatedUsd).toBeCloseTo(0.000165, 6);
   });
 });

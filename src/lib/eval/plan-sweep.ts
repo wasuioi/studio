@@ -4,6 +4,12 @@ import { modelPrices, estimateTokens } from './model-prices';
 // Reserve for the model's output (scoreJSON is short but keep safety margin).
 const COMPLETION_TOKEN_RESERVE = 500;
 
+// Boilerplate tokens for the prompt template wrapping profileA/profileB.
+// Values measured by dividing the default template (~600 chars) and simplified
+// template (~100 chars) by the ~4-chars-per-token heuristic.
+const DEFAULT_BOILERPLATE_TOKENS = 150;
+const SIMPLIFIED_BOILERPLATE_TOKENS = 25;
+
 export interface OverflowWarning {
   rowId: string;
   strategyId: string;
@@ -42,12 +48,14 @@ export function planSweep(
   for (const row of rows) {
     for (const strategy of strategies) {
       // Estimate input tokens from the rendered profile content + prompt boilerplate.
-      // We approximate the boilerplate at 600 chars for the default variant.
-      const boilerplateChars = strategy.promptVariant === 'simplified' ? 100 : 600;
+      const boilerplateTokens =
+        strategy.promptVariant === 'simplified'
+          ? SIMPLIFIED_BOILERPLATE_TOKENS
+          : DEFAULT_BOILERPLATE_TOKENS;
       const estimatedInputTokens =
         estimateTokens(row.profileA) +
         estimateTokens(row.profileB) +
-        estimateTokens('x'.repeat(boilerplateChars));
+        boilerplateTokens;
 
       const totalEstimatedTokens = estimatedInputTokens + COMPLETION_TOKEN_RESERVE;
       const priceEntry = modelPrices[strategy.model];
@@ -88,6 +96,7 @@ export function planSweep(
     skipped,
     estimatedUsd,
     unknownModelCount,
+    // Rough heuristic: ~2 seconds per call (network round-trip + LLM latency).
     estimatedSeconds: runnable.length * 2,
     runCount: runnable.length,
   };
