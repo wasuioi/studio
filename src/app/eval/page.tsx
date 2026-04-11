@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LocalStorageEvalStore } from '@/lib/eval/store';
 import { scheduleDelete, type PendingDelete } from '@/lib/eval/undo-delete';
 import { promptVariants, promptInputFromRow } from '@/lib/eval/prompts';
-import type { EvalRow, PromptVariant } from '@/lib/eval/types';
+import type { EvalRow, PromptVariant, Strategy } from '@/lib/eval/types';
 
 export default function EvalPage() {
   const { toast } = useToast();
@@ -131,6 +131,81 @@ export default function EvalPage() {
     });
   }
 
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const [editingStrategy, setEditingStrategy] = useState<Strategy | null>(null);
+
+  useEffect(() => {
+    if (!store) return;
+    store.getStrategies().then(setStrategies);
+  }, [store]);
+
+  async function handleSaveStrategy(updated: Strategy) {
+    if (!store) return;
+    await store.saveStrategy(updated);
+    setStrategies(await store.getStrategies());
+    setEditingStrategy(null);
+  }
+
+  function handleDeleteStrategy(s: Strategy) {
+    if (!store) return;
+    // Optimistic remove from state.
+    setStrategies(current => current.filter(x => x.id !== s.id));
+
+    // Guard: clicking Undo (or pressing Cmd/Ctrl+Z) twice must not restore twice.
+    let undone = false;
+    // Set inside toast() below, referenced by doUndo. Declared up front so
+    // doUndo can close over the (eventually-defined) dismiss handle.
+    let dismiss: () => void = () => {};
+
+    // Schedule the actual store delete for 6s later.
+    const pending: PendingDelete<Strategy> = scheduleDelete(
+      s,
+      async () => {
+        // Timer fired: clear the keyboard-undo slot if it still points at us.
+        if (undoRef.current === doUndo) undoRef.current = null;
+        await store.deleteStrategy(s.id);
+        await store.deleteResultsForStrategy(s.id);
+      },
+    );
+
+    const doUndo = () => {
+      if (undone) return;
+      undone = true;
+      pending.cancel();
+      // Only re-add if the strategy isn't somehow already back in state.
+      setStrategies(current =>
+        current.some(x => x.id === s.id) ? current : [...current, s],
+      );
+      // Close the toast so the user sees the restore took effect.
+      dismiss();
+      if (undoRef.current === doUndo) undoRef.current = null;
+    };
+
+    // Make this the latest undoable action — Cmd/Ctrl+Z will trigger doUndo.
+    undoRef.current = doUndo;
+
+    const handle = toast({
+      title: `Deleted "${s.name}"`,
+      description: 'Press ⌘Z / Ctrl+Z or click Undo to restore.',
+      action: (
+        <button className="underline text-sm" onClick={doUndo}>
+          Undo
+        </button>
+      ),
+    });
+    dismiss = handle.dismiss;
+  }
+
+  function handleNewStrategy() {
+    setEditingStrategy({
+      id: `strategy-${Date.now()}`,
+      name: 'New Strategy',
+      model: 'google/gemini-2.5-flash',
+      promptVariant: 'default',
+      runCount: 1,
+    });
+  }
+
   // Derive the visible rows from tag + search filters.
   const visibleRows = rows.filter(r => {
     if (tagFilter && !r.tags.includes(tagFilter)) return false;
@@ -235,7 +310,31 @@ export default function EvalPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="strategies">Strategies tab (Task 11)</TabsContent>
+        <TabsContent value="strategies" className="mt-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-white/60">{strategies.length} strategies</div>
+            <Button onClick={handleNewStrategy}>+ Add Strategy</Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {strategies.map(s => (
+              <Card key={s.id} id={`strategy-${s.id}`} className="p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="font-bold">{s.name}</div>
+                    <div className="text-xs font-mono text-white/60">{s.model}</div>
+                    <div className="text-xs text-white/50 mt-1">
+                      prompt: {s.promptVariant} · runCount: {s.runCount}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setEditingStrategy(s)}>Edit</Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleDeleteStrategy(s)}>Delete</Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
         <TabsContent value="run">Run tab (Tasks 12-13)</TabsContent>
         <TabsContent value="results">Results tab (Task 14)</TabsContent>
       </Tabs>
@@ -244,6 +343,12 @@ export default function EvalPage() {
         row={editingRow}
         onClose={() => setEditingRow(null)}
         onSave={handleSaveRow}
+      />
+
+      <EditStrategyDialog
+        strategy={editingStrategy}
+        onClose={() => setEditingStrategy(null)}
+        onSave={handleSaveStrategy}
       />
     </div>
   );
@@ -392,6 +497,85 @@ function EditRowDialog({
           </div>
         </div>
 
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => onSave(draft)}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const KNOWN_MODELS = [
+  'google/gemini-2.5-flash',
+  'anthropic/claude-sonnet-4',
+  'openai/gpt-4o-mini',
+  'meta-llama/llama-3-8b-instruct',
+];
+
+function EditStrategyDialog({
+  strategy,
+  onClose,
+  onSave,
+}: {
+  strategy: Strategy | null;
+  onClose: () => void;
+  onSave: (s: Strategy) => void;
+}) {
+  const [draft, setDraft] = useState<Strategy | null>(null);
+  useEffect(() => setDraft(strategy), [strategy]);
+
+  if (!draft) return null;
+
+  return (
+    <Dialog open={!!strategy} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Strategy</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-bold uppercase">Name</label>
+            <Input value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase">Model (OpenRouter ID)</label>
+            <select
+              className="w-full border rounded p-2 bg-background"
+              value={draft.model}
+              onChange={e => setDraft({ ...draft, model: e.target.value })}
+            >
+              {KNOWN_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase">Prompt variant</label>
+            <select
+              className="w-full border rounded p-2 bg-background"
+              value={draft.promptVariant}
+              onChange={e => setDraft({ ...draft, promptVariant: e.target.value as PromptVariant })}
+            >
+              <option value="default">default</option>
+              <option value="simplified">simplified</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase flex items-center gap-1">
+              Run count
+              <span
+                className="text-white/40 cursor-help"
+                title="Advanced: how many internal LLM calls the strategy's algorithm makes (e.g. 'median of 3'). Keep at 1 unless you're using a median-of-N strategy. For repeating the whole evaluation N times, use 'Repeat runs' on the Run tab."
+              >?</span>
+            </label>
+            <Input
+              type="number"
+              min={1}
+              max={10}
+              value={draft.runCount}
+              onChange={e => setDraft({ ...draft, runCount: Number(e.target.value) })}
+            />
+          </div>
+        </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={() => onSave(draft)}>Save</Button>
