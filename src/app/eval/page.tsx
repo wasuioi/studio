@@ -572,7 +572,11 @@ function EditStrategyDialog({
               min={1}
               max={10}
               value={draft.runCount}
-              onChange={e => setDraft({ ...draft, runCount: Number(e.target.value) })}
+              onChange={e => {
+                const raw = Number(e.target.value);
+                const clamped = Math.max(1, Math.min(10, Number.isFinite(raw) && raw > 0 ? raw : 1));
+                setDraft({ ...draft, runCount: clamped });
+              }}
             />
           </div>
         </div>
