@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { LocalStorageEvalStore, type EvalStore } from '@/lib/eval/store';
+import { LocalStorageEvalStore } from '@/lib/eval/store';
 import { scheduleDelete, type PendingDelete } from '@/lib/eval/undo-delete';
 import { promptVariants, promptInputFromRow } from '@/lib/eval/prompts';
 import type { EvalRow, PromptVariant } from '@/lib/eval/types';
@@ -306,9 +306,11 @@ function EditRowDialog({
                 min={0}
                 max={100}
                 value={draft.expected.score}
-                onChange={e =>
-                  setDraft({ ...draft, expected: { ...draft.expected, score: Number(e.target.value) } })
-                }
+                onChange={e => {
+                  const raw = Number(e.target.value);
+                  const clamped = Math.max(0, Math.min(100, Number.isFinite(raw) ? raw : 0));
+                  setDraft({ ...draft, expected: { ...draft.expected, score: clamped } });
+                }}
                 className="w-24"
               />
             </div>

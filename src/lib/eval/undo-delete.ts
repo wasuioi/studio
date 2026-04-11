@@ -5,7 +5,7 @@
 export interface PendingDelete<T> {
   item: T;
   cancel: () => void;      // call to restore (clears the timer)
-  // commit() is called automatically by the internal timer when it expires
+  // The commitFn passed to scheduleDelete runs automatically when the timer expires.
 }
 
 export function scheduleDelete<T>(
