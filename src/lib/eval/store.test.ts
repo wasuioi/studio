@@ -146,11 +146,13 @@ describe('LocalStorageEvalStore', () => {
     // @ts-expect-error simulate SSR
     delete globalThis.window;
 
-    const store = new LocalStorageEvalStore({ skipSeeding: true });
-    expect(await store.getRows()).toEqual([]);
-    expect(await store.getStrategies()).toEqual([]);
-    expect(await store.getResults()).toEqual([]);
-
-    globalThis.window = originalWindow;
+    try {
+      const store = new LocalStorageEvalStore({ skipSeeding: true });
+      expect(await store.getRows()).toEqual([]);
+      expect(await store.getStrategies()).toEqual([]);
+      expect(await store.getResults()).toEqual([]);
+    } finally {
+      globalThis.window = originalWindow;
+    }
   });
 });
