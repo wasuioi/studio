@@ -293,8 +293,16 @@ export default function EvalPage() {
     }
     if (cancelledRef.current) {
       setProgress(`Cancelled (${i}/${total} complete)`);
+      toast({
+        title: 'Sweep cancelled',
+        description: `${i} of ${total} runs finished before you hit Stop.`,
+      });
     } else {
       setProgress(`Done (${total}/${total})`);
+      toast({
+        title: 'Sweep complete',
+        description: `${total} run${total === 1 ? '' : 's'} finished. Results are saved.`,
+      });
     }
     setRunning(false);
   }
@@ -477,7 +485,7 @@ export default function EvalPage() {
                   <Button size="sm" variant="outline" onClick={() => setSelectedStrategyIds(new Set())}>None</Button>
                 </div>
               </div>
-              <div className="space-y-1 border rounded p-2">
+              <div className="space-y-1 max-h-48 overflow-auto border rounded p-2">
                 {strategies.map(s => (
                   <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5 p-1 rounded">
                     <input
@@ -500,7 +508,11 @@ export default function EvalPage() {
                   min={1}
                   max={10}
                   value={repeatCount}
-                  onChange={e => setRepeatCount(Math.max(1, Number(e.target.value)))}
+                  onChange={e => {
+                    const raw = Number(e.target.value);
+                    const clamped = Math.max(1, Math.min(10, Number.isFinite(raw) && raw > 0 ? raw : 1));
+                    setRepeatCount(clamped);
+                  }}
                   className="w-20"
                 />
               </div>
@@ -613,7 +625,7 @@ export default function EvalPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>Cancel</Button>
             <Button onClick={executeSweep} disabled={!runPlan || runPlan.runCount === 0}>
-              Run {runPlan?.runCount ?? 0} {runPlan && runPlan.skipped.length > 0 ? 'remaining' : ''}
+              Run {runPlan?.runCount ?? 0}{runPlan && runPlan.skipped.length > 0 ? ' remaining' : ''}
             </Button>
           </DialogFooter>
         </DialogContent>
