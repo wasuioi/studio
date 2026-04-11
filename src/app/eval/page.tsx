@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -29,6 +29,11 @@ export default function EvalPage() {
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [searchText, setSearchText] = useState<string>('');
 
+  // Holds the "most recent pending undo" so Cmd/Ctrl+Z can trigger it.
+  // Only the latest delete is undoable via keyboard — earlier pending deletes
+  // still commit on their own 6s timer.
+  const undoRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     const s = new LocalStorageEvalStore();
     setStore(s);
@@ -41,6 +46,23 @@ export default function EvalPage() {
     }
   }, [toast]);
 
+  // Global Cmd/Ctrl+Z handler for undoing the most recent pending delete.
+  // Skips when focus is inside an input/textarea/contenteditable so users
+  // can still use the browser's native text undo while editing.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+      if (!undoRef.current) return;
+      e.preventDefault();
+      undoRef.current();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   async function handleSaveRow(updated: EvalRow) {
     if (!store) return;
     await store.saveRow(updated);
@@ -52,38 +74,50 @@ export default function EvalPage() {
     if (!store) return;
     // Optimistic remove from state.
     setRows(current => current.filter(r => r.id !== row.id));
+
+    // Guard: clicking Undo (or pressing Cmd/Ctrl+Z) twice must not restore twice.
+    let undone = false;
+    // Set inside toast() below, referenced by doUndo. Declared up front so
+    // doUndo can close over the (eventually-defined) dismiss handle.
+    let dismiss: () => void = () => {};
+
     // Schedule the actual store delete for 6s later.
     const pending: PendingDelete<EvalRow> = scheduleDelete(
       row,
       async () => {
+        // Timer fired: clear the keyboard-undo slot if it still points at us.
+        if (undoRef.current === doUndo) undoRef.current = null;
         await store.deleteRow(row.id);
         await store.deleteResultsForRow(row.id);
       },
     );
-    // Guard: clicking Undo twice must not restore the row twice.
-    let undone = false;
-    const { dismiss } = toast({
+
+    const doUndo = () => {
+      if (undone) return;
+      undone = true;
+      pending.cancel();
+      // Only re-add if the row isn't somehow already back in state.
+      setRows(current =>
+        current.some(r => r.id === row.id) ? current : [...current, row],
+      );
+      // Close the toast so the user sees the restore took effect.
+      dismiss();
+      if (undoRef.current === doUndo) undoRef.current = null;
+    };
+
+    // Make this the latest undoable action — Cmd/Ctrl+Z will trigger doUndo.
+    undoRef.current = doUndo;
+
+    const handle = toast({
       title: `Deleted "${row.label}"`,
-      description: 'Click undo to restore.',
+      description: 'Press ⌘Z / Ctrl+Z or click Undo to restore.',
       action: (
-        <button
-          className="underline text-sm"
-          onClick={() => {
-            if (undone) return;
-            undone = true;
-            pending.cancel();
-            // Only re-add if the row isn't somehow already back in state.
-            setRows(current =>
-              current.some(r => r.id === row.id) ? current : [...current, row],
-            );
-            // Close the toast so the user sees the restore took effect.
-            dismiss();
-          }}
-        >
+        <button className="underline text-sm" onClick={doUndo}>
           Undo
         </button>
       ),
     });
+    dismiss = handle.dismiss;
   }
 
   function handleNewRow() {
