@@ -62,7 +62,7 @@ export default function EvalPage() {
     );
     // Guard: clicking Undo twice must not restore the row twice.
     let undone = false;
-    toast({
+    const { dismiss } = toast({
       title: `Deleted "${row.label}"`,
       description: 'Click undo to restore.',
       action: (
@@ -76,6 +76,8 @@ export default function EvalPage() {
             setRows(current =>
               current.some(r => r.id === row.id) ? current : [...current, row],
             );
+            // Close the toast so the user sees the restore took effect.
+            dismiss();
           }}
         >
           Undo
