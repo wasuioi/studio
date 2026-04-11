@@ -60,6 +60,8 @@ export default function EvalPage() {
         await store.deleteResultsForRow(row.id);
       },
     );
+    // Guard: clicking Undo twice must not restore the row twice.
+    let undone = false;
     toast({
       title: `Deleted "${row.label}"`,
       description: 'Click undo to restore.',
@@ -67,8 +69,13 @@ export default function EvalPage() {
         <button
           className="underline text-sm"
           onClick={() => {
+            if (undone) return;
+            undone = true;
             pending.cancel();
-            setRows(current => [...current, row]);
+            // Only re-add if the row isn't somehow already back in state.
+            setRows(current =>
+              current.some(r => r.id === row.id) ? current : [...current, row],
+            );
           }}
         >
           Undo
