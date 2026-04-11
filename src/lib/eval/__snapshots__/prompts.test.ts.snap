@@ -1,0 +1,29 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`promptVariants > default variant matches snapshot 1`] = `
+"You are an expert relationship psychologist.
+
+Given two profiles, score their compatibility from 0 (zero chance this works) to 100 (perfect match).
+Consider values, lifestyle, emotional availability, and long-term potential.
+
+Profile A:
+Alex, 28. Quiet writer and climber. Secure attachment. Values depth.
+
+Profile B:
+Sam, 29. Warm therapist, emotionally present. Secure attachment.
+
+Return STRICT JSON with no markdown:
+{
+  "score": <integer 0-100>,
+  "reasoning": "<2-4 sentences explaining the score>"
+}"
+`;
+
+exports[`promptVariants > simplified variant matches snapshot 1`] = `
+"Score 0-100 how compatible these two people are.
+
+A: Alex, 28. Quiet writer and climber. Secure attachment. Values depth.
+B: Sam, 29. Warm therapist, emotionally present. Secure attachment.
+
+JSON: {"score": N, "reasoning": "text"}"
+`;
