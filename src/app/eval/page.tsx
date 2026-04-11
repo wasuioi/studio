@@ -286,7 +286,7 @@ function EditRowDialog({
 
   return (
     <Dialog open={!!row} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-auto">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>
             <Input
@@ -323,22 +323,24 @@ function EditRowDialog({
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-bold uppercase">Profile A</label>
-            <textarea
-              className="w-full border rounded p-2 bg-background min-h-[100px]"
-              value={draft.profileA}
-              onChange={e => setDraft({ ...draft, profileA: e.target.value })}
-            />
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold uppercase">Profile A</label>
+              <textarea
+                className="w-full border rounded p-2 bg-background min-h-[160px]"
+                value={draft.profileA}
+                onChange={e => setDraft({ ...draft, profileA: e.target.value })}
+              />
+            </div>
 
-          <div>
-            <label className="text-xs font-bold uppercase">Profile B</label>
-            <textarea
-              className="w-full border rounded p-2 bg-background min-h-[100px]"
-              value={draft.profileB}
-              onChange={e => setDraft({ ...draft, profileB: e.target.value })}
-            />
+            <div>
+              <label className="text-xs font-bold uppercase">Profile B</label>
+              <textarea
+                className="w-full border rounded p-2 bg-background min-h-[160px]"
+                value={draft.profileB}
+                onChange={e => setDraft({ ...draft, profileB: e.target.value })}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
