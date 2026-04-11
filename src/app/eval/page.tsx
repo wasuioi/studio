@@ -182,7 +182,7 @@ export default function EvalPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {visibleRows.map(r => (
               <Card
                 key={r.id}
@@ -199,7 +199,7 @@ export default function EvalPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div>
                     <div className="text-xs uppercase text-white/50">Profile A</div>
                     <div className="line-clamp-3">{r.profileA}</div>
