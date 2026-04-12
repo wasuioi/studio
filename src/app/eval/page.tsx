@@ -13,8 +13,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { LocalStorageEvalStore } from '@/lib/eval/store';
+import { aggregateMetrics } from '@/lib/eval/metrics';
 import { scheduleDelete, type PendingDelete } from '@/lib/eval/undo-delete';
 import { promptVariants, promptInputFromRow } from '@/lib/eval/prompts';
 import { runStrategy } from '@/ai/eval/run-strategy';
@@ -222,6 +224,7 @@ export default function EvalPage() {
   const [running, setRunning] = useState<boolean>(false);
   const [progress, setProgress] = useState<string>('');
   const cancelledRef = useRef<boolean>(false);
+  const [resultsView, setResultsView] = useState<'summary' | 'detail'>('summary');
 
   // Load results on mount / after store ready.
   useEffect(() => {
@@ -316,6 +319,38 @@ export default function EvalPage() {
     await store.clearResults();
     setResults([]);
   }
+
+  // Aggregate results by strategyId for the Summary view.
+  const summaryRows = strategies.map(s => {
+    const strategyResults = results.filter(r => r.strategyId === s.id && r.metrics && r.output);
+    const failedCount = results.filter(r => r.strategyId === s.id && r.error).length;
+    if (strategyResults.length === 0) {
+      return {
+        strategy: s,
+        runs: 0,
+        avgScoreDelta: null as number | null,
+        substantiveRate: null as number | null,
+        avgCost: null as number | null,
+        avgLatency: null as number | null,
+        failed: failedCount,
+      };
+    }
+    const agg = aggregateMetrics(strategyResults);
+    return {
+      strategy: s,
+      runs: agg.runCount,
+      avgScoreDelta: agg.avgScoreDelta,
+      substantiveRate: agg.substantiveReasoningRate,
+      avgCost: agg.avgCostUsd,
+      avgLatency: agg.avgLatencyMs,
+      failed: failedCount,
+    };
+  }).sort((a, b) => {
+    // Lowest avgScoreDelta first; nulls go to the bottom.
+    if (a.avgScoreDelta === null) return 1;
+    if (b.avgScoreDelta === null) return -1;
+    return a.avgScoreDelta - b.avgScoreDelta;
+  });
 
   // Derive the visible rows from tag + search filters.
   const visibleRows = rows.filter(r => {
@@ -564,7 +599,78 @@ export default function EvalPage() {
             )}
           </Card>
         </TabsContent>
-        <TabsContent value="results">Results tab (Task 14)</TabsContent>
+        <TabsContent value="results" className="mt-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              <Button
+                variant={resultsView === 'summary' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setResultsView('summary')}
+              >Summary</Button>
+              <Button
+                variant={resultsView === 'detail' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setResultsView('detail')}
+              >Detail</Button>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-sm text-white/60">{results.length} total runs stored</div>
+              <Button variant="outline" size="sm" onClick={handleClearResults}>
+                Clear all results
+              </Button>
+            </div>
+          </div>
+
+          {resultsView === 'summary' && (
+            <Card className="p-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Strategy</TableHead>
+                    <TableHead>Runs</TableHead>
+                    <TableHead>Avg Δ score</TableHead>
+                    <TableHead>Explainability</TableHead>
+                    <TableHead>Cost / call</TableHead>
+                    <TableHead>Cost / 1000</TableHead>
+                    <TableHead>Avg latency</TableHead>
+                    <TableHead>Failed</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {summaryRows.map(row => (
+                    <TableRow key={row.strategy.id} id={`strategy-${row.strategy.id}`}>
+                      <TableCell className="font-medium">{row.strategy.name}</TableCell>
+                      <TableCell>{row.runs}</TableCell>
+                      <TableCell>{row.avgScoreDelta === null ? '—' : `±${row.avgScoreDelta.toFixed(1)}`}</TableCell>
+                      <TableCell>
+                        {row.substantiveRate === null
+                          ? '—'
+                          : <span className={row.substantiveRate < 0.8 ? 'text-yellow-400' : ''}>
+                              {(row.substantiveRate * 100).toFixed(0)}%
+                              {row.substantiveRate < 0.8 && ' ⚠'}
+                            </span>}
+                      </TableCell>
+                      <TableCell>{row.avgCost === null ? '—' : `$${row.avgCost.toFixed(6)}`}</TableCell>
+                      <TableCell>{row.avgCost === null ? '—' : `$${(row.avgCost * 1000).toFixed(3)}`}</TableCell>
+                      <TableCell>{row.avgLatency === null ? '—' : `${Math.round(row.avgLatency)}ms`}</TableCell>
+                      <TableCell>
+                        {row.failed > 0
+                          ? <span className="text-red-500 font-bold">{row.failed}</span>
+                          : <span className="text-white/40">0</span>}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+
+          {resultsView === 'detail' && (
+            <Card className="p-4">
+              <div className="text-white/50 text-sm">Detail view coming in Task 14.</div>
+            </Card>
+          )}
+        </TabsContent>
       </Tabs>
 
       <EditRowDialog
