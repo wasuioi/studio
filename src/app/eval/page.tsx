@@ -32,6 +32,7 @@ export default function EvalPage() {
   const [editingRow, setEditingRow] = useState<EvalRow | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [searchText, setSearchText] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<string>('dataset');
 
   // Holds the "most recent pending undo" so Cmd/Ctrl+Z can trigger it.
   // Only the latest delete is undoable via keyboard — earlier pending deletes
@@ -352,6 +353,67 @@ export default function EvalPage() {
     return a.avgScoreDelta - b.avgScoreDelta;
   });
 
+  // Build the detail matrix: rows × strategies, with aggregated metrics per cell.
+  interface DetailCell {
+    rowId: string;
+    strategyId: string;
+    meanScore: number | null;
+    stddev: number;
+    delta: number | null;
+    runCount: number;
+    results: RunResult[];
+  }
+  const detailCells = new Map<string, DetailCell>();
+  for (const row of rows) {
+    for (const s of strategies) {
+      const key = `${row.id}|${s.id}`;
+      const groupResults = results.filter(r =>
+        r.rowId === row.id && r.strategyId === s.id && r.metrics && r.output,
+      );
+      if (groupResults.length === 0) {
+        detailCells.set(key, { rowId: row.id, strategyId: s.id, meanScore: null, stddev: 0, delta: null, runCount: 0, results: [] });
+      } else {
+        const agg = aggregateMetrics(groupResults);
+        const meanScore = groupResults.reduce((sum, r) => sum + (r.output?.score ?? 0), 0) / groupResults.length;
+        detailCells.set(key, {
+          rowId: row.id,
+          strategyId: s.id,
+          meanScore,
+          stddev: agg.scoreStdDev,
+          delta: agg.avgScoreDelta,
+          runCount: agg.runCount,
+          results: groupResults,
+        });
+      }
+    }
+  }
+
+  const [selectedCell, setSelectedCell] = useState<DetailCell | null>(null);
+
+  function linkToDatasetRow(rowId: string) {
+    setActiveTab('dataset');
+    setTimeout(() => {
+      const el = document.getElementById(`row-${rowId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-white');
+        setTimeout(() => el.classList.remove('ring-2', 'ring-white'), 2000);
+      }
+    }, 100);
+  }
+
+  function linkToStrategy(strategyId: string) {
+    setActiveTab('strategies');
+    setTimeout(() => {
+      const el = document.getElementById(`strategy-${strategyId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-white');
+        setTimeout(() => el.classList.remove('ring-2', 'ring-white'), 2000);
+      }
+    }, 100);
+  }
+
   // Derive the visible rows from tag + search filters.
   const visibleRows = rows.filter(r => {
     if (tagFilter && !r.tags.includes(tagFilter)) return false;
@@ -371,7 +433,7 @@ export default function EvalPage() {
         </p>
       </header>
 
-      <Tabs defaultValue="dataset">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="dataset">Dataset</TabsTrigger>
           <TabsTrigger value="strategies">Strategies</TabsTrigger>
@@ -666,8 +728,88 @@ export default function EvalPage() {
           )}
 
           {resultsView === 'detail' && (
-            <Card className="p-4">
-              <div className="text-white/50 text-sm">Detail view coming in Task 14.</div>
+            <Card className="p-4 overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Row</TableHead>
+                    <TableHead>Truth</TableHead>
+                    {strategies.map(s => (
+                      <TableHead key={s.id}>
+                        <button
+                          className="underline-offset-2 hover:underline text-left"
+                          onClick={() => linkToStrategy(s.id)}
+                        >
+                          {s.name}
+                        </button>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map(row => (
+                    <TableRow key={row.id}>
+                      <TableCell className="font-medium">
+                        <button
+                          className="underline-offset-2 hover:underline text-left"
+                          onClick={() => linkToDatasetRow(row.id)}
+                        >
+                          {row.label}
+                        </button>
+                      </TableCell>
+                      <TableCell className="font-bold">{row.expected.score}</TableCell>
+                      {strategies.map(s => {
+                        const cell = detailCells.get(`${row.id}|${s.id}`);
+                        if (!cell || cell.runCount === 0) {
+                          return <TableCell key={s.id} className="text-white/30">—</TableCell>;
+                        }
+                        const deltaWarning = (cell.delta ?? 0) > 20;
+                        const stddevWarning = cell.stddev > 15;
+                        return (
+                          <TableCell
+                            key={s.id}
+                            className="cursor-pointer hover:bg-white/5"
+                            onClick={() => setSelectedCell(cell)}
+                          >
+                            <span className={deltaWarning ? 'text-yellow-400' : ''}>
+                              {cell.meanScore?.toFixed(0)}
+                              {cell.runCount > 1 && <> <span className="text-white/50 text-xs">±{cell.stddev.toFixed(1)}</span></>}
+                              {(deltaWarning || stddevWarning) && ' ⚠'}
+                            </span>
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                  <TableRow className="border-t-2">
+                    <TableCell className="font-bold">Avg Δ</TableCell>
+                    <TableCell></TableCell>
+                    {strategies.map(s => {
+                      const row = summaryRows.find(sr => sr.strategy.id === s.id);
+                      return (
+                        <TableCell key={s.id} className="font-bold">
+                          {row?.avgScoreDelta === null || row?.avgScoreDelta === undefined
+                            ? '—'
+                            : `±${row.avgScoreDelta.toFixed(1)}`}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-bold">Explainability</TableCell>
+                    <TableCell></TableCell>
+                    {strategies.map(s => {
+                      const row = summaryRows.find(sr => sr.strategy.id === s.id);
+                      const rate = row?.substantiveRate;
+                      return (
+                        <TableCell key={s.id} className={rate !== null && rate !== undefined && rate < 0.8 ? 'text-yellow-400' : ''}>
+                          {rate === null || rate === undefined ? '—' : `${(rate * 100).toFixed(0)}%${rate < 0.8 ? ' ⚠' : ''}`}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                </TableBody>
+              </Table>
             </Card>
           )}
         </TabsContent>
@@ -733,6 +875,43 @@ export default function EvalPage() {
             <Button onClick={executeSweep} disabled={!runPlan || runPlan.runCount === 0}>
               Run {runPlan?.runCount ?? 0}{runPlan && runPlan.skipped.length > 0 ? ' remaining' : ''}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedCell} onOpenChange={(open) => !open && setSelectedCell(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Run results detail</DialogTitle>
+          </DialogHeader>
+          {selectedCell && (
+            <div className="space-y-3 text-sm">
+              <div>
+                <strong>{strategies.find(s => s.id === selectedCell.strategyId)?.name}</strong>
+                {' × '}
+                <strong>{rows.find(r => r.id === selectedCell.rowId)?.label}</strong>
+              </div>
+              <div className="text-white/70">
+                {selectedCell.runCount} run{selectedCell.runCount !== 1 ? 's' : ''},
+                mean {selectedCell.meanScore?.toFixed(1)}
+                {selectedCell.runCount > 1 && <> ±{selectedCell.stddev.toFixed(1)}</>}
+                , Δ {selectedCell.delta?.toFixed(1)}
+              </div>
+              <div className="space-y-3">
+                {selectedCell.results.map(r => (
+                  <div key={r.id} className="border rounded p-3 space-y-1">
+                    <div className="text-xs text-white/50">
+                      run {r.runIndex + 1}, {new Date(r.timestamp).toLocaleString()}
+                    </div>
+                    <div>Score: <strong>{r.output?.score}</strong></div>
+                    <div className="text-white/80">{r.output?.reasoning}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setSelectedCell(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
