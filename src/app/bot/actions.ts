@@ -80,13 +80,15 @@ export async function devForceStage(
     return { success: true };
   }
 
-  // Stage 1+ — seed fixtures.
+  // Stage 1+ — seed fixtures. photo_url is intentionally cleared so the
+  // developer can upload their own photo via the in-chat 📎 button. The
+  // bot page shows that button whenever stage >= 1 && !photo_url.
   await supabaseAdmin
     .from('profiles')
     .update({
       display_name: TESTER_PROFILE.display_name,
       location: TESTER_PROFILE.location,
-      photo_url: TESTER_PROFILE.photo_url,
+      photo_url: null,
       bio: TESTER_BIO,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       personality_profile: TESTER_PERSONALITY as any,

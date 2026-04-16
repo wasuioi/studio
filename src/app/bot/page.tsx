@@ -80,6 +80,17 @@ export default function AIProfileBot() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.stage]);
 
+  // Dev-skip scenario: if the developer jumped to stage 1+ via the DevStagePanel,
+  // we clear photo_url so they can upload their own photo. Show 📎 immediately
+  // in that state so they don't have to chat with Vera to see it.
+  // For real users this state never occurs (a natural stage advancement always
+  // includes a photo upload via Vera's requestPhotoUpload signal first).
+  useEffect(() => {
+    if ((profile?.stage ?? 0) >= 1 && !profile?.photo_url) {
+      setAwaitingPhoto(true);
+    }
+  }, [profile?.stage, profile?.photo_url]);
+
   // Load or create a bot_chats row for this user (one active interview at a time)
   useEffect(() => {
     if (!user) return;

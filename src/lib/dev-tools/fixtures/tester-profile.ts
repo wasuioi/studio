@@ -7,6 +7,5 @@
 export const TESTER_PROFILE = {
   display_name: 'Alex Tester',
   location: 'Bangkok',
-  photo_url: 'https://picsum.photos/seed/alex-tester/400/400',
   profile_completed: true,
 } as const;
