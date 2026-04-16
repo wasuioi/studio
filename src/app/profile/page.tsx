@@ -15,6 +15,7 @@ import { supabase } from '@/supabase/client';
 import { useCollection } from '@/supabase/hooks/use-collection';
 import type { Tables } from '@/supabase/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { canUse } from '@/lib/feature-gates';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
@@ -46,6 +47,9 @@ export default function ProfilePage() {
   const { profile, user, loading } = useProfileAuth();
   const router = useRouter();
   const { toast } = useToast();
+
+  const stage = (profile as { stage?: number } | null)?.stage ?? 0;
+  const showFullProfile = canUse('view_profile_page', stage);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
@@ -203,6 +207,27 @@ export default function ProfilePage() {
   );
 
   if (!profile || !user) return null;
+
+  if (!showFullProfile) {
+    return (
+      <div className="max-w-2xl mx-auto min-h-screen flex flex-col p-4 relative pt-20">
+        <Navigation />
+        <Card className="glass-card p-10 md:p-16 text-center rounded-[2.5rem] mt-8 bg-white/5 border-white/10">
+          <Heart className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-6 text-primary/40" />
+          <h1 className="text-2xl md:text-3xl font-black mb-4 text-white">Let&apos;s finish your introduction first</h1>
+          <p className="text-white/60 font-medium mb-8 max-w-xs mx-auto text-sm md:text-base">
+            Head back to the chat with Vera — once she has enough to work with, your profile will be ready.
+          </p>
+          <Button
+            onClick={() => router.push('/bot')}
+            className="truevibe-pill-button h-12 px-10"
+          >
+            Keep chatting with Vera
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   const coverImage = PlaceHolderImages.find(img => img.id === 'default_cover');
   const displayName = profile.display_name || 'Viber';
