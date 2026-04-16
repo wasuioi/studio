@@ -35,7 +35,7 @@ const VeraInterviewOutputSchema = z.object({
     "A 2-3 sentence bio written in the member's own voice. Only populate on the turn where stageReached transitions to 'stage1' for the first time."
   ),
   requestPhotoUpload: z.boolean().describe(
-    'Set true ONLY on turns where you are explicitly asking the member to upload a profile photo. Set false once a photo is known to exist — either you saw a "[System: User just uploaded their profile photo.]" line in the conversation, or a "[System: User already has a profile photo.]" line at conversation start.'
+    'Set true ONLY on turns where you are explicitly asking the member to upload a profile photo. Set false once you have seen a "[System: User just uploaded their profile photo.]" line in the conversation — the only way a photo can be uploaded in this app is via the in-chat upload button that appears when you set this to true.'
   ),
   personalityProfile: z.object({
     user_persona: z.object({
