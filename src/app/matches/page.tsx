@@ -19,6 +19,7 @@ import Image from 'next/image';
 import { supabase } from '@/supabase/client';
 import { useCollection } from '@/supabase/hooks/use-collection';
 import { rowToChatRequest, chatRequestToRow } from '@/supabase/adapters';
+import { canUse } from '@/lib/feature-gates';
 import { cn } from '@/lib/utils';
 import { findMatches } from '@/ai/flows/find-matches-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -43,6 +44,10 @@ export default function MatchesPage() {
 
   const emailVerified = Boolean(authUser?.email_confirmed_at);
 
+  const stage = (profile as { stage?: number } | null)?.stage ?? 0;
+  const canBrowse = canUse('browse_matches', stage);
+  const canInvite = canUse('send_date_invite', stage);
+
   // Outgoing chat requests from this user
   const { data: outgoingRows } = useCollection<'chat_requests'>({
     table: 'chat_requests',
@@ -61,7 +66,7 @@ export default function MatchesPage() {
   }, [profile?.topMatches]);
 
   const handleScanForMatches = async () => {
-    if (!user || !profile?.personalityProfile || isScanning) return;
+    if (!user || !profile?.personalityProfile || !canBrowse || isScanning) return;
     setIsScanning(true);
     try {
       // Query real users who have completed their profile, excluding self
@@ -239,13 +244,13 @@ export default function MatchesPage() {
         </div>
       )}
 
-      {!profile?.personalityProfile ? (
+      {!canBrowse ? (
         <Card className="glass-card p-10 md:p-20 text-center rounded-[2.5rem] animate-in zoom-in-95 bg-white/5 border-white/10">
           <BrainCircuit className="w-12 h-12 md:w-20 md:h-20 mx-auto mb-6 text-primary/40" />
-          <h3 className="text-2xl md:text-4xl font-black mb-4 text-white">Vibe Profile Hidden</h3>
-          <p className="text-white/60 font-medium mb-8 max-w-xs mx-auto text-sm md:text-lg">Vera needs to know your energy before she can match you.</p>
+          <h3 className="text-2xl md:text-4xl font-black mb-4 text-white">Matches will appear here</h3>
+          <p className="text-white/60 font-medium mb-8 max-w-xs mx-auto text-sm md:text-lg">Keep chatting with Vera for a bit and your curated picks will show up.</p>
           <Link href="/bot">
-            <Button className="truevibe-pill-button h-12 px-10">Initiate Vibe Check</Button>
+            <Button className="truevibe-pill-button h-12 px-10">Keep chatting with Vera</Button>
           </Link>
         </Card>
       ) : matches.length === 0 ? (
@@ -309,11 +314,11 @@ export default function MatchesPage() {
                             setViewingPlan(plannedReq);
                           } else if (waitingReq) {
                             setSenderPlanningRequest(waitingReq);
-                          } else if (!hasSentRequest) {
+                          } else if (!hasSentRequest && canInvite) {
                             handleSendInvite(match);
                           }
                         }}
-                        disabled={isScanning || hasSentRequest}
+                        disabled={isScanning || hasSentRequest || (!canInvite && !hasSentRequest && !hasPlannedDate && !waitingForSender)}
                       >
                         {hasPlannedDate ? (
                           <><CalendarHeart className="w-4 h-4 mr-1.5" /> Date Planned</>
@@ -321,9 +326,9 @@ export default function MatchesPage() {
                           <><Bell className="w-4 h-4 mr-1.5" /> Your Turn!</>
                         ) : hasSentRequest ? (
                           <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Pending...</>
-                        ) : (
+                        ) : canInvite ? (
                           <><UserPlus className="w-4 h-4 mr-1.5" /> Date Invite</>
-                        )}
+                        ) : null}
                       </Button>
                       <Button
                         variant="ghost"
