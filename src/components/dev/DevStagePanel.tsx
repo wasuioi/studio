@@ -21,7 +21,7 @@ export function DevStagePanel({ currentStage }: DevStagePanelProps) {
     setCacheState(listCached());
   }, []);
 
-  const jumpTo = async (n: 0 | 1 | 2 | 3) => {
+  const jumpTo = async (n: 0 | 1 | 2) => {
     if (busy) return;
     setBusy(true);
     try {
@@ -51,7 +51,6 @@ export function DevStagePanel({ currentStage }: DevStagePanelProps) {
       <div className="mb-2 flex flex-wrap gap-1">
         <Button size="sm" variant="outline" disabled={busy} onClick={() => jumpTo(1)}>Skip to 1</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={() => jumpTo(2)}>Skip to 2</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => jumpTo(3)}>Skip to 3</Button>
       </div>
 
       <div className="mb-2 flex flex-wrap gap-1">

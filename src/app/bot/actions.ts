@@ -7,6 +7,7 @@ import { TESTER_PROFILE } from '@/lib/dev-tools/fixtures/tester-profile';
 import { TESTER_PERSONALITY } from '@/lib/dev-tools/fixtures/tester-personality';
 import { TESTER_BIO } from '@/lib/dev-tools/fixtures/tester-bio';
 import { TESTER_CONVERSATION } from '@/lib/dev-tools/fixtures/tester-conversation';
+import { FAKE_MATCHES } from '@/lib/dev-tools/fixtures/fake-matches';
 
 /**
  * Advance the current user's stage. Rejects attempts to move backwards.
@@ -73,6 +74,8 @@ export async function devForceStage(
         photo_url: null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         personality_profile: null as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        top_matches: null as any,
         profile_completed: false,
         updated_at: new Date().toISOString(),
       })
@@ -83,6 +86,10 @@ export async function devForceStage(
   // Stage 1+ — seed fixtures. photo_url is intentionally cleared so the
   // developer can upload their own photo via the in-chat 📎 button. The
   // bot page shows that button whenever stage >= 1 && !photo_url.
+  // top_matches is seeded at stage >= 2 so the /matches page has visible
+  // cards without needing real users in the DB.
+  const topMatches = targetStage >= 2 ? FAKE_MATCHES : null;
+
   await supabaseAdmin
     .from('profiles')
     .update({
@@ -92,6 +99,8 @@ export async function devForceStage(
       bio: TESTER_BIO,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       personality_profile: TESTER_PERSONALITY as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      top_matches: topMatches as any,
       profile_completed: true,
       stage: targetStage,
       updated_at: new Date().toISOString(),
