@@ -206,7 +206,26 @@ export default function ProfilePage() {
     </div>
   );
 
-  if (!profile || !user) return null;
+  // Fallback: if auth loaded but profile/user is missing, show a visible
+  // message instead of a blank screen so the user knows to refresh.
+  if (!profile || !user) {
+    return (
+      <div className="max-w-2xl mx-auto min-h-screen flex flex-col p-4 relative pt-20">
+        <Navigation />
+        <Card className="glass-card p-10 text-center rounded-[2.5rem] mt-8 bg-white/5 border-white/10">
+          <Loader2 className="w-8 h-8 mx-auto mb-4 text-primary/60 animate-spin" />
+          <p className="text-white/60 font-medium">Loading your profile…</p>
+          <Button
+            variant="ghost"
+            onClick={() => window.location.reload()}
+            className="mt-4 text-white/40 hover:text-white"
+          >
+            Refresh
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   if (!showFullProfile) {
     return (
