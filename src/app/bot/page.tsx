@@ -8,7 +8,7 @@ import { useUser } from '@/supabase/hooks/use-user';
 import { useRouter } from 'next/navigation';
 import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
-import { Send, Zap, Loader2, Star, Globe, RotateCcw } from 'lucide-react';
+import { Send, Zap, Loader2, Star, Globe, RotateCcw, Paperclip } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
 import { supabase } from '@/supabase/client';
 import type { Tables } from '@/supabase/types';
@@ -25,6 +25,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { updateUserStage } from '@/app/bot/actions';
+import { BioApprovalModal } from '@/components/BioApprovalModal';
+import { DevStagePanel } from '@/components/dev/DevStagePanel';
+import { isDevToolsEnabled } from '@/lib/dev-tools/flag';
+import { useAuth } from '@/hooks/use-auth';
 
 type BotChat = Tables<'bot_chats'>;
 
@@ -36,6 +41,7 @@ interface ChatMessage {
 
 export default function AIProfileBot() {
   const { user, isUserLoading } = useUser();
+  const { profile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -53,9 +59,23 @@ export default function AIProfileBot() {
   const [botChat, setBotChat] = useState<BotChat | null>(null);
   const [sessionMessages, setSessionMessages] = useState<ChatMessage[]>([]);
   const [isRestoring, setIsRestoring] = useState(true);
+  const [stage, setStage] = useState(0);
+  const [bioModalOpen, setBioModalOpen] = useState(false);
+  const [pendingBioDraft, setPendingBioDraft] = useState('');
+  const [awaitingPhoto, setAwaitingPhoto] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const initializedRef = useRef(false);
+
+  // Sync stage from profile when it loads
+  useEffect(() => {
+    if (profile?.stage !== undefined && profile.stage !== stage) {
+      setStage(profile.stage);
+    }
+    // stage in deps would cause an infinite loop; intentionally omit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.stage]);
 
   // Load or create a bot_chats row for this user (one active interview at a time)
   useEffect(() => {
@@ -232,6 +252,47 @@ export default function AIProfileBot() {
     }
   };
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !botChat) return;
+
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from('profile-photos')
+      .upload(path, file, { upsert: true });
+
+    if (uploadErr) {
+      toast({ variant: 'destructive', title: 'Upload failed', description: uploadErr.message });
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from('profile-photos').getPublicUrl(path);
+    const photoUrl = urlData.publicUrl;
+
+    await supabase.from('profiles').update({ photo_url: photoUrl }).eq('id', user.id);
+
+    // Append a synthetic system line so Vera knows on her next turn.
+    const systemMsg: ChatMessage = {
+      role: 'user',
+      message: '[System: User just uploaded their profile photo.]',
+      timestamp: new Date().toISOString(),
+    };
+    const newHistory = [...sessionMessages, systemMsg];
+    setSessionMessages(newHistory);
+    await supabase
+      .from('bot_chats')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update({ messages: newHistory as any, updated_at: new Date().toISOString() })
+      .eq('id', botChat.id);
+
+    setAwaitingPhoto(false);
+    // Reset the file input so uploading the same file twice re-triggers.
+    e.target.value = '';
+    toast({ title: 'Photo uploaded' });
+  };
+
   const handleRetry = () => {
     setSessionMessages(prev => {
       const last = prev[prev.length - 1];
@@ -332,6 +393,27 @@ export default function AIProfileBot() {
           description: "Vera has analyzed your unique energy.",
         });
       }
+
+      // --- Stage progression (runs on every turn) ---
+      const stageMap = { none: 0, stage1: 1, stage2: 2, stage3: 3 } as const;
+      const veraStage = stageMap[response.stageReached ?? 'none'];
+      if (veraStage > stage) {
+        const previousStage = stage;
+        try {
+          await updateUserStage(veraStage);
+          setStage(veraStage);
+          if (previousStage < 1 && veraStage >= 1 && response.suggestedBio) {
+            setPendingBioDraft(response.suggestedBio);
+            setBioModalOpen(true);
+          }
+        } catch (stageErr) {
+          console.error('[bot] updateUserStage failed', stageErr);
+        }
+      }
+
+      // --- Photo upload UI toggle ---
+      const hasPhoto = Boolean(profile?.photo_url);
+      setAwaitingPhoto(Boolean(response.requestPhotoUpload) && !hasPhoto);
 
       const { error: saveAiMsgErr } = await supabase
         .from('bot_chats')
@@ -498,6 +580,28 @@ export default function AIProfileBot() {
                   className="flex-1 min-h-[48px] max-h-[120px] rounded-[1.5rem] bg-white/5 border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40 px-5 py-3 text-sm resize-none leading-relaxed overflow-y-auto"
                   disabled={isAiThinking}
                 />
+                {awaitingPhoto && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={handlePhotoUpload}
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="shrink-0 w-12 h-12 rounded-full"
+                      onClick={() => fileInputRef.current?.click()}
+                      title="Upload a photo"
+                      disabled={isAiThinking}
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
                 <Button
                   size="icon"
                   className="shrink-0 w-12 h-12 rounded-full truevibe-pill-button px-0 mb-0"
@@ -511,6 +615,20 @@ export default function AIProfileBot() {
           </>
         )}
       </div>
+
+      <BioApprovalModal
+        open={bioModalOpen}
+        initialBio={pendingBioDraft}
+        onSave={async (finalBio) => {
+          if (!user) return;
+          await supabase.from('profiles').update({ bio: finalBio }).eq('id', user.id);
+          setBioModalOpen(false);
+          toast({ title: 'Bio saved' });
+        }}
+        onSkip={() => setBioModalOpen(false)}
+      />
+
+      {isDevToolsEnabled() && <DevStagePanel currentStage={stage} />}
     </div>
   );
 }
