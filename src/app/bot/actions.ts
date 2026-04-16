@@ -61,7 +61,8 @@ export async function devForceStage(
   const userId = user.id;
 
   if (targetStage === 0) {
-    // Reset: clear personality_profile + bot_chats, set stage to 0.
+    // Reset: clear personality_profile + bot_chats + photo_url so the
+    // photo-upload flow can be tested from a genuinely empty state.
     await supabaseAdmin.from('bot_chats').delete().eq('user_id', userId);
     await supabaseAdmin.from('personality_profiles').delete().eq('user_id', userId);
     await supabaseAdmin
@@ -69,6 +70,7 @@ export async function devForceStage(
       .update({
         stage: 0,
         bio: null,
+        photo_url: null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         personality_profile: null as any,
         profile_completed: false,
