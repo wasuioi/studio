@@ -3,10 +3,10 @@
  * @fileOverview Vera: TrueVibe Strategic Relationship Companion.
  * Conducts a 3-phase personality interview with psychological analysis framework.
  *
- * PERFORMANCE NOTE: Output schema is intentionally minimal — only fields the UI
- * actually reads. Removed progress/analysis/safety tracking from per-message output
- * to cut generated tokens by ~70%, making responses ~2-3x faster.
- * Internal tracking happens purely in Vera's reasoning via the prompt.
+ * PERFORMANCE NOTE: Output schema keeps only fields the UI actually reads
+ * (response + interview metadata + three stage-tracking signals). Psychological
+ * analysis, safety tracking, and phase detail stay in Vera's internal reasoning
+ * via the prompt, which keeps generated-token count low.
  */
 
 import { ai } from '@/ai/genkit';
@@ -29,13 +29,13 @@ const VeraInterviewOutputSchema = z.object({
   interviewComplete: z.boolean().describe('True only when ALL required data has been collected and analysis delivered'),
   askPermission: z.boolean().describe('True when ready to share psychological insights, before doing so'),
   stageReached: z.enum(['none', 'stage1', 'stage2', 'stage3']).describe(
-    'The highest internal stage fully covered so far. Only promote when the data for that stage has genuinely been collected. If unsure, stay at the previous stage. NEVER mention the word "stage" to the user.'
+    'The highest internal stage fully covered so far. Default to "none" until stage1 criteria are met. Only promote when the data for that stage has genuinely been collected; if unsure, stay at the previous stage. NEVER say "stage", "level", "unlocked", or "next phase" to the user — these values are internal only.'
   ),
   suggestedBio: z.string().optional().describe(
     "A 2-3 sentence bio written in the member's own voice. Only populate on the turn where stageReached transitions to 'stage1' for the first time."
   ),
   requestPhotoUpload: z.boolean().describe(
-    'Set true ONLY on turns where you are explicitly asking the member to upload a profile photo. Do not set true if a photo has already been uploaded in this conversation.'
+    'Set true ONLY on turns where you are explicitly asking the member to upload a profile photo. Set false once a photo is known to exist — either you saw a "[System: User just uploaded their profile photo.]" line in the conversation, or a "[System: User already has a profile photo.]" line at conversation start.'
   ),
   personalityProfile: z.object({
     user_persona: z.object({
