@@ -18,6 +18,7 @@ import type { ChatRequest } from '@/types';
 import Link from 'next/link';
 import { DatePlannerModal } from '@/components/DatePlannerModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { canUse } from '@/lib/feature-gates';
 
 export default function RequestsPage() {
   const { user: authUser, isUserLoading } = useSupabaseAuth();
@@ -53,6 +54,9 @@ export default function RequestsPage() {
   const acceptedDates: ChatRequest[] = (acceptedRows ?? []).map(rowToChatRequest);
 
   const isVerified = profile?.identity_verified || profile?.verification_status === 'verified';
+
+  const stage = (profile as { stage?: number } | null)?.stage ?? 0;
+  const canAccept = canUse('accept_date_invite', stage);
 
   const handleAcceptRequest = (request: ChatRequest) => {
     if (!user) return;
@@ -197,13 +201,15 @@ export default function RequestsPage() {
                   >
                     Decline
                   </Button>
-                  <Button
-                    size="sm"
-                    className="truevibe-pill-button flex-1"
-                    onClick={() => handleAcceptRequest(req)}
-                  >
-                    Accept Date
-                  </Button>
+                  {canAccept && (
+                    <Button
+                      size="sm"
+                      className="truevibe-pill-button flex-1"
+                      onClick={() => handleAcceptRequest(req)}
+                    >
+                      Accept Date
+                    </Button>
+                  )}
                 </div>
               </div>
             </Card>
