@@ -83,9 +83,7 @@ export async function devForceStage(
     .from('profiles')
     .update({
       display_name: TESTER_PROFILE.display_name,
-      age: TESTER_PROFILE.age,
       location: TESTER_PROFILE.location,
-      gender: TESTER_PROFILE.gender,
       photo_url: TESTER_PROFILE.photo_url,
       bio: TESTER_BIO,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
