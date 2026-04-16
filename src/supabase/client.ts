@@ -15,7 +15,7 @@ import { createBrowserClient } from '@supabase/ssr';
  * IMPORTANT: singleton per browser session — import `supabase` from here,
  * do not call createBrowserClient() from components.
  */
-export const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:0';
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
+
+export const supabase = createBrowserClient(url, anonKey);

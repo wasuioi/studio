@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { supabase } from '@/supabase/client';
 import { useSupabaseAuth } from '@/supabase/provider';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -10,7 +10,23 @@ import { Loader2, ArrowLeft, RefreshCw, ShieldCheck, Mail, AlertCircle } from 'l
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/Logo';
 
+function VerifyLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="w-10 h-10 animate-spin text-primary" />
+    </div>
+  );
+}
+
 export default function VerifyPage() {
+  return (
+    <Suspense fallback={<VerifyLoader />}>
+      <VerifyPageContent />
+    </Suspense>
+  );
+}
+
+function VerifyPageContent() {
   const { user, isUserLoading } = useSupabaseAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
