@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { devForceStage } from '@/app/bot/actions';
 import { clearAllCached, listCached } from '@/lib/dev-tools/response-cache';
+import { supabase } from '@/supabase/client';
 
 interface DevStagePanelProps {
   currentStage: number;
@@ -26,6 +27,14 @@ export function DevStagePanel({ currentStage }: DevStagePanelProps) {
     setBusy(true);
     try {
       await devForceStage(n);
+      // Clear useAuth's localStorage cache so the reload shows fresh DB state,
+      // not the pre-jump profile snapshot.
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) localStorage.removeItem(`profile_cache_${user.id}`);
+      } catch {
+        // ignore — reload still happens
+      }
       toast({ title: 'Dev: stage set', description: `Profile is now at stage ${n}. Reloading…` });
       setTimeout(() => window.location.reload(), 300);
     } catch (err) {

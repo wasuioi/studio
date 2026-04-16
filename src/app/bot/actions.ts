@@ -64,22 +64,31 @@ export async function devForceStage(
   if (targetStage === 0) {
     // Reset: clear personality_profile + bot_chats + photo_url so the
     // photo-upload flow can be tested from a genuinely empty state.
-    await supabaseAdmin.from('bot_chats').delete().eq('user_id', userId);
-    await supabaseAdmin.from('personality_profiles').delete().eq('user_id', userId);
-    await supabaseAdmin
+    const d1 = await supabaseAdmin.from('bot_chats').delete().eq('user_id', userId);
+    if (d1.error) throw new Error(`bot_chats delete: ${d1.error.message}`);
+    const d2 = await supabaseAdmin.from('personality_profiles').delete().eq('user_id', userId);
+    if (d2.error) throw new Error(`personality_profiles delete: ${d2.error.message}`);
+    // Upsert so accounts that pre-date the handle_new_user trigger still get
+    // a profiles row instead of silently doing nothing.
+    const u1 = await supabaseAdmin
       .from('profiles')
-      .update({
-        stage: 0,
-        bio: null,
-        photo_url: null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        personality_profile: null as any,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        top_matches: null as any,
-        profile_completed: false,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId);
+      .upsert(
+        {
+          id: userId,
+          email: user.email ?? '',
+          stage: 0,
+          bio: null,
+          photo_url: null,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          personality_profile: null as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          top_matches: null as any,
+          profile_completed: false,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+    if (u1.error) throw new Error(`profiles upsert (reset): ${u1.error.message}`);
     return { success: true };
   }
 
@@ -90,25 +99,33 @@ export async function devForceStage(
   // cards without needing real users in the DB.
   const topMatches = targetStage >= 2 ? FAKE_MATCHES : null;
 
-  await supabaseAdmin
+  // Upsert so accounts that pre-date the handle_new_user trigger still get
+  // a profiles row created (instead of the update matching 0 rows silently,
+  // which then breaks the personality_profiles FK on the next step).
+  const u2 = await supabaseAdmin
     .from('profiles')
-    .update({
-      display_name: TESTER_PROFILE.display_name,
-      location: TESTER_PROFILE.location,
-      photo_url: null,
-      bio: TESTER_BIO,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      personality_profile: TESTER_PERSONALITY as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      top_matches: topMatches as any,
-      profile_completed: true,
-      stage: targetStage,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId);
+    .upsert(
+      {
+        id: userId,
+        email: user.email ?? '',
+        display_name: TESTER_PROFILE.display_name,
+        location: TESTER_PROFILE.location,
+        photo_url: null,
+        bio: TESTER_BIO,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        personality_profile: TESTER_PERSONALITY as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        top_matches: topMatches as any,
+        profile_completed: true,
+        stage: targetStage,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' }
+    );
+  if (u2.error) throw new Error(`profiles upsert (stage ${targetStage}): ${u2.error.message}`);
 
   // Upsert the personality_profiles row.
-  await supabaseAdmin.from('personality_profiles').upsert({
+  const up = await supabaseAdmin.from('personality_profiles').upsert({
     user_id: userId,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     traits: TESTER_PERSONALITY as any,
@@ -116,23 +133,26 @@ export async function devForceStage(
     summary: TESTER_PERSONALITY.user_persona.summary,
     completed_at: new Date().toISOString(),
   });
+  if (up.error) throw new Error(`personality_profiles upsert: ${up.error.message}`);
 
   // Seed a bot_chats row only if none exists yet.
-  const { data: existingChat } = await supabaseAdmin
+  const { data: existingChat, error: readChatErr } = await supabaseAdmin
     .from('bot_chats')
     .select('id')
     .eq('user_id', userId)
     .limit(1)
     .maybeSingle();
+  if (readChatErr) throw new Error(`bot_chats read: ${readChatErr.message}`);
 
   if (!existingChat) {
-    await supabaseAdmin.from('bot_chats').insert({
+    const ins = await supabaseAdmin.from('bot_chats').insert({
       user_id: userId,
       phase: 3,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       messages: TESTER_CONVERSATION as any,
       completed: true,
     });
+    if (ins.error) throw new Error(`bot_chats insert: ${ins.error.message}`);
   }
 
   return { success: true };
