@@ -19,6 +19,7 @@ export interface Database {
           email: string;
           display_name: string | null;
           bio: string | null;
+          stage: number;
           photo_url: string | null;
           identity_verified: boolean;
           verification_status: 'not_verified' | 'pending' | 'verified' | 'rejected';
@@ -36,6 +37,7 @@ export interface Database {
           email: string;
           display_name?: string | null;
           bio?: string | null;
+          stage?: number;
           photo_url?: string | null;
           identity_verified?: boolean;
           verification_status?: 'not_verified' | 'pending' | 'verified' | 'rejected';
@@ -53,6 +55,7 @@ export interface Database {
           email?: string;
           display_name?: string | null;
           bio?: string | null;
+          stage?: number;
           photo_url?: string | null;
           identity_verified?: boolean;
           verification_status?: 'not_verified' | 'pending' | 'verified' | 'rejected';
