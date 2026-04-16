@@ -4,7 +4,6 @@
 export const maxDuration = 60;
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useUser } from '@/supabase/hooks/use-user';
 import { useRouter } from 'next/navigation';
 import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
@@ -40,8 +39,12 @@ interface ChatMessage {
 }
 
 export default function AIProfileBot() {
-  const { user, isUserLoading } = useUser();
-  const { profile } = useAuth();
+  // Using useAuth (one-shot fetch + cache) instead of useRow with realtime.
+  // Stage advances are always triggered from this same component (via
+  // updateUserStage after Vera responds), and the DevStagePanel reloads
+  // the page after devForceStage. So we don't need realtime pushes to
+  // reflect stage changes from other sessions.
+  const { user, profile, loading: isUserLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -271,7 +274,14 @@ export default function AIProfileBot() {
     const { data: urlData } = supabase.storage.from('profile-photos').getPublicUrl(path);
     const photoUrl = urlData.publicUrl;
 
-    await supabase.from('profiles').update({ photo_url: photoUrl }).eq('id', user.id);
+    const { error: profileErr } = await supabase
+      .from('profiles')
+      .update({ photo_url: photoUrl })
+      .eq('id', user.id);
+    if (profileErr) {
+      toast({ variant: 'destructive', title: 'Photo save failed', description: profileErr.message });
+      return;
+    }
 
     // Append a synthetic system line so Vera knows on her next turn.
     const systemMsg: ChatMessage = {
