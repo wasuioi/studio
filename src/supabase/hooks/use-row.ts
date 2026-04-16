@@ -76,8 +76,12 @@ export function useRow<T extends TableName>(
       };
     }
 
+    // Unique channel name per mount — see use-collection.ts for why
+    // (deterministic names cause a "callbacks after 'subscribed'" error
+    // when the effect re-runs before removeChannel finishes).
+    const channelId = `${String(table)}:${column}:${value}:${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel(`${String(table)}:${column}:${value}`)
+      .channel(channelId)
       .on(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         'postgres_changes' as any,

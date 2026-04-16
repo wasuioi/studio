@@ -84,8 +84,16 @@ export function useCollection<T extends TableName>(
       };
     }
 
+    // Channel name must be unique per mount. If we reused a deterministic
+    // name like `table:col:val`, a re-mount (StrictMode, Fast Refresh, or any
+    // parent re-render that changes `deps`) would call supabase.channel()
+    // with the same name while the previous channel is still in the
+    // 'subscribed' state (removeChannel is async). Supabase returns the
+    // existing channel, and calling .on() on it throws:
+    //   "cannot add 'postgres_changes' callbacks ... after 'subscribed'"
+    const channelId = `${String(table)}:${realtime.column}:${realtime.value}:${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel(`${String(table)}:${realtime.column}:${realtime.value}`)
+      .channel(channelId)
       .on(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         'postgres_changes' as any,
