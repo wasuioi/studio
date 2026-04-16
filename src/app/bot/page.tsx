@@ -268,11 +268,17 @@ export default function AIProfileBot() {
     setSessionMessages(updatedHistory);
 
     // Persist the user's message
-    await supabase
+    const { error: saveUserMsgErr } = await supabase
       .from('bot_chats')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .update({ messages: updatedHistory as any, updated_at: now })
-      .eq('id', botChat.id);
+      .eq('id', botChat.id)
+      .select()
+      .single();
+
+    if (saveUserMsgErr) {
+      console.error('[bot] failed to save user message', saveUserMsgErr);
+    }
 
     try {
       const response = await aiPersonalityInterview({
@@ -327,7 +333,15 @@ export default function AIProfileBot() {
         });
       }
 
-      await supabase.from('bot_chats').update(updates).eq('id', botChat.id);
+      const { error: saveAiMsgErr } = await supabase
+        .from('bot_chats')
+        .update(updates)
+        .eq('id', botChat.id)
+        .select()
+        .single();
+      if (saveAiMsgErr) {
+        console.error('[bot] failed to save AI response', saveAiMsgErr);
+      }
     } catch (error: unknown) {
       console.error("Vera AI error:", error);
       const msg = String((error as Error)?.message || error || '');
