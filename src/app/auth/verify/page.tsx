@@ -90,7 +90,7 @@ function VerifyPageContent() {
         type: 'signup',
         email: user.email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/verify`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/bot`,
         },
       });
       if (error) {

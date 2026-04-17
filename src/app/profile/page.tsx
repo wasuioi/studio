@@ -15,7 +15,6 @@ import { supabase } from '@/supabase/client';
 import { useCollection } from '@/supabase/hooks/use-collection';
 import type { Tables } from '@/supabase/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { canUse } from '@/lib/feature-gates';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
@@ -48,17 +47,18 @@ export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const stage = (profile as { stage?: number } | null)?.stage ?? 0;
-  const showFullProfile = canUse('view_profile_page', stage);
-
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [editedBio, setEditedBio] = useState('');
   const [newPostContent, setNewPostContent] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [personality, setPersonality] = useState<PersonalityProfile | null>(null);
+  const [postPhoto, setPostPhoto] = useState<File | null>(null);
+  const [postPhotoPreview, setPostPhotoPreview] = useState<string | null>(null);
+  const [isPosting, setIsPosting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const postPhotoInputRef = useRef<HTMLInputElement>(null);
 
   // Posts, realtime
   const { data: posts } = useCollection<'posts'>({
@@ -171,22 +171,80 @@ export default function ProfilePage() {
     }
   };
 
-  const handleCreatePost = async () => {
-    if (!user || !newPostContent.trim()) return;
-    const { error } = await supabase.from('posts').insert({
-      user_id: user.id,
-      content: newPostContent,
-    });
-    if (error) {
+  const handlePostPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
       toast({
         variant: "destructive",
-        title: "Post Failed",
-        description: error.message,
+        title: "File Too Large",
+        description: "Please select an image smaller than 5MB.",
       });
       return;
     }
-    setNewPostContent('');
-    toast({ title: "Update Shared", description: "Your vibe has resonated." });
+
+    if (postPhotoPreview) URL.revokeObjectURL(postPhotoPreview);
+    setPostPhoto(file);
+    setPostPhotoPreview(URL.createObjectURL(file));
+    e.target.value = '';
+  };
+
+  const clearPostPhoto = () => {
+    if (postPhotoPreview) URL.revokeObjectURL(postPhotoPreview);
+    setPostPhoto(null);
+    setPostPhotoPreview(null);
+  };
+
+  const handleCreatePost = async () => {
+    if (!user) return;
+    if (!newPostContent.trim() && !postPhoto) return;
+
+    setIsPosting(true);
+    try {
+      let photoUrl: string | null = null;
+
+      if (postPhoto) {
+        const path = `${user.id}/${Date.now()}_${postPhoto.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('post-photos')
+          .upload(path, postPhoto, { upsert: false });
+
+        if (uploadError) {
+          toast({
+            variant: "destructive",
+            title: "Upload Failed",
+            description: uploadError.message,
+          });
+          return;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('post-photos')
+          .getPublicUrl(path);
+        photoUrl = urlData.publicUrl;
+      }
+
+      const { error } = await supabase.from('posts').insert({
+        user_id: user.id,
+        content: newPostContent,
+        photo_url: photoUrl,
+      });
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Post Failed",
+          description: error.message,
+        });
+        return;
+      }
+
+      setNewPostContent('');
+      clearPostPhoto();
+      toast({ title: "Update Shared", description: "Your vibe has resonated." });
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   const handleDeletePost = async (postId: string) => {
@@ -206,47 +264,7 @@ export default function ProfilePage() {
     </div>
   );
 
-  // Fallback: if auth loaded but profile/user is missing, show a visible
-  // message instead of a blank screen so the user knows to refresh.
-  if (!profile || !user) {
-    return (
-      <div className="max-w-2xl mx-auto min-h-screen flex flex-col p-4 relative pt-20">
-        <Navigation />
-        <Card className="glass-card p-10 text-center rounded-[2.5rem] mt-8 bg-white/5 border-white/10">
-          <Loader2 className="w-8 h-8 mx-auto mb-4 text-primary/60 animate-spin" />
-          <p className="text-white/60 font-medium">Loading your profile…</p>
-          <Button
-            variant="ghost"
-            onClick={() => window.location.reload()}
-            className="mt-4 text-white/40 hover:text-white"
-          >
-            Refresh
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!showFullProfile) {
-    return (
-      <div className="max-w-2xl mx-auto min-h-screen flex flex-col p-4 relative pt-20">
-        <Navigation />
-        <Card className="glass-card p-10 md:p-16 text-center rounded-[2.5rem] mt-8 bg-white/5 border-white/10">
-          <Heart className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-6 text-primary/40" />
-          <h1 className="text-2xl md:text-3xl font-black mb-4 text-white">Let&apos;s finish your introduction first</h1>
-          <p className="text-white/60 font-medium mb-8 max-w-xs mx-auto text-sm md:text-base">
-            Head back to the chat with Vera — once she has enough to work with, your profile will be ready.
-          </p>
-          <Button
-            onClick={() => router.push('/bot')}
-            className="truevibe-pill-button h-12 px-10"
-          >
-            Keep chatting with Vera
-          </Button>
-        </Card>
-      </div>
-    );
-  }
+  if (!profile || !user) return null;
 
   const coverImage = PlaceHolderImages.find(img => img.id === 'default_cover');
   const displayName = profile.display_name || 'Viber';
@@ -384,12 +402,47 @@ export default function ProfilePage() {
                 onChange={(e) => setNewPostContent(e.target.value)}
                 className="min-h-[100px] border-none bg-white/5 rounded-2xl resize-none focus-visible:ring-primary/20 p-4 text-sm font-medium text-white"
               />
+              <input
+                type="file"
+                ref={postPhotoInputRef}
+                className="sr-only"
+                accept="image/*"
+                onChange={handlePostPhotoChange}
+              />
+              {postPhotoPreview && (
+                <div className="relative inline-block">
+                  <img
+                    src={postPhotoPreview}
+                    alt="Selected preview"
+                    className="max-h-48 rounded-2xl border border-white/10"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearPostPhoto}
+                    aria-label="Remove photo"
+                    className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
               <div className="flex justify-between items-center">
-                <Button variant="ghost" size="sm" className="rounded-full text-white/40 font-bold hover:bg-white/5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => postPhotoInputRef.current?.click()}
+                  disabled={isPosting}
+                  className="rounded-full text-white/40 font-bold hover:bg-white/5 hover:text-white"
+                >
                   <ImageIcon className="w-4 h-4 mr-2" /> Media
                 </Button>
-                <Button onClick={handleCreatePost} disabled={!newPostContent.trim()} size="sm" className="truevibe-pill-button">
-                  Post Update
+                <Button
+                  onClick={handleCreatePost}
+                  disabled={isPosting || (!newPostContent.trim() && !postPhoto)}
+                  size="sm"
+                  className="truevibe-pill-button"
+                >
+                  {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Post Update'}
                 </Button>
               </div>
             </div>
@@ -421,7 +474,20 @@ export default function ProfilePage() {
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
-                  <p className="text-sm leading-relaxed text-white/80 font-medium">{post.content}</p>
+                  {post.content && (
+                    <p className="text-sm leading-relaxed text-white/80 font-medium">{post.content}</p>
+                  )}
+                  {post.photo_url && (
+                    <div className="mt-4 relative w-full aspect-[4/3] rounded-2xl overflow-hidden border border-white/10">
+                      <Image
+                        src={post.photo_url}
+                        alt="Post photo"
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 768px"
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))
