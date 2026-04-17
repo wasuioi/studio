@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import { useSupabaseAuth } from '@/supabase/provider';
@@ -79,10 +79,19 @@ export function useAuth() {
     }
 
     let cancelled = false;
+    fetchProfile(user.id, cancelled);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authLoading, pathname, router]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Shared fetch logic used by both the initial load and manual refetch.
+  function fetchProfile(uid: string, cancelled = false) {
     supabase
       .from('profiles')
       .select('*')
-      .eq('id', user.id)
+      .eq('id', uid)
       .maybeSingle()
       .then(({ data, error }) => {
         if (cancelled) return;
@@ -92,23 +101,23 @@ export function useAuth() {
           return;
         }
         if (data) {
-          // Merge: camelCase legacy fields + raw snake_case columns
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const merged: MergedProfile = { ...rowToUserProfile(data as any), ...(data as any) } as MergedProfile;
           setProfile(merged);
           try {
-            localStorage.setItem(PROFILE_CACHE_KEY(user.id), JSON.stringify(merged));
+            localStorage.setItem(PROFILE_CACHE_KEY(uid), JSON.stringify(merged));
           } catch {
             // Ignore localStorage quota / private-mode errors
           }
         }
         setLoading(false);
       });
+  }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [user, authLoading, pathname, router]);
+  /** Re-read the profile from the DB. Call after mutations (photo upload, bio edit, etc.). */
+  const refetch = useCallback(() => {
+    if (user) fetchProfile(user.id);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { user, profile, loading: authLoading || loading };
+  return { user, profile, loading: authLoading || loading, refetch };
 }

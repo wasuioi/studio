@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/supabase/client';
 import type { Database } from '@/lib/database.types';
 
@@ -11,6 +11,8 @@ interface UseCollectionResult<T> {
   data: T[] | null;
   isLoading: boolean;
   error: Error | null;
+  /** Manually re-run the query. Useful after a local mutation. */
+  refetch: () => void;
 }
 
 interface UseCollectionOptions<T extends TableName> {
@@ -52,6 +54,9 @@ export function useCollection<T extends TableName>(
   const [data, setData] = useState<Row<T>[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
+  // Keep a stable ref to the latest run() so refetch() always calls the
+  // current version (with the right table/query closure).
+  const runRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +81,7 @@ export function useCollection<T extends TableName>(
       setIsLoading(false);
     };
 
+    runRef.current = run;
     run();
 
     if (!realtime) {
@@ -116,5 +122,7 @@ export function useCollection<T extends TableName>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
-  return { data, isLoading, error };
+  const refetch = useCallback(() => { runRef.current(); }, []);
+
+  return { data, isLoading, error, refetch };
 }
