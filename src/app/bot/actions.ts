@@ -61,6 +61,15 @@ export async function devForceStage(
   const user = await verifyAuth();
   const userId = user.id;
 
+  // Dev shortcut: mark email as confirmed so posts RLS (is_email_verified)
+  // passes without needing the real email flow. No-op if already confirmed.
+  const confirmErr = await supabaseAdmin.auth.admin.updateUserById(userId, {
+    email_confirm: true,
+  });
+  if (confirmErr.error) {
+    throw new Error(`email_confirm: ${confirmErr.error.message}`);
+  }
+
   if (targetStage === 0) {
     // Reset: clear personality_profile + bot_chats + photo_url so the
     // photo-upload flow can be tested from a genuinely empty state.

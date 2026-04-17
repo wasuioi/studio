@@ -28,6 +28,10 @@ export function DevStagePanel({ currentStage, onClose }: DevStagePanelProps) {
     setBusy(true);
     try {
       await devForceStage(n);
+      // Refresh the auth session so the JWT picks up email_confirmed_at
+      // (devForceStage auto-confirms the email). Without this the browser
+      // still holds the old JWT and posts RLS keeps failing.
+      await supabase.auth.refreshSession();
       // Clear useAuth's localStorage cache so the reload shows fresh DB state,
       // not the pre-jump profile snapshot.
       try {
