@@ -40,7 +40,6 @@ clear boundaries.
 
 Deletes all of these in one go:
 
-- `src/lib/dev-tools/flag.ts` — `isDevToolsEnabled()` env flag
 - `src/lib/dev-tools/response-cache.ts` — localStorage cache for AI outputs
 - `src/lib/dev-tools/fixtures/tester-profile.ts` — Alex Tester seed
 - `src/lib/dev-tools/fixtures/tester-personality.ts` — personality fixture
@@ -71,12 +70,20 @@ the stage column after Vera advances a member.**
 
 ### 3. ✅ `src/app/bot/page.tsx`
 
-Delete these imports:
+Delete this import:
 
 ```ts
 import { DevStagePanel } from '@/components/dev/DevStagePanel';
-import { isDevToolsEnabled } from '@/lib/dev-tools/flag';
 ```
+
+Delete the `devPanelOpen` state line:
+
+```ts
+const [devPanelOpen, setDevPanelOpen] = useState(false);
+```
+
+Delete the Ctrl+1 keyboard listener `useEffect` (search for the comment
+`DEV-ONLY: Ctrl+1 / Cmd+1` — delete the whole block).
 
 Delete the dev-skip `useEffect` block (search for the comment `Dev-skip
 scenario` — delete the whole `useEffect(() => { ... }, [profile?.stage,
@@ -87,23 +94,22 @@ never hit that state because Vera's `requestPhotoUpload` signal drives the
 In the component's JSX return (near the end), delete this line:
 
 ```tsx
-{isDevToolsEnabled() && <DevStagePanel currentStage={stage} />}
+{devPanelOpen && <DevStagePanel currentStage={stage} onClose={() => setDevPanelOpen(false)} />}
 ```
 
 **Leave `<BioApprovalModal ... />` — that's production code.**
 
 ### 4. ✅ `src/components/BioApprovalModal.tsx`
 
-Delete these imports:
+Delete this import:
 
 ```ts
-import { isDevToolsEnabled } from '@/lib/dev-tools/flag';
 import { getCached, setCached } from '@/lib/dev-tools/response-cache';
 ```
 
-Inside `useEffect(() => { ... }, [open, initialBio]);`, delete the dev-cache
-branch (the `if (isDevToolsEnabled()) { ... }` block). The useEffect should
-end up as just:
+Inside `useEffect(() => { ... }, [open, initialBio]);`, delete the
+bio-cache block (the lines that call `getCached` / `setCached`). The
+useEffect should end up as just:
 
 ```ts
 useEffect(() => {
@@ -114,24 +120,22 @@ useEffect(() => {
 
 ### 5. ✅ Environment variables
 
-Remove from local `.env.local`:
+Remove from local `.env.local` and any Vercel environment (Preview **and**
+Production):
 
 ```
-NEXT_PUBLIC_ENABLE_DEV_TOOLS=true
 ENABLE_DEV_TOOLS=true
 ```
 
-Check Vercel project settings (Preview **and** Production) for the same two
-keys and remove them if present. They should never have been set in
-production, but double-check. You can do this from the Vercel dashboard
-under **Settings → Environment Variables**, or via the CLI:
-
 ```bash
 vercel env ls
-vercel env rm NEXT_PUBLIC_ENABLE_DEV_TOOLS production
 vercel env rm ENABLE_DEV_TOOLS production
-# …and same for preview if set
+vercel env rm ENABLE_DEV_TOOLS preview
 ```
+
+(Earlier revisions also used `NEXT_PUBLIC_ENABLE_DEV_TOOLS` — that one was
+removed when the panel moved to the Ctrl+1 keybind. If you still see it in
+any Vercel environment, remove it.)
 
 ### 6. ✅ Verify nothing references the deleted symbols
 
@@ -146,7 +150,7 @@ All three must pass. If any complains about `@/lib/dev-tools/*` or
 Search the repo:
 
 ```bash
-grep -rn "dev-tools\|DevStagePanel\|isDevToolsEnabled\|devForceStage" src/
+grep -rn "dev-tools\|DevStagePanel\|devForceStage\|devPanelOpen" src/
 ```
 
 Expected output: no matches. If anything comes back, delete that too.
@@ -157,7 +161,7 @@ Expected output: no matches. If anything comes back, delete that too.
 npm run dev
 ```
 
-- Open `/bot` — **no yellow DEV TOOLS panel** in the corner.
+- Open `/bot` — pressing **Ctrl+1** (or Cmd+1) does nothing; no yellow panel appears.
 - Open `/matches` as a fresh user — empty state card "Matches will appear here".
 - Open `/profile` as a fresh user — empty state "Let's finish your introduction first".
 - Chat with Vera naturally — she asks basics, then a photo (📎 button appears), then advances to stage 1 and the bio modal opens.
@@ -183,17 +187,30 @@ normally. Do **not** delete any of these:
 
 ---
 
-## Env vars while developing (do not commit these to git)
+## How to open the dev panel (while it still exists)
 
-While you are still testing locally and want the harness on, keep these in
-`.env.local`:
+1. In any environment (local `npm run dev`, Vercel preview, or the yellow
+   panel is even harmlessly mountable on production), go to **`/bot`** and
+   press **Ctrl+1** (or **Cmd+1** on macOS). A yellow floating panel
+   appears in the bottom-right corner. Press Ctrl+1 again (or click **×**)
+   to hide it.
 
-```
-NEXT_PUBLIC_ENABLE_DEV_TOOLS=true
-ENABLE_DEV_TOOLS=true
-```
+2. For the panel's buttons (`Skip to 1`, `Skip to 2`, `Reset to stage 0`)
+   to actually mutate state, the server must have:
 
-Both must be `true` for the panel to **render** and for `devForceStage` to
-**actually mutate state**. If either is missing, the panel silently does
-nothing — which is the intended fail-closed behaviour for any accidentally
-deployed build.
+   ```
+   ENABLE_DEV_TOOLS=true
+   ```
+
+   Set this in `.env.local` for local dev and in Vercel **Preview**
+   environment if you want to drive a preview deployment:
+
+   ```bash
+   vercel env add ENABLE_DEV_TOOLS preview   # value: true
+   ```
+
+   On production (or anywhere this env is not `true`) the buttons show a
+   red error toast instead of mutating the DB. That is the only real
+   security gate — keybind + panel UI are harmless on their own because
+   every privileged action runs through a Server Action that re-checks
+   the env var.

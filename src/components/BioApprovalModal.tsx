@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { isDevToolsEnabled } from '@/lib/dev-tools/flag';
 import { getCached, setCached } from '@/lib/dev-tools/response-cache';
 
 interface BioApprovalModalProps {
@@ -29,16 +28,15 @@ export function BioApprovalModal({ open, initialBio, onSave, onSkip }: BioApprov
   useEffect(() => {
     if (!open) return;
 
-    // Dev cache: reuse first-generated bio across test runs.
-    if (isDevToolsEnabled()) {
-      const cached = getCached<string>('bio');
-      if (cached) {
-        setBio(cached);
-        return;
-      }
-      if (initialBio) setCached('bio', initialBio);
+    // Remembers the first-drafted bio across page reloads so devs iterating
+    // on the flow don't re-burn Gemini tokens just to see the modal. Safe in
+    // production because nothing seeds the cache except this modal itself.
+    const cached = getCached<string>('bio');
+    if (cached) {
+      setBio(cached);
+      return;
     }
-
+    if (initialBio) setCached('bio', initialBio);
     setBio(initialBio);
   }, [open, initialBio]);
 

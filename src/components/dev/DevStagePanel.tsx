@@ -11,9 +11,10 @@ import { supabase } from '@/supabase/client';
 
 interface DevStagePanelProps {
   currentStage: number;
+  onClose: () => void;
 }
 
-export function DevStagePanel({ currentStage }: DevStagePanelProps) {
+export function DevStagePanel({ currentStage, onClose }: DevStagePanelProps) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
   const [cacheState, setCacheState] = useState({ bio: false, personality: false, matches: false });
@@ -54,7 +55,17 @@ export function DevStagePanel({ currentStage }: DevStagePanelProps) {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-72 rounded-md border border-amber-400 bg-amber-50 p-3 text-xs shadow-lg">
-      <div className="mb-2 font-semibold text-amber-900">DEV TOOLS (ENABLED)</div>
+      <div className="mb-2 flex items-center justify-between">
+        <span className="font-semibold text-amber-900">DEV TOOLS</span>
+        <button
+          onClick={onClose}
+          className="text-amber-900 hover:text-amber-700 font-bold text-sm leading-none"
+          aria-label="Close dev panel"
+          title="Close (Ctrl+1)"
+        >
+          ×
+        </button>
+      </div>
       <div className="mb-2 text-amber-800">Current stage: {currentStage}</div>
 
       <div className="mb-2 flex flex-wrap gap-1">

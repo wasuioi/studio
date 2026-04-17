@@ -27,7 +27,6 @@ import {
 import { updateUserStage } from '@/app/bot/actions';
 import { BioApprovalModal } from '@/components/BioApprovalModal';
 import { DevStagePanel } from '@/components/dev/DevStagePanel';
-import { isDevToolsEnabled } from '@/lib/dev-tools/flag';
 import { useAuth } from '@/hooks/use-auth';
 
 type BotChat = Tables<'bot_chats'>;
@@ -66,6 +65,7 @@ export default function AIProfileBot() {
   const [bioModalOpen, setBioModalOpen] = useState(false);
   const [pendingBioDraft, setPendingBioDraft] = useState('');
   const [awaitingPhoto, setAwaitingPhoto] = useState(false);
+  const [devPanelOpen, setDevPanelOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,6 +79,21 @@ export default function AIProfileBot() {
     // stage in deps would cause an infinite loop; intentionally omit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.stage]);
+
+  // DEV-ONLY: Ctrl+1 / Cmd+1 toggles the dev panel. The panel itself is just
+  // UI — actual privileged mutations still require server env ENABLE_DEV_TOOLS=true,
+  // so enabling this keybind on production is not a security risk: buttons will
+  // show an error toast instead of succeeding.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '1') {
+        e.preventDefault();
+        setDevPanelOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // Dev-skip scenario: if the developer jumped to stage 1+ via the DevStagePanel,
   // we clear photo_url so they can upload their own photo. Show 📎 immediately
@@ -649,7 +664,7 @@ export default function AIProfileBot() {
         onSkip={() => setBioModalOpen(false)}
       />
 
-      {isDevToolsEnabled() && <DevStagePanel currentStage={stage} />}
+      {devPanelOpen && <DevStagePanel currentStage={stage} onClose={() => setDevPanelOpen(false)} />}
     </div>
   );
 }
