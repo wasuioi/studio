@@ -1,5 +1,6 @@
 // src/lib/dev-tools/fixtures/tester-profile.ts
-// DEV-ONLY. Static profile seed used by devForceStage() when jumping stages.
+// DEV-ONLY. Static profile seed used by devSeedDemoProfile() so downstream
+// flows have content without chatting through Vera.
 // Only fields that actually exist on the profiles table — see
 // src/lib/database.types.ts. Demographics are folded into the personality
 // summary in tester-personality.ts instead of separate columns.

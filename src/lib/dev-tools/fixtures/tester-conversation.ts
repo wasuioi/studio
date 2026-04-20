@@ -1,6 +1,6 @@
 // src/lib/dev-tools/fixtures/tester-conversation.ts
 // DEV-ONLY. Fake bot_chats.messages payload so the /bot page feels populated
-// after a stage skip. Matches the ChatMessage shape used in src/app/bot/page.tsx.
+// after devSeedDemoProfile. Matches the ChatMessage shape used in src/app/bot/page.tsx.
 
 export interface FixtureMessage {
   role: 'user' | 'model';

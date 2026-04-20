@@ -9,15 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Edit3, X, Save, Camera, Trash2, Image as ImageIcon, Loader2, Heart, User, Upload, ShieldCheck } from 'lucide-react';
+import { Edit3, X, Save, Camera, Trash2, Image as ImageIcon, Loader2, Upload, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 import { supabase } from '@/supabase/client';
 import { useCollection } from '@/supabase/hooks/use-collection';
 import type { Tables } from '@/supabase/types';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { canUse } from '@/lib/feature-gates';
-import Link from 'next/link';
 
 function PartnerVisionText({ summary }: { summary?: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -271,26 +269,6 @@ export default function ProfilePage() {
   );
 
   if (!profile || !user) return null;
-
-  const stage = (profile as { stage?: number }).stage ?? 0;
-
-  if (!canUse('view_profile_page', stage)) {
-    return (
-      <div className="max-w-3xl mx-auto p-4 min-h-screen pb-32 pt-20">
-        <Navigation />
-        <Card className="glass-card p-10 md:p-20 text-center rounded-[2.5rem] animate-in zoom-in-95 bg-white/5 border-white/10 mt-8">
-          <User className="w-12 h-12 md:w-20 md:h-20 mx-auto mb-6 text-primary/40" />
-          <h3 className="text-2xl md:text-4xl font-black mb-4 text-white">Let&apos;s finish your introduction first</h3>
-          <p className="text-white/60 font-medium mb-8 max-w-xs mx-auto text-sm md:text-lg">
-            Chat with Vera a bit more and your profile will unlock.
-          </p>
-          <Link href="/bot">
-            <Button className="truevibe-pill-button h-12 px-10">Keep chatting with Vera</Button>
-          </Link>
-        </Card>
-      </div>
-    );
-  }
 
   const displayName = profile.display_name || 'Viber';
   const photoUrl = profile.photo_url || '';

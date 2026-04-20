@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useSupabaseAuth } from '@/supabase/provider';
 import { useRouter } from 'next/navigation';
@@ -18,7 +18,8 @@ import type { ChatRequest } from '@/types';
 import Link from 'next/link';
 import { DatePlannerModal } from '@/components/DatePlannerModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { canUse } from '@/lib/feature-gates';
+import { DEMO_INVITE_SENDER_KEY } from '@/lib/dev-tools/demo-invite';
+import { devSeedFakeInvite } from '@/app/bot/actions';
 
 export default function RequestsPage() {
   const { user: authUser, isUserLoading } = useSupabaseAuth();
@@ -36,7 +37,7 @@ export default function RequestsPage() {
     }
   }, [isUserLoading, authUser, router]);
 
-  const { data: incomingRows, isLoading } = useCollection<'chat_requests'>({
+  const { data: incomingRows, isLoading, refetch: refetchIncoming } = useCollection<'chat_requests'>({
     table: 'chat_requests',
     query: (q) => (emailVerified && authUser ? q.eq('receiver_id', authUser.id).eq('status', 'pending') : q),
     realtime: authUser ? { column: 'receiver_id', value: authUser.id } : undefined,
@@ -53,10 +54,43 @@ export default function RequestsPage() {
   const incomingRequests: ChatRequest[] = (incomingRows ?? []).map(rowToChatRequest);
   const acceptedDates: ChatRequest[] = (acceptedRows ?? []).map(rowToChatRequest);
 
-  const isVerified = profile?.identity_verified || profile?.verification_status === 'verified';
+  // DEV-ONLY: if the Dev Panel seeded a fake invite earlier, reseed it once
+  // on page entry when no demo-sender invite is pending. We intentionally
+  // only fire this on the initial mount-time load — not on every list
+  // change — so that declining a demo invite leaves the page empty (instead
+  // of flashing a fresh invite back in the same frame). Navigate away and
+  // return to get the next invite. Guards: localStorage marker (only set
+  // when Seed fake invite was clicked) + server-side ENABLE_DEV_TOOLS.
+  const reseedRanRef = useRef(false);
+  useEffect(() => {
+    if (isLoading) return;
+    if (reseedRanRef.current) return;
+    reseedRanRef.current = true;
 
-  const stage = (profile as { stage?: number } | null)?.stage ?? 0;
-  const canAccept = canUse('accept_date_invite', stage);
+    let demoSenderId: string | null = null;
+    try {
+      demoSenderId = localStorage.getItem(DEMO_INVITE_SENDER_KEY);
+    } catch {
+      return;
+    }
+    if (!demoSenderId) return;
+
+    const alreadyPending = incomingRequests.some((r) => r.senderId === demoSenderId);
+    if (alreadyPending) return;
+
+    devSeedFakeInvite()
+      .then(() => refetchIncoming())
+      .catch((err) => {
+        console.error('[dev] auto-reseed fake invite failed', err);
+        try {
+          localStorage.removeItem(DEMO_INVITE_SENDER_KEY);
+        } catch {
+          // ignore
+        }
+      });
+  }, [isLoading, incomingRequests, refetchIncoming]);
+
+  const isVerified = profile?.identity_verified || profile?.verification_status === 'verified';
 
   const handleAcceptRequest = (request: ChatRequest) => {
     if (!user) return;
@@ -74,6 +108,10 @@ export default function RequestsPage() {
       toast({ variant: "destructive", title: "Error", description: error.message });
       return;
     }
+    // Realtime isn't guaranteed to be enabled for chat_requests in every
+    // environment — force a refetch so the list reflects the new status
+    // immediately.
+    refetchIncoming();
     toast({ description: "Date invite declined." });
   };
 
@@ -201,15 +239,13 @@ export default function RequestsPage() {
                   >
                     Decline
                   </Button>
-                  {canAccept && (
-                    <Button
-                      size="sm"
-                      className="truevibe-pill-button flex-1"
-                      onClick={() => handleAcceptRequest(req)}
-                    >
-                      Accept Date
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    className="truevibe-pill-button flex-1"
+                    onClick={() => handleAcceptRequest(req)}
+                  >
+                    Accept Date
+                  </Button>
                 </div>
               </div>
             </Card>

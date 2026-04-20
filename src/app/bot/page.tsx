@@ -24,9 +24,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { updateUserStage } from '@/app/bot/actions';
 import { BioApprovalModal } from '@/components/BioApprovalModal';
-import { DevStagePanel } from '@/components/dev/DevStagePanel';
+import { DevPanel } from '@/components/dev/DevPanel';
 import { useAuth } from '@/hooks/use-auth';
 
 type BotChat = Tables<'bot_chats'>;
@@ -38,11 +37,6 @@ interface ChatMessage {
 }
 
 export default function AIProfileBot() {
-  // Using useAuth (one-shot fetch + cache) instead of useRow with realtime.
-  // Stage advances are always triggered from this same component (via
-  // updateUserStage after Vera responds), and the DevStagePanel reloads
-  // the page after devForceStage. So we don't need realtime pushes to
-  // reflect stage changes from other sessions.
   const { user, profile, loading: isUserLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -61,7 +55,6 @@ export default function AIProfileBot() {
   const [botChat, setBotChat] = useState<BotChat | null>(null);
   const [sessionMessages, setSessionMessages] = useState<ChatMessage[]>([]);
   const [isRestoring, setIsRestoring] = useState(true);
-  const [stage, setStage] = useState(0);
   const [bioModalOpen, setBioModalOpen] = useState(false);
   const [pendingBioDraft, setPendingBioDraft] = useState('');
   const [awaitingPhoto, setAwaitingPhoto] = useState(false);
@@ -71,14 +64,7 @@ export default function AIProfileBot() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initializedRef = useRef(false);
 
-  // Sync stage from profile when it loads
-  useEffect(() => {
-    if (profile?.stage !== undefined && profile.stage !== stage) {
-      setStage(profile.stage);
-    }
-    // stage in deps would cause an infinite loop; intentionally omit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.stage]);
+  const isVerified = Boolean(profile?.identity_verified);
 
   // DEV-ONLY: Ctrl+1 / Cmd+1 toggles the dev panel. The panel itself is just
   // UI — actual privileged mutations still require server env ENABLE_DEV_TOOLS=true,
@@ -95,16 +81,14 @@ export default function AIProfileBot() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Dev-skip scenario: if the developer jumped to stage 1+ via the DevStagePanel,
-  // we clear photo_url so they can upload their own photo. Show 📎 immediately
-  // in that state so they don't have to chat with Vera to see it.
-  // For real users this state never occurs (a natural stage advancement always
-  // includes a photo upload via Vera's requestPhotoUpload signal first).
+  // Surface the upload button for dev-seeded accounts (profile_completed=true
+  // but photo_url still empty). For real users Vera drives this via
+  // requestPhotoUpload on the relevant turn.
   useEffect(() => {
-    if ((profile?.stage ?? 0) >= 1 && !profile?.photo_url) {
+    if (profile?.profile_completed && !profile?.photo_url) {
       setAwaitingPhoto(true);
     }
-  }, [profile?.stage, profile?.photo_url]);
+  }, [profile?.profile_completed, profile?.photo_url]);
 
   // Load or create a bot_chats row for this user (one active interview at a time)
   useEffect(() => {
@@ -430,21 +414,10 @@ export default function AIProfileBot() {
         });
       }
 
-      // --- Stage progression (runs on every turn) ---
-      const stageMap = { none: 0, stage1: 1, stage2: 2, stage3: 3 } as const;
-      const veraStage = stageMap[response.stageReached ?? 'none'];
-      if (veraStage > stage) {
-        const previousStage = stage;
-        try {
-          await updateUserStage(veraStage);
-          setStage(veraStage);
-          if (previousStage < 1 && veraStage >= 1 && response.suggestedBio) {
-            setPendingBioDraft(response.suggestedBio);
-            setBioModalOpen(true);
-          }
-        } catch (stageErr) {
-          console.error('[bot] updateUserStage failed', stageErr);
-        }
+      // --- Bio draft handoff (runs when Vera returns a suggestedBio) ---
+      if (response.suggestedBio && !profile?.bio) {
+        setPendingBioDraft(response.suggestedBio);
+        setBioModalOpen(true);
       }
 
       // --- Photo upload UI toggle ---
@@ -664,7 +637,7 @@ export default function AIProfileBot() {
         onSkip={() => setBioModalOpen(false)}
       />
 
-      {devPanelOpen && <DevStagePanel currentStage={stage} onClose={() => setDevPanelOpen(false)} />}
+      {devPanelOpen && <DevPanel verified={isVerified} onClose={() => setDevPanelOpen(false)} />}
     </div>
   );
 }
