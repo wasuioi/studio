@@ -53,6 +53,7 @@ export function rowToChatRequest(row: ChatRequestRow): ChatRequest {
     dateStatus: (row.date_status as any) ?? undefined,
     suggestedLocation: row.suggested_location ?? undefined,
     suggestedDateTime: row.suggested_date_time ?? undefined,
+    scheduledAt: row.scheduled_at ?? null,
   };
 }
 

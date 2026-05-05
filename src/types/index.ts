@@ -78,6 +78,7 @@ export interface ChatRequest {
   suggestedLocation?: string;
   suggestedDateTime?: string;
   scheduledFor?: string; // ISO string for reminder logic
+  scheduledAt?: string | null; // Concrete timestamptz for the planned date — drives post-date feedback visibility
 }
 
 export interface Post {

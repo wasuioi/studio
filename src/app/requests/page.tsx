@@ -20,6 +20,8 @@ import { DatePlannerModal } from '@/components/DatePlannerModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { DEMO_INVITE_SENDER_KEY } from '@/lib/dev-tools/demo-invite';
 import { devSeedFakeInvite } from '@/app/bot/actions';
+import { PostDateButton } from '@/components/PostDateButton';
+import { PostDateBadge } from '@/components/PostDateBadge';
 
 export default function RequestsPage() {
   const { user: authUser, isUserLoading } = useSupabaseAuth();
@@ -51,8 +53,18 @@ export default function RequestsPage() {
     deps: [authUser?.id, emailVerified],
   });
 
+  const { data: sentRows, isLoading: isLoadingSent } = useCollection<'chat_requests'>({
+    table: 'chat_requests',
+    query: (q) => (emailVerified && authUser ? q.eq('sender_id', authUser.id).eq('status', 'accepted') : q),
+    realtime: authUser ? { column: 'sender_id', value: authUser.id } : undefined,
+    deps: [authUser?.id, emailVerified],
+  });
+
   const incomingRequests: ChatRequest[] = (incomingRows ?? []).map(rowToChatRequest);
   const acceptedDates: ChatRequest[] = (acceptedRows ?? []).map(rowToChatRequest);
+  const sentPlannedDates: ChatRequest[] = (sentRows ?? [])
+    .map(rowToChatRequest)
+    .filter((d) => d.dateStatus === 'planned');
 
   // DEV-ONLY: if the Dev Panel seeded a fake invite earlier, reseed it once
   // on page entry when no demo-sender invite is pending. We intentionally
@@ -121,7 +133,7 @@ export default function RequestsPage() {
     </div>
   );
 
-  const contentLoading = isLoading || isLoadingAccepted;
+  const contentLoading = isLoading || isLoadingAccepted || isLoadingSent;
   const plannedDates = acceptedDates.filter(d => d.dateStatus === 'planned');
   const waitingSenderDates = acceptedDates.filter(d => d.dateStatus === 'waiting_sender');
 
@@ -172,6 +184,53 @@ export default function RequestsPage() {
                   </div>
                   <Badge className="bg-green-500/20 text-green-400 border-none text-[10px] font-black shrink-0">Confirmed</Badge>
                 </div>
+                {date.scheduledAt && new Date(date.scheduledAt) <= new Date() && authUser && (
+                  <div className="mt-4 flex items-center gap-2 flex-wrap">
+                    <PostDateButton chatRequestId={date.id} />
+                    <PostDateBadge chatRequestId={date.id} userId={authUser.id} />
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!contentLoading && sentPlannedDates.length > 0 && (
+        <div className="px-2 mb-8">
+          <h2 className="text-white font-black text-lg mb-3 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-green-400" /> Dates You Planned
+          </h2>
+          <div className="space-y-4">
+            {sentPlannedDates.map((date) => (
+              <Card key={date.id} className="glass-card rounded-[1.5rem] p-5 border border-green-500/20 bg-green-500/5">
+                <div className="flex items-start gap-4">
+                  <Avatar className="w-12 h-12 rounded-xl border border-white/10 shrink-0">
+                    <AvatarFallback className="font-black bg-primary/20 text-primary">
+                      {(date.receiverName ?? '?')[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-black text-sm mb-2">Date with {date.receiverName ?? 'your match'}</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-white/70 text-xs">
+                        <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <span>{date.suggestedDateTime}</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-white/70 text-xs">
+                        <MapPin className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                        <span>{date.suggestedLocation}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Badge className="bg-green-500/20 text-green-400 border-none text-[10px] font-black shrink-0">Confirmed</Badge>
+                </div>
+                {date.scheduledAt && new Date(date.scheduledAt) <= new Date() && authUser && (
+                  <div className="mt-4 flex items-center gap-2 flex-wrap">
+                    <PostDateButton chatRequestId={date.id} />
+                    <PostDateBadge chatRequestId={date.id} userId={authUser.id} />
+                  </div>
+                )}
               </Card>
             ))}
           </div>
@@ -250,7 +309,7 @@ export default function RequestsPage() {
               </div>
             </Card>
           ))
-        ) : plannedDates.length === 0 && waitingSenderDates.length === 0 ? (
+        ) : plannedDates.length === 0 && waitingSenderDates.length === 0 && sentPlannedDates.length === 0 ? (
           <div className="flex justify-center items-center py-20 relative">
             <div className="absolute inset-0 flex items-center justify-center opacity-30">
               <div className="w-64 h-64 bg-primary blur-[80px] rounded-full" />
