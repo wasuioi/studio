@@ -4,8 +4,9 @@
 export const maxDuration = 60;
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Navigation } from '@/components/Navigation';
+import { PostDateBotView } from '@/components/PostDateBotView';
 import { Button } from '@/components/ui/button';
 import { Send, Zap, Loader2, Star, Globe, RotateCcw, Paperclip } from 'lucide-react';
 import { aiPersonalityInterview } from '@/ai/flows/ai-personality-interview';
@@ -40,6 +41,8 @@ export default function AIProfileBot() {
   const { user, profile, loading: isUserLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const postDateId = searchParams.get('postDate');
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -456,6 +459,10 @@ export default function AIProfileBot() {
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
     </div>
   );
+
+  if (postDateId) {
+    return <PostDateBotView feedbackId={postDateId} />;
+  }
 
   return (
     <div className="max-w-2xl mx-auto min-h-screen flex flex-col p-4 relative pt-20">
