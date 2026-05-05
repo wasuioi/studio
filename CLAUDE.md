@@ -109,6 +109,7 @@ Server-only (do not expose to the client):
 - `GOOGLE_GENAI_API_KEY` — Genkit / Gemini
 - `SUPABASE_SERVICE_ROLE_KEY` — bypasses all RLS. Only imported from `src/lib/supabase-admin.ts`. Never put in any `NEXT_PUBLIC_*` variable.
 - `RESEND_API_KEY` — reserved for future custom email templates (Supabase Auth currently sends verification emails natively)
+- `CRON_SECRET` — shared secret Vercel Cron sends as `Authorization: Bearer <secret>` to the `/api/post-date-nudge` route. Generate once with `openssl rand -hex 32`, set on Vercel + in `.env.local` for local cron tests.
 
 Public (exposed to the browser — safe because RLS gates all queries):
 
