@@ -5,7 +5,15 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { devSetVerified, devSeedDemoProfile, devResetProfile, devSeedFakeInvite, devClearFakeInvites } from '@/app/bot/actions';
+import {
+  devSetVerified,
+  devSeedDemoProfile,
+  devResetProfile,
+  devSeedFakeInvite,
+  devClearFakeInvites,
+  devSeedPastDate,
+  devFirePostDateNudgesNow,
+} from '@/app/bot/actions';
 import { DEMO_INVITE_SENDER_KEY } from '@/lib/dev-tools/demo-invite';
 import { clearAllCached, listCached } from '@/lib/dev-tools/response-cache';
 import { supabase } from '@/supabase/client';
@@ -132,6 +140,22 @@ export function DevPanel({ verified, onClose }: DevPanelProps) {
         </Button>
         <Button size="sm" variant="ghost" onClick={handleClearCache}>
           Clear AI cache
+        </Button>
+      </div>
+
+      <div className="mb-2 flex flex-wrap gap-1">
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => run('past date seeded', devSeedPastDate)}>
+          Seed past date
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() =>
+            run('post-date nudges fired', devFirePostDateNudgesNow, { reload: false })
+          }
+        >
+          Fire post-date nudges now
         </Button>
       </div>
 

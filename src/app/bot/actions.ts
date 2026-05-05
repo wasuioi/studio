@@ -8,6 +8,7 @@ import { TESTER_PERSONALITY } from '@/lib/dev-tools/fixtures/tester-personality'
 import { TESTER_BIO } from '@/lib/dev-tools/fixtures/tester-bio';
 import { TESTER_CONVERSATION } from '@/lib/dev-tools/fixtures/tester-conversation';
 import { FAKE_MATCHES } from '@/lib/dev-tools/fixtures/fake-matches';
+import { runNudgeSweep } from '@/app/api/post-date-nudge/route';
 
 function ensureDevToolsEnabled() {
   if (process.env.ENABLE_DEV_TOOLS !== 'true') {
@@ -261,4 +262,97 @@ export async function devResetProfile(): Promise<{ success: boolean }> {
   if (u.error) throw new Error(`profiles upsert (reset): ${u.error.message}`);
 
   return { success: true };
+}
+
+/**
+ * DEV-ONLY. Seed a chat_request whose date is already 25h in the past so the
+ * post-date button shows up immediately and the cron-eligible window has been
+ * crossed by 1h. Reuses the demo-sender mechanism from devSeedFakeInvite.
+ */
+export async function devSeedPastDate(): Promise<{ success: boolean; chatRequestId: string }> {
+  ensureDevToolsEnabled();
+
+  const user = await verifyAuth();
+  const DEMO_EMAIL = 'demo-sender@truevibe.dev';
+
+  const list = await supabaseAdmin.auth.admin.listUsers();
+  if (list.error) throw new Error(`listUsers: ${list.error.message}`);
+  let demoId = list.data.users.find((u) => u.email === DEMO_EMAIL)?.id;
+  if (!demoId) {
+    const created = await supabaseAdmin.auth.admin.createUser({
+      email: DEMO_EMAIL,
+      email_confirm: true,
+      password: crypto.randomUUID(),
+    });
+    if (created.error) throw new Error(`create demo sender: ${created.error.message}`);
+    demoId = created.data.user?.id;
+    if (!demoId) throw new Error('demo sender id missing');
+  }
+  if (demoId === user.id) throw new Error('Cannot seed against yourself.');
+
+  const demoSender = FAKE_MATCHES[0];
+
+  const profileUp = await supabaseAdmin
+    .from('profiles')
+    .upsert(
+      {
+        id: demoId,
+        email: DEMO_EMAIL,
+        display_name: demoSender.name,
+        photo_url: demoSender.photoURL,
+        profile_completed: true,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' },
+    );
+  if (profileUp.error) throw new Error(`profile upsert: ${profileUp.error.message}`);
+
+  // Wipe any existing demo-sender → user request so the unique constraint
+  // (sender_id, receiver_id) doesn't reject the insert.
+  await supabaseAdmin
+    .from('chat_requests')
+    .delete()
+    .eq('sender_id', demoId)
+    .eq('receiver_id', user.id);
+
+  const scheduledAt = new Date(Date.now() - 25 * 3600_000);
+
+  const ins = await supabaseAdmin
+    .from('chat_requests')
+    .insert({
+      sender_id: demoId,
+      receiver_id: user.id,
+      status: 'accepted',
+      date_status: 'planned',
+      sender_name: demoSender.name,
+      sender_photo_url: demoSender.photoURL,
+      receiver_name: 'You',
+      match_score: demoSender.score,
+      reason: demoSender.reason,
+      suggested_date_time: scheduledAt.toLocaleString(),
+      suggested_location: 'Café Loft, Bangkok',
+      scheduled_at: scheduledAt.toISOString(),
+    })
+    .select('id')
+    .single();
+  if (ins.error || !ins.data) throw new Error(`chat_requests insert: ${ins.error?.message}`);
+
+  return { success: true, chatRequestId: ins.data.id };
+}
+
+/**
+ * DEV-ONLY. Fire the post-date nudge sweep right now, scoped to the current
+ * user's eligible rows only — bypasses the hourly cron and the CRON_SECRET
+ * auth path.
+ */
+export async function devFirePostDateNudgesNow(): Promise<{
+  success: boolean;
+  processed: number;
+  sentFirst: number;
+  sentSecond: number;
+}> {
+  ensureDevToolsEnabled();
+  const user = await verifyAuth();
+  const r = await runNudgeSweep(user.id);
+  return { success: true, ...r };
 }
