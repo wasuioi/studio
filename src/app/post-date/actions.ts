@@ -1,3 +1,4 @@
+// src/app/post-date/actions.ts
 'use server';
 /**
  * Post-date feedback server actions. All run as the calling user
@@ -7,22 +8,18 @@
 
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient } from '@/supabase/server';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { verifyAuth } from '@/lib/verify-auth';
 import { postDateCheckIn } from '@/ai/flows/post-date-check-in';
-
-const HARD_TURN_CAP = 12;
-
-type ConvoTurn = { role: 'vera' | 'user'; text: string; ts: string };
-
-const FORCED_CLOSER = "Thanks for sharing 💜 — this helps me get to know you.";
-
-function veraTurn(text: string): ConvoTurn {
-  return { role: 'vera', text, ts: new Date().toISOString() };
-}
-
-function userTurn(text: string): ConvoTurn {
-  return { role: 'user', text, ts: new Date().toISOString() };
-}
+import {
+  type ConvoTurn,
+  HARD_TURN_CAP,
+  FORCED_CLOSER,
+  VERA_OPENER,
+  VERA_DISMISS_CLOSER,
+  veraTurn,
+  userTurn,
+} from '@/lib/post-date';
 
 /**
  * Called when the user clicks the manual "I went on this date" button on
@@ -37,7 +34,7 @@ export async function startManualCheckIn(
 
   const { data: cr, error: crErr } = await supabase
     .from('chat_requests')
-    .select('id, sender_id, receiver_id, sender_name, receiver_name, suggested_date_time, suggested_location')
+    .select('id, sender_id, receiver_id')
     .eq('id', chatRequestId)
     .single();
   if (crErr || !cr) throw new Error('Date not found');
@@ -45,9 +42,10 @@ export async function startManualCheckIn(
     throw new Error('Not your date');
   }
 
+  // Reuse an existing row if one was already created (manual or by cron).
   const { data: existing } = await supabase
     .from('date_feedback')
-    .select('id, conversation, status')
+    .select('id')
     .eq('chat_request_id', chatRequestId)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -56,27 +54,24 @@ export async function startManualCheckIn(
     return { feedbackId: existing.id };
   }
 
-  const opener = veraTurn('How did it go? Even just a word.');
-
-  const { data: created, error: insErr } = await supabase
+  // Insert atomically as the admin client so the privilege-locked
+  // status='in_progress' lands in the same statement. Auth + ownership
+  // are already verified above.
+  const opener = veraTurn(VERA_OPENER);
+  const { data: created, error: insErr } = await supabaseAdmin
     .from('date_feedback')
     .insert({
       chat_request_id: chatRequestId,
       user_id: user.id,
       conversation: [opener],
+      status: 'in_progress',
       started_at: new Date().toISOString(),
     })
     .select('id')
     .single();
-  if (insErr || !created) throw new Error(insErr?.message ?? 'Failed to start check-in');
-
-  // Status is in the column-level revoke list — flip via admin client.
-  const { supabaseAdmin } = await import('@/lib/supabase-admin');
-  const { error: statusErr } = await supabaseAdmin
-    .from('date_feedback')
-    .update({ status: 'in_progress' })
-    .eq('id', created.id);
-  if (statusErr) throw new Error(statusErr.message);
+  if (insErr || !created) {
+    throw new Error(insErr?.message ?? 'Failed to start check-in');
+  }
 
   revalidatePath('/requests');
   return { feedbackId: created.id };
@@ -97,7 +92,7 @@ export async function submitCheckInTurn(
   const { data: row, error: readErr } = await supabase
     .from('date_feedback')
     .select(
-      'id, chat_request_id, conversation, status, chat_requests(sender_id, receiver_id, sender_name, receiver_name, suggested_date_time, suggested_location)'
+      'id, chat_request_id, conversation, status, updated_at, chat_requests(sender_id, receiver_id, sender_name, receiver_name, suggested_date_time, suggested_location)',
     )
     .eq('id', feedbackId)
     .eq('user_id', user.id)
@@ -109,23 +104,23 @@ export async function submitCheckInTurn(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cr = (row as any).chat_requests as {
-    sender_id: string; receiver_id: string;
-    sender_name: string | null; receiver_name: string | null;
-    suggested_date_time: string | null; suggested_location: string | null;
+    sender_id: string;
+    receiver_id: string;
+    sender_name: string | null;
+    receiver_name: string | null;
+    suggested_date_time: string | null;
+    suggested_location: string | null;
   };
-  const matchName = cr.sender_id === user.id ? (cr.receiver_name ?? 'them') : (cr.sender_name ?? 'them');
+  const matchName =
+    cr.sender_id === user.id ? cr.receiver_name ?? 'them' : cr.sender_name ?? 'them';
 
-  const conversation: ConvoTurn[] = [
-    ...(row.conversation as ConvoTurn[]),
-    userTurn(userText),
-  ];
-
-  const turnsAfterUser = conversation.length;
+  const priorConversation = row.conversation as ConvoTurn[];
+  const conversation: ConvoTurn[] = [...priorConversation, userTurn(userText)];
 
   let veraResponse: string;
   let isClosingTurn: boolean;
 
-  if (turnsAfterUser >= HARD_TURN_CAP) {
+  if (conversation.length >= HARD_TURN_CAP) {
     veraResponse = FORCED_CLOSER;
     isClosingTurn = true;
   } else {
@@ -145,12 +140,12 @@ export async function submitCheckInTurn(
 
   conversation.push(veraTurn(veraResponse));
 
-  const { supabaseAdmin } = await import('@/lib/supabase-admin');
   const update: Record<string, unknown> = {
     conversation,
     updated_at: new Date().toISOString(),
   };
-  if (pillChoice && !row.conversation.some((t: ConvoTurn) => t.role === 'user')) {
+  // pill_choice is set only on the user's first turn.
+  if (pillChoice && !priorConversation.some((t) => t.role === 'user')) {
     update.pill_choice = pillChoice;
   }
   if (isClosingTurn) {
@@ -158,11 +153,18 @@ export async function submitCheckInTurn(
     update.completed_at = new Date().toISOString();
   }
 
-  const { error: updErr } = await supabaseAdmin
+  // Optimistic lock: only succeed if updated_at hasn't moved since we read.
+  // Prevents lost-turn races between concurrent submissions.
+  const { data: updated, error: updErr } = await supabaseAdmin
     .from('date_feedback')
     .update(update)
-    .eq('id', feedbackId);
+    .eq('id', feedbackId)
+    .eq('updated_at', row.updated_at)
+    .select('id');
   if (updErr) throw new Error(updErr.message);
+  if (!updated || updated.length === 0) {
+    throw new Error('This check-in was updated in another tab. Please reload.');
+  }
 
   if (isClosingTurn) {
     await supabaseAdmin
@@ -198,10 +200,9 @@ export async function dismissCheckIn(
     throw new Error('Already completed — cannot dismiss.');
   }
 
-  const closer = veraTurn("Completely understood. I won't ask again about this one.");
+  const closer = veraTurn(VERA_DISMISS_CLOSER);
   const conversation = [...(row.conversation as ConvoTurn[]), closer];
 
-  const { supabaseAdmin } = await import('@/lib/supabase-admin');
   const { error: updErr } = await supabaseAdmin
     .from('date_feedback')
     .update({
