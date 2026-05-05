@@ -160,6 +160,7 @@ export interface Database {
           payment_intent_id: string | null;
           suggested_date_time: string | null;
           suggested_location: string | null;
+          scheduled_at: string | null;
         };
         Insert: {
           id?: string;
@@ -179,6 +180,7 @@ export interface Database {
           payment_intent_id?: string | null;
           suggested_date_time?: string | null;
           suggested_location?: string | null;
+          scheduled_at?: string | null;
         };
         Update: {
           id?: string;
@@ -198,6 +200,7 @@ export interface Database {
           payment_intent_id?: string | null;
           suggested_date_time?: string | null;
           suggested_location?: string | null;
+          scheduled_at?: string | null;
         };
       };
       conversations: {
@@ -248,6 +251,49 @@ export interface Database {
           read_at?: string | null;
           created_at?: string;
         };
+      };
+      date_feedback: {
+        Row: {
+          id: string;
+          chat_request_id: string;
+          user_id: string;
+          pill_choice: 'positive' | 'neutral' | 'negative' | 'dismissed' | null;
+          conversation: Array<{ role: 'vera' | 'user'; text: string; ts: string }>;
+          status: 'nudged' | 'in_progress' | 'completed' | 'dismissed';
+          nudge_count: number | null;
+          first_nudged_at: string | null;
+          second_nudged_at: string | null;
+          started_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          chat_request_id: string;
+          user_id: string;
+          pill_choice?: 'positive' | 'neutral' | 'negative' | 'dismissed' | null;
+          conversation?: Array<{ role: 'vera' | 'user'; text: string; ts: string }>;
+          status?: 'nudged' | 'in_progress' | 'completed' | 'dismissed';
+          nudge_count?: number | null;
+          first_nudged_at?: string | null;
+          second_nudged_at?: string | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<{
+          pill_choice: 'positive' | 'neutral' | 'negative' | 'dismissed' | null;
+          conversation: Array<{ role: 'vera' | 'user'; text: string; ts: string }>;
+          status: 'nudged' | 'in_progress' | 'completed' | 'dismissed';
+          nudge_count: number | null;
+          first_nudged_at: string | null;
+          second_nudged_at: string | null;
+          started_at: string | null;
+          completed_at: string | null;
+          updated_at: string;
+        }>;
       };
     };
     Views: Record<string, never>;
