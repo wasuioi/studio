@@ -153,6 +153,7 @@ export function SenderDatePlannerModal({ isOpen, onClose, request, senderName, s
         date_status: 'planned',
         suggested_location: selectedOption.location,
         suggested_date_time: selectedOption.dateTime,
+        scheduled_at: selectedOption.scheduledFor,
       })
       .eq('id', request.id);
 
