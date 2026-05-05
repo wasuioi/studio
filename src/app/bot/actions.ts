@@ -8,7 +8,7 @@ import { TESTER_PERSONALITY } from '@/lib/dev-tools/fixtures/tester-personality'
 import { TESTER_BIO } from '@/lib/dev-tools/fixtures/tester-bio';
 import { TESTER_CONVERSATION } from '@/lib/dev-tools/fixtures/tester-conversation';
 import { FAKE_MATCHES } from '@/lib/dev-tools/fixtures/fake-matches';
-import { runNudgeSweep } from '@/app/api/post-date-nudge/route';
+import { runNudgeSweep } from '@/lib/post-date-nudge';
 
 function ensureDevToolsEnabled() {
   if (process.env.ENABLE_DEV_TOOLS !== 'true') {

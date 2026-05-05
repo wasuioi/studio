@@ -53,7 +53,7 @@ Three Supabase client surfaces — pick the right one for each use case:
 
 ### Database and security
 
-- Postgres schema lives in `supabase/migrations/` as seven versioned SQL files. Run them in the Supabase SQL Editor (or via `supabase db push` if using the CLI) in numeric order. See `supabase/README.md`.
+- Postgres schema lives in `supabase/migrations/` as thirteen versioned SQL files. Run them in the Supabase SQL Editor (or via `supabase db push` if using the CLI) in numeric order. See `supabase/README.md`.
   - `001_initial_schema.sql` — seven core tables and baseline columns
   - `002_rls_policies.sql` — Row Level Security policies on every table
   - `003_storage_buckets.sql` — `profile-photos` and `post-photos` buckets + policies
@@ -61,6 +61,8 @@ Three Supabase client surfaces — pick the right one for each use case:
   - `005_application_extensions.sql` — denormalized extras discovered during feature-page migration: `profiles.location`, `profiles.personality_profile` (legacy embedded JSON), `profiles.top_matches` (cached match list), plus rich `chat_requests` date-invite fields (`match_score`, `reason`, `date_status`, `sender_name/photo_url`, `receiver_name/photo_url`, etc.)
   - `006_conversation_last_message.sql` — adds `conversations.last_message` preview column so the `/messages` sidebar can render a snippet without an extra query
   - `007_lock_profile_privileged_columns.sql` — **security hardening**: revokes column-level UPDATE privilege on `profiles.identity_verified`, `verification_status`, `tier`, and `email` from the `authenticated` and `anon` roles, closing a hole where a user could self-verify via the browser client. After this migration, those columns can only be written via the service-role client from trusted server code (Route Handlers, Server Actions, AI flows).
+  - `008_add_stage_tracking.sql`, `010_fix_email_verified_check.sql`, `011_drop_stage_tracking.sql`, `012_enable_realtime.sql` — earlier feature migrations (see git history)
+  - `013_post_date_feedback.sql` — `date_feedback` table + `chat_requests.scheduled_at` for the post-date feedback feature
 - Seven core tables under `public`: `profiles`, `posts`, `personality_profiles`, `bot_chats`, `chat_requests`, `conversations`, `messages`. Every table has **Row Level Security (RLS) enabled** and explicit allow policies — default is deny.
 - Helper functions `is_email_verified()` and `is_conversation_participant(conv_id)` encapsulate common security checks used by multiple policies.
 - A `handle_new_user()` trigger on `auth.users` insert auto-creates the matching `profiles` row. This replaces the old `UserProfileInitializer` component and eliminates the race condition where profile rows could be missing.
@@ -120,7 +122,7 @@ Public (exposed to the browser — safe because RLS gates all queries):
 ### Deployment
 
 - **Vercel only.** Firebase App Hosting has been removed. `.claude/settings.local.json` grants `vercel logs/inspect/env` and `vercel --prod` permissions.
-- After cloning, run the seven SQL migration files under `supabase/migrations/` (`001` through `007`) in the Supabase SQL Editor in numeric order, then populate `.env.local` with the Supabase URL + keys.
+- After cloning, run the SQL migration files under `supabase/migrations/` (`001` through `013`) in the Supabase SQL Editor in numeric order, then populate `.env.local` with the Supabase URL + keys.
 
 ## Conventions worth preserving
 
