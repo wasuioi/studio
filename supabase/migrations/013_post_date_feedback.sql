@@ -18,7 +18,7 @@ comment on column public.chat_requests.scheduled_at is
 create table public.date_feedback (
   id uuid primary key default gen_random_uuid(),
   chat_request_id uuid not null references public.chat_requests(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
 
   pill_choice text check (pill_choice in ('positive','neutral','negative','dismissed')),
   conversation jsonb not null default '[]'::jsonb,
@@ -45,9 +45,6 @@ comment on table public.date_feedback is
 create index date_feedback_user_status_idx
   on public.date_feedback (user_id, status);
 
-create index date_feedback_chat_request_idx
-  on public.date_feedback (chat_request_id);
-
 -- =========================================================================
 -- Row Level Security
 -- =========================================================================
@@ -55,14 +52,17 @@ alter table public.date_feedback enable row level security;
 
 create policy "Users can read their own feedback"
   on public.date_feedback for select
+  to authenticated
   using (auth.uid() = user_id);
 
 create policy "Users can insert their own feedback"
   on public.date_feedback for insert
+  to authenticated
   with check (auth.uid() = user_id);
 
 create policy "Users can update their own feedback"
   on public.date_feedback for update
+  to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
@@ -81,3 +81,10 @@ revoke update (
   second_nudged_at,
   completed_at
 ) on public.date_feedback from anon, authenticated;
+
+-- =========================================================================
+-- updated_at auto-bump trigger — matches the precedent set by 001_initial_schema
+-- =========================================================================
+create trigger date_feedback_set_updated_at
+  before update on public.date_feedback
+  for each row execute function public.set_updated_at();

@@ -283,17 +283,17 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
-        Update: Partial<{
-          pill_choice: 'positive' | 'neutral' | 'negative' | 'dismissed' | null;
-          conversation: Array<{ role: 'vera' | 'user'; text: string; ts: string }>;
-          status: 'nudged' | 'in_progress' | 'completed' | 'dismissed';
-          nudge_count: number | null;
-          first_nudged_at: string | null;
-          second_nudged_at: string | null;
-          started_at: string | null;
-          completed_at: string | null;
-          updated_at: string;
-        }>;
+        Update: {
+          pill_choice?: 'positive' | 'neutral' | 'negative' | 'dismissed' | null;
+          conversation?: Array<{ role: 'vera' | 'user'; text: string; ts: string }>;
+          status?: 'nudged' | 'in_progress' | 'completed' | 'dismissed';
+          nudge_count?: number | null;
+          first_nudged_at?: string | null;
+          second_nudged_at?: string | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          updated_at?: string;
+        };
       };
     };
     Views: Record<string, never>;
