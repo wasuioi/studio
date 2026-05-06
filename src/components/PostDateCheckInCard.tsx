@@ -2,100 +2,90 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Sparkles } from 'lucide-react';
+import {
+  FIRST_NUDGE_PILLS,
+  FIRST_NUDGE_HINT,
+  SECOND_NUDGE_PILLS,
+  SECOND_NUDGE_HINT,
+  SECOND_NUDGE_DISMISS_LABEL,
+} from '@/ai/prompts/post-date-check-in-prompt';
 
 type Pill = 'positive' | 'neutral' | 'negative';
 
 interface Props {
   matchName: string;
-  /** Called with the user's free text + (optional) pill choice. */
+  /** 'first' = three pills + hint. 'second' = lighter set + dismiss button. */
+  variant: 'first' | 'second';
   onSubmit: (text: string, pill?: Pill) => Promise<void>;
-  /** Show the "I'd rather not say" boundary button (true when nudge_count >= 2). */
-  showDismiss?: boolean;
-  onDismiss?: () => Promise<void>;
+  onDismiss: () => Promise<void>;
   disabled?: boolean;
 }
 
-const PILLS: { value: Pill; label: string }[] = [
-  { value: 'positive', label: 'It was great' },
-  { value: 'neutral', label: 'Not sure yet' },
-  { value: 'negative', label: 'Not a match' },
-];
-
 export function PostDateCheckInCard({
   matchName,
+  variant,
   onSubmit,
   onDismiss,
-  showDismiss,
   disabled,
 }: Props) {
-  const [text, setText] = useState('');
   const [pending, setPending] = useState(false);
 
-  const submit = async (pill?: Pill) => {
-    if (!pill && !text.trim()) return;
+  const pills = variant === 'first' ? FIRST_NUDGE_PILLS : SECOND_NUDGE_PILLS;
+  const hint = variant === 'first' ? FIRST_NUDGE_HINT : SECOND_NUDGE_HINT;
+
+  const handlePill = async (pill: Pill, label: string) => {
     setPending(true);
     try {
-      // If user is just clicking a pill with no free text, send the pill
-      // label as the user's "text" so the conversation has something to render.
-      const payload = text.trim() || PILLS.find((p) => p.value === pill)?.label || '';
-      await onSubmit(payload, pill);
-      setText('');
+      await onSubmit(label, pill);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const handleDismiss = async () => {
+    setPending(true);
+    try {
+      await onDismiss();
     } finally {
       setPending(false);
     }
   };
 
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
-      <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">
-        After your date with {matchName}
-      </p>
-      <div className="mb-3 flex flex-col gap-2">
-        {PILLS.map((p) => (
+    <div className="rounded-[1.75rem] rounded-tl-none border border-white/10 bg-white/10 backdrop-blur-md p-4 md:p-5 shadow-lg max-w-xs">
+      <div className="mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200/80">
+        <Sparkles className="h-3 w-3 fill-current" />
+        <span>After your date with {matchName}</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {pills.map((p) => (
           <Button
             key={p.value}
             variant="outline"
             size="sm"
             disabled={disabled || pending}
-            onClick={() => submit(p.value)}
-            className="justify-start"
+            onClick={() => handlePill(p.value as Pill, p.label)}
+            className="justify-start rounded-full bg-white/5 border-white/10 hover:bg-white/15 text-white transition-transform active:scale-[0.97]"
           >
             {p.label}
           </Button>
         ))}
+        {variant === 'second' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={disabled || pending}
+            onClick={handleDismiss}
+            className="justify-start rounded-full text-white/60 hover:text-white"
+          >
+            {SECOND_NUDGE_DISMISS_LABEL}
+          </Button>
+        )}
       </div>
-      <p className="mb-2 text-xs italic text-muted-foreground">
-        Or just tell me in your own words.
+      <p className="mt-3 text-[11px] italic text-white/50 text-center">
+        {hint}
       </p>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-        className="flex gap-2"
-      >
-        <Input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Type something…"
-          disabled={disabled || pending}
-        />
-        <Button type="submit" disabled={disabled || pending || !text.trim()}>
-          Send
-        </Button>
-      </form>
-      {showDismiss && onDismiss && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-3 w-full text-muted-foreground"
-          disabled={disabled || pending}
-          onClick={() => onDismiss()}
-        >
-          I&apos;d rather not say
-        </Button>
-      )}
     </div>
   );
 }

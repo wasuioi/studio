@@ -126,7 +126,12 @@ export default function AIProfileBot() {
       if (cancelled) return;
 
       if (error) {
-        console.error('[bot] failed to load bot_chat', error);
+        console.error('[bot] failed to load bot_chat', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        });
         setIsRestoring(false);
         initializedRef.current = true;
         return;
@@ -461,7 +466,14 @@ export default function AIProfileBot() {
   );
 
   if (postDateId) {
-    return <PostDateBotView feedbackId={postDateId} />;
+    return (
+      <>
+        <PostDateBotView feedbackId={postDateId} />
+        {devPanelOpen && (
+          <DevPanel verified={isVerified} onClose={() => setDevPanelOpen(false)} />
+        )}
+      </>
+    );
   }
 
   return (

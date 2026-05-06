@@ -96,7 +96,12 @@ export function useAuth() {
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error) {
-          console.error('[useAuth] failed to load profile', error);
+          console.error('[useAuth] failed to load profile', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          });
           setLoading(false);
           return;
         }

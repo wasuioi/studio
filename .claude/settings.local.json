@@ -45,7 +45,25 @@
       "Bash(gh repo:*)",
       "Bash(git diff:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(gh pr *)",
+      "Bash(lsof -ti:9002)",
+      "Bash(git push *)",
+      "mcp__playwright__browser_navigate",
+      "Bash(python3 -m http.server 9111)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:9111/)",
+      "mcp__playwright__browser_tabs",
+      "mcp__playwright__browser_take_screenshot",
+      "Read(//Applications/Google Chrome.app/**)",
+      "Bash(claude mcp *)",
+      "Bash(awk '/Screen B/,/Screen C/' /Users/prawarnaru/TrueVibe/mockups/truevibe_mscreen_auth_flow.html)",
+      "Bash(awk '/Screen E/,/Screen F/' /Users/prawarnaru/TrueVibe/mockups/truevibe_mscreen_auth_flow.html)",
+      "Bash(git *)",
+      "Bash(/Users/prawarnaru/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/brainstorming/scripts/start-server.sh *)",
+      "Bash(SUPABASE_SERVICE_ROLE_KEY=fake NEXT_PUBLIC_SUPABASE_URL=https://fake.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=fake npm run build)",
+      "Bash(/Users/prawarnaru/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/brainstorming/scripts/stop-server.sh /Users/prawarnaru/TrueVibe/.superpowers/brainstorm/52688-1777969680)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:9002 --max-time 2)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:9002 --max-time 5)"
     ]
   }
 }
